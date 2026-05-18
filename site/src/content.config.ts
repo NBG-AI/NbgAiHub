@@ -25,9 +25,16 @@ import { docsSchema } from '@astrojs/starlight/schema';
 // ─── Shared field shapes (DRY) ─────────────────────────────────────────
 
 const audienceEnum = z.enum(['beginner', 'advanced', 'both']);
-const isoDateString = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD');
+
+// Astro's YAML parser (js-yaml) auto-converts unquoted YAML 1.1 date strings
+// (`2026-05-18`) into JS Date objects before Zod sees them, even though the
+// pipeline emits these as strings. Accept either shape and normalize to a
+// "YYYY-MM-DD" string. Same root cause as the pipeline's gray-matter bug
+// resolved during the vitest 2→4 upgrade.
+const isoDateString = z.union([
+  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD'),
+  z.date().transform((d) => d.toISOString().slice(0, 10)),
+]);
 
 /**
  * The 10 canonical keys shared by every content type per DECISIONS.md
