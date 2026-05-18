@@ -1,0 +1,25 @@
+{
+  "workflow": "team-workflow",
+  "timestamp": "2026-05-18T20:30:00Z",
+  "request_summary": "Personalization (PAT-based favourites via gist) + marketplace contributions (URL-redirect to GitHub new-file flow). Option C.",
+  "last_completed_phase": 5,
+  "last_completed_phase_name": "Designer",
+  "artifacts": {
+    "REFINED_REQUEST_FILE": "/Users/suzy/ClaudeCode/Projects/NbgAiHub/docs/refined-requests/personalization-and-contributions.md",
+    "CODEBASE_SCAN_FILE": "/Users/suzy/ClaudeCode/Projects/NbgAiHub/docs/reference/codebase-scan-personalization.md",
+    "INVESTIGATION_FILE": "/Users/suzy/ClaudeCode/Projects/NbgAiHub/docs/reference/investigation-personalization.md",
+    "TECHNICAL_RESEARCH_FILES": [],
+    "PLAN_FILE": "/Users/suzy/ClaudeCode/Projects/NbgAiHub/docs/design/plan-003-personalization-and-contributions.md",
+    "DESIGN_FILE": "/Users/suzy/ClaudeCode/Projects/NbgAiHub/docs/design/project-design.md",
+    "DEPENDENCY_VALIDATION_FILE": null,
+    "TEST_BUILD_REPORT_FILES": []
+  },
+  "phases": [
+    { "phase": 1, "name": "Request Refiner", "status": "completed", "timestamp": "2026-05-18T19:55:00Z" },
+    { "phase": 2, "name": "Codebase Scanner", "status": "completed", "timestamp": "2026-05-18T20:05:00Z" },
+    { "phase": 3, "name": "Investigator (with Option C pivot)", "status": "completed", "timestamp": "2026-05-18T20:30:00Z" },
+    { "phase": 4, "name": "Planner", "status": "completed", "timestamp": "2026-05-18T20:36:00Z" },
+    { "phase": 5, "name": "Designer", "status": "completed", "timestamp": "2026-05-19T07:30:00Z" }
+  ],
+  "notes": "Option C chosen after Phase 3a R1 finding (CORS blocks Device Flow). PAT (gist scope) for favourites; URL-redirect for submissions. A24 (new tab on redirect) defaulted yes."
+}

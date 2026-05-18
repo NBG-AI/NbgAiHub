@@ -85,9 +85,45 @@ const news = defineCollection({
 });
 
 // ─── skills ────────────────────────────────────────────────────────────
+// Extends `baseShape('skill')` (10 canonical keys) with 7 new fields per
+// project-design.md §P.5.6. The site validator does *shape only* — the CI
+// validator at `pipeline/src/validators/skill.ts` enforces semantic rules
+// (handle/allowlist for `maintainer`, prefix/regex for `install_command`,
+// etc.) using the same enum sets.
 const skills = defineCollection({
   loader: glob({ pattern: '*.md', base: '../skills' }),
-  schema: z.object(baseShape('skill')),
+  schema: z.object({
+    ...baseShape('skill'),
+    install_command: z
+      .string()
+      .refine(
+        (cmd) =>
+          cmd.startsWith('/plugin marketplace add ') ||
+          cmd.startsWith('/plugin install '),
+        {
+          message:
+            'install_command must start with `/plugin marketplace add ` or `/plugin install `',
+        },
+      ),
+    skill_id: z
+      .string()
+      .regex(/^[a-z0-9-]+$/, { message: 'skill_id must match /^[a-z0-9-]+$/' }),
+    origin: z.enum(['internal', 'community', 'external']),
+    category: z.enum([
+      'workflow',
+      'code',
+      'docs',
+      'integration',
+      'productivity',
+      'testing',
+      'other',
+    ]),
+    status: z.enum(['active', 'experimental', 'deprecated']),
+    // CI validator enforces handle-or-allowlist; site does shape-only.
+    maintainer: z.string().min(1),
+    // Free-text per A11; `undefined` when absent (NOT `[]`) to keep diffs minimal.
+    requires: z.array(z.string()).optional(),
+  }),
 });
 
 // ─── tips ──────────────────────────────────────────────────────────────

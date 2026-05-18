@@ -1950,4 +1950,1107 @@ Every AC1–AC20 from the refined request is addressed by either a contract abov
 
 ---
 
-*End of Site architecture section. The next feature append goes here (`## <next feature> …`).*
+*End of Site architecture section.*
+
+## Personalization architecture
+
+> **Plan reference:** `docs/design/plan-003-personalization-and-contributions.md` is authoritative for *what* gets done in *what order*. This section is authoritative for *interfaces, contracts, data models, and module structure*. Phase 6 (Coders) reads both side-by-side: plan = wave/step sequence + AC mapping; design = function signatures + types + error classes + file ownership.
+>
+> **Pivot context:** post-2026-05-18, the Option C architecture is in force — PAT-paste auth, unlisted-gist-per-user storage, URL-redirect submissions, CI validator on `pull_request`. No Device Flow, no OAuth App, no Cloudflare Worker, no browser-side write APIs.
+
+### P.0 Plan-level concerns surfaced to orchestrator
+
+The plan is structurally sound. Two items surfaced during design that warrant orchestrator attention (neither is a re-sequence; both are clarifications to record before Phase 6 starts):
+
+1. **`astro.config.mjs` lock between Step 10 and Step 14.** The plan calls this out as a coordination point. The design resolves it by assigning **Unit P-C1** (single Coder) ownership of *all* `astro.config.mjs` edits across Wave C — the `components.SocialIcons` override AND the sidebar `My Pins` + `Submit a skill` entries — in one commit. No serialised-edit coordination needed; ownership is exclusive.
+2. **Plan Step 18 proposes new F-codes `F-P-PIN-1` and `F-P-SUB-1`.** Plan §9 item 13 defers the decision to the Designer. **Design decision:** fold both into the existing F-P1..F-P25 set — `F-P-PIN-1` is fully covered by F-P11 (the build-time pin index is mentioned there), and `F-P-SUB-1` is fully covered by F-P14 + F-P15. No new F-codes. Phase 6 must NOT introduce them.
+
+### P.1 System architecture and component diagram
+
+```
+                    ┌─────────────────────────────────────────────────────┐
+                    │                BROWSER (static Astro)               │
+                    │                                                     │
+                    │  ┌──────────────┐    ┌─────────────────────┐        │
+                    │  │ SignIn.astro │───▶│   auth.ts           │        │
+                    │  │ (<dialog>)   │    │   validateToken()   │────────┼──▶ GET api.github.com/user
+                    │  └──────────────┘    │   storeToken()      │        │     (PAT validate)
+                    │                      └─────────┬───────────┘        │
+                    │                                │ subscribe()        │
+                    │  ┌──────────────┐              ▼                    │
+                    │  │PinButton     │    ┌─────────────────────┐        │
+                    │  │.astro        │───▶│   gist.ts           │        │
+                    │  └──────────────┘    │   findOrCreate(),   │────────┼──▶ GET  /gists       (discover)
+                    │                      │   addFavorite(),    │────────┼──▶ POST /gists       (lazy create)
+                    │                      │   removeFavorite()  │────────┼──▶ GET  /gists/<id>  (read)
+                    │                      └─────────────────────┘────────┼──▶ PATCH /gists/<id> (write)
+                    │                                                     │
+                    │  ┌──────────────┐    ┌─────────────────────┐        │
+                    │  │ submit-skill │───▶│   submission.ts     │        │
+                    │  │ .astro       │    │   serialize()       │        │
+                    │  └──────────────┘    │   buildEditorUrl()  │        │
+                    │                      │   copyToClipboard() │        │
+                    │                      │   checkSlug()       │────────┼──▶ GET  api.github.com/repos/.../contents/skills/<slug>.md
+                    │                      └─────────┬───────────┘        │       (anonymous; 200/404/429)
+                    │                                │ window.open()       │
+                    │  ┌──────────────┐              ▼                    │
+                    │  │my-pins.astro │   ┌────────────────────┐          │
+                    │  │              │──▶│  pin-store.ts      │          │
+                    │  └──────────────┘   │  joinWithIndex()   │          │
+                    │                     └─────────┬──────────┘          │
+                    │                               │ fetch('/_data/...')│
+                    │  ┌──────────────┐             │                    │
+                    │  │ localStorage │             │                    │
+                    │  │ nbgaihub.gh_*│◀────────────┘                    │
+                    │  │ .gist_id     │                                  │
+                    │  └──────────────┘                                  │
+                    └─────────────────────────────────────────────────────┘
+                                          │                          │
+                                          ▼                          ▼
+                            github.com/.../new/main/skills      (build time, once)
+                            ?filename=<slug>.md&value=<...>      ┌──────────────────────┐
+                            (URL redirect; user reviews;         │ scripts/             │
+                             GitHub UI handles fork/branch/PR)   │ build-pin-index.ts   │
+                                          │                      │ → public/_data/      │
+                                          ▼                      │   <type>-index.json  │
+                            ┌─────────────────────┐              └──────────────────────┘
+                            │ chomovazuzana/      │
+                            │ NbgAiHub PR         │                      │ during astro build
+                            │ (skills/*.md)       │                      ▼
+                            └──────────┬──────────┘                ┌──────────────────┐
+                                       │ pull_request trigger      │ dist/_data/      │
+                                       ▼                           │ <type>-index.json│
+                            ┌──────────────────────────┐           └──────────────────┘
+                            │ .github/workflows/       │
+                            │ validate-skill-          │
+                            │ submission.yml           │
+                            │   └─▶ pipeline/dist/     │
+                            │       validators/cli.js  │
+                            │       (reads            │
+                            │        config/          │
+                            │        maintainers.json)│
+                            └──────────┬───────────────┘
+                                       ▼
+                            GitHub Check annotations
+                            (::error file=... — green/red)
+
+                    [out of scope for this phase, on diagram for context:]
+
+                            ┌───────────────────────────────┐
+                            │ Future Claude `/hub-*` skill  │
+                            │   gh api gists/<id>           │──── reads/writes the same
+                            │   (same wrapped JSON shape)   │     gist.files["nbgaihub-
+                            │   (same dedup rules)          │      favorites.json"]
+                            └───────────────────────────────┘
+```
+
+**Data-flow summary.**
+- **Auth path:** browser ↔ `https://api.github.com/user` only. PAT never leaves the user's machine for any other origin.
+- **Pin path:** browser ↔ `https://api.github.com/gists*`. Two API calls per write (GET + PATCH; read-modify-write per F-P9).
+- **Submission path:** browser → `https://github.com/.../new/main/skills?...` redirect. Hub never calls a write API for submissions. Optional pre-check `GET .../contents/skills/<slug>.md` unauthenticated for slug collision.
+- **Pin-display path:** browser → static `/_data/<type>-index.json` (served from `dist/`); joined client-side with gist `favourites[]` to render `/my-pins/`.
+- **CI path:** `pull_request` event on `skills/**/*.md` → workflow checks out PR diff → invokes compiled `pipeline/dist/validators/cli.js` → posts `::error` annotations on failure → exits 0/1.
+
+### P.2 Module structure under `site/`
+
+#### P.2.1 New modules
+
+| Path | Kind | Purpose |
+|---|---|---|
+| `site/src/lib/auth.ts` | TS module (pure + side-effecting on `localStorage` + `fetch`) | PAT validation, token IO, subscribe/notify auth state. |
+| `site/src/lib/gist.ts` | TS module | Discovery, lazy create, read-modify-write of the favourites gist. Imports `auth.ts` for `getToken()`. |
+| `site/src/lib/submission.ts` | TS module | Skill markdown serialiser, GitHub new-file URL builder, clipboard fallback, slug-collision pre-check. Imports `slug.ts`. |
+| `site/src/lib/pin-store.ts` | TS module | Joins gist `favourites[]` against the build-time `<type>-index.json`. Pure transform + a single `fetch` per type. |
+| `site/src/lib/slug.ts` | TS module | Duplicate of `pipeline/src/slug.ts`; drift-tested. Exports `slugify`. |
+| `site/src/lib/api-fetch.ts` | TS module | Single `apiFetch()` wrapper used by `auth.ts` and `gist.ts` for all `api.github.com` calls. Centralises CORS + error mapping (P.6). |
+| `site/src/components/PinButton.astro` | `.astro` component | Pin/unpin button; gated by sign-in state. Inline `<script is:inline>` for client behaviour (matches `AudienceFilter.astro` precedent). |
+| `site/src/components/SignInModal.astro` | `.astro` component | Native `<dialog>` modal hosting PAT-paste UX. Opened by `SocialIconsOverride.astro` and by `PinButton.astro` when anonymous. |
+| `site/src/components/SocialIconsOverride.astro` | `.astro` component | Starlight `SocialIcons` slot override (per A15 + R6). Renders Sign-in button (anon) or `@login` + Sign-out chip (auth). |
+| `site/src/pages/my-pins.astro` | Astro page | `/my-pins/` — anonymous panel OR client-rendered pin sections grouped by type. |
+| `site/src/pages/submit-skill.astro` | Astro page | `/submit-skill/` — anonymous-accessible form. |
+| `site/scripts/build-pin-index.ts` | TS script (invoked pre-`astro build`) | Reads `*.md` from the five content folders, emits `public/_data/<type>-index.json` per type. |
+
+#### P.2.2 Modified files (Wave C ownership)
+
+| Path | Owner Unit | Edits |
+|---|---|---|
+| `site/src/content.config.ts` | P-A0 | Extend `skills` collection with 7 new fields (spread `baseShape('skill')`). |
+| `site/astro.config.mjs` | **P-C1 (exclusive)** | Add `components.SocialIcons` override; add 2 sidebar entries (`My Pins`, `Submit a skill`). One commit. |
+| `site/package.json` | P-A1 | Add `vitest`, `tsx` to `devDependencies`; add `test`, `test:watch` scripts; update `build` to chain `tsx scripts/build-pin-index.ts && astro check && astro build`. |
+| `site/src/components/NewsPanel.astro` | P-C3 | Insert `<PinButton type="news" slug={item.id} />`. |
+| `site/src/components/NewsList.astro` | P-C3 | Insert `<PinButton type="news" slug={item.id} />`. |
+| `site/src/components/SkillCard.astro` | P-C3 | Insert `<PinButton type="skill" slug={entry.id} />`. |
+| `site/src/pages/tips.astro` | P-C3 | Insert `<PinButton type="tip" slug={entry.id} />`. |
+| `site/src/pages/glossary.astro` | P-C3 | Insert `<PinButton type="glossary" slug={entry.id} />`. |
+| `site/src/pages/news/[slug].astro` | P-C3 | Insert `<PinButton type="news" slug={entry.id} />`. |
+
+### P.3 Module structure under `pipeline/`
+
+| Path | Kind | Purpose |
+|---|---|---|
+| `pipeline/src/validators/skill.ts` | TS module (pure) | Frontmatter validator core. Exports `validateSkillFrontmatter()` and `validateSkillFile()`. No side effects beyond optional `HEAD` request for `external_link`. |
+| `pipeline/src/validators/cli.ts` | TS executable | CLI wrapper for GH Actions. Reads file paths from argv, loads `config/maintainers.json` via `loadMaintainers()`, runs validator, prints `::error file=...,line=1::...`, exits 0/1. |
+| `pipeline/src/validators/config.ts` | TS module | Loads `config/maintainers.json`. Throws `ConfigNotFoundError` (no fallback per global CLAUDE.md). |
+| `pipeline/tests/validators/skill.test.ts` | Vitest spec | Covers AC16–AC20 + missing-config case. |
+| `pipeline/tests/validators/fixtures/*.md` | Fixtures | 4 fixture files per plan Step 9. |
+| `config/maintainers.json` | Config (repo root) | `{"team_aliases": ["@nbg-ai-team", ...]}`. Singular naming applied: this is a config artifact, not a table — the *array* is plural because it expresses a collection. |
+
+### P.4 Public interfaces / contracts per module
+
+Conventions: all signatures are TypeScript strict + `noUncheckedIndexedAccess`. ESM-only. PascalCase types, camelCase functions, `XxxError` for error classes (per §3.8 codebase scan). Where a parameter is a discriminated-union narrow type, the union literal set is declared inline.
+
+#### P.4.1 `site/src/lib/api-fetch.ts`
+
+```ts
+export interface ApiFetchOptions {
+  method?: 'GET' | 'POST' | 'PATCH' | 'HEAD';
+  token?: string;                    // omit for unauthenticated calls (e.g. slug-collision check)
+  body?: unknown;                    // JSON-serialised when present; sets Content-Type automatically
+  acceptJson?: boolean;              // default true; sets Accept: application/vnd.github+json
+  signal?: AbortSignal;
+}
+
+export interface ApiFetchResult<T> {
+  status: number;                    // HTTP status as observed
+  data: T;                           // parsed JSON body (or `undefined as unknown as T` for 204)
+  headers: Headers;
+}
+
+/**
+ * Centralised wrapper for every call against api.github.com.
+ * - Asserts the URL hostname is exactly `api.github.com` (AC23).
+ * - Maps 401 -> TokenInvalidError, 403 (rate-limit) -> RateLimitedError,
+ *   429 -> RateLimitedError, 404 -> NotFoundError, network -> NetworkError.
+ * - All other non-2xx surfaces as GitHubApiError with the status + parsed message.
+ * - Always sets Accept: application/vnd.github+json unless opted out.
+ */
+export function apiFetch<T = unknown>(
+  url: string,
+  options?: ApiFetchOptions,
+): Promise<ApiFetchResult<T>>;
+
+export class NetworkError extends Error { name: 'NetworkError' }
+export class NotFoundError extends Error { name: 'NotFoundError'; status: 404 }
+export class RateLimitedError extends Error { name: 'RateLimitedError'; status: number; retryAfterSeconds?: number }
+export class GitHubApiError extends Error { name: 'GitHubApiError'; status: number; body?: unknown }
+// TokenInvalidError is owned by auth.ts (re-exported through here for callers).
+```
+
+**Side effects:** issues `fetch()`; no `localStorage` access. **Purity:** non-pure (network).
+
+#### P.4.2 `site/src/lib/auth.ts`
+
+```ts
+export interface GitHubUser {
+  login: string;
+  // The site reads only `login`. Other fields are present but unspecified —
+  // we deliberately do NOT type them, to keep the contract narrow.
+}
+
+export interface StoredAuthState {
+  token: string;
+  user: GitHubUser;
+}
+
+export type AuthSubscriber = (state: StoredAuthState | null) => void;
+
+/** Validates the PAT by issuing GET /user. 200 -> resolve. 401 -> TokenInvalidError. */
+export function validateToken(token: string): Promise<GitHubUser>;
+
+/** Writes nbgaihub.gh_token + nbgaihub.gh_user; notifies subscribers. */
+export function storeToken(token: string, user: GitHubUser): void;
+
+/** Synchronous read of the persisted state, or null when signed out. */
+export function readToken(): StoredAuthState | null;
+
+/** Removes nbgaihub.gh_token, nbgaihub.gh_user, nbgaihub.gist_id; notifies subscribers. */
+export function clearToken(): void;
+
+/** Convenience: returns the bearer string when present, else null. */
+export function getToken(): string | null;
+
+/** Convenience: returns the GitHubUser when signed in, else null. */
+export function getUser(): GitHubUser | null;
+
+/** End-to-end sign-in. validateToken() + storeToken() composed. */
+export function signIn(token: string): Promise<StoredAuthState>;
+
+/** Alias for clearToken(). Provided for symmetry. */
+export function signOut(): void;
+
+/** Subscribe to auth changes (sign-in, sign-out, external storage events from other tabs). Returns an unsubscribe function. */
+export function subscribe(callback: AuthSubscriber): () => void;
+
+export class TokenInvalidError extends Error { name: 'TokenInvalidError' }
+export class TokenRevokedError extends Error { name: 'TokenRevokedError' }
+// (Revoked = a previously-valid token returned 401 from a downstream gist call. Different surface than `Invalid`.)
+```
+
+**Side effects:** `localStorage` reads/writes under exactly three keys (`nbgaihub.gh_token`, `nbgaihub.gh_user`, `nbgaihub.gist_id`); subscribes to `window.addEventListener('storage', ...)` so multi-tab sign-in/out propagates. **Purity:** `validateToken` is non-pure (network); `readToken`, `getToken`, `getUser` are reads; `storeToken`, `clearToken`, `signIn`, `signOut` mutate localStorage + notify subscribers.
+
+**DI seam:** `validateToken` calls `apiFetch` from `api-fetch.ts`; tests inject a mocked `fetch` via `globalThis.fetch` per vitest's standard pattern (no constructor injection needed — vanilla `fetch` is the seam).
+
+#### P.4.3 `site/src/lib/gist.ts`
+
+```ts
+export type FavoriteType = 'news' | 'skill' | 'tip' | 'glossary' | 'journey-step';
+
+export interface FavoriteEntry {
+  type: FavoriteType;
+  slug: string;
+  pinned_at: string;                 // YYYY-MM-DD
+}
+
+export interface FavoritesDocument {
+  schema_version: 1;
+  favourites: FavoriteEntry[];
+}
+
+export interface FavoritesGistRef {
+  gistId: string;
+  document: FavoritesDocument;
+}
+
+/**
+ * Discovery + lazy-create.
+ *   1. Reads cached gist id from localStorage (nbgaihub.gist_id) if present;
+ *      attempts a GET on it. On 404 -> rediscover. On 200 -> return.
+ *   2. Otherwise issues GET /gists (paginated) and scans `files` map for the
+ *      key `nbgaihub-favorites.json`. Returns the first match's id (OQ2).
+ *   3. If no match, POST /gists with public: false, the canonical filename,
+ *      and an initial {schema_version:1, favourites:[]} document.
+ * Throws TokenInvalidError on 401 (bubbles up to UI to clear state per OQ4).
+ */
+export function findOrCreateFavoritesGist(token: string): Promise<FavoritesGistRef>;
+
+/** GET /gists/<id>; parses content; tolerates missing schema_version per AC22. */
+export function readFavoritesGist(token: string, gistId: string): Promise<FavoritesDocument>;
+
+/** Read-modify-write: adds an entry deduped on (type, slug). Returns the new document. */
+export function addFavorite(
+  token: string,
+  gistId: string,
+  entry: FavoriteEntry,
+): Promise<FavoritesDocument>;
+
+/** Read-modify-write: removes by (type, slug). No-op if absent. Returns the new document. */
+export function removeFavorite(
+  token: string,
+  gistId: string,
+  ref: { type: FavoriteType; slug: string },
+): Promise<FavoritesDocument>;
+
+/** Pure: serialises a FavoritesDocument to the canonical JSON string written to gist.files. */
+export function serializeFavoritesDocument(doc: FavoritesDocument): string;
+
+/** Pure: parses + validates a gist file string. Treats missing schema_version as 1 (AC22). */
+export function parseFavoritesDocument(raw: string): FavoritesDocument;
+
+export class GistNotFoundError extends Error { name: 'GistNotFoundError' }
+export class GistSchemaError extends Error { name: 'GistSchemaError' }
+export class GistWriteConflictError extends Error { name: 'GistWriteConflictError' }
+// (WriteConflict is reserved for future ETag use; documented but not thrown in MVP — last-write-wins is accepted per PR-4.)
+
+export const FAVORITES_FILENAME = 'nbgaihub-favorites.json' as const;
+```
+
+**Side effects:** non-pure (network) except `serializeFavoritesDocument` / `parseFavoritesDocument`. **DI seam:** all network calls go through `api-fetch.ts`.
+
+#### P.4.4 `site/src/lib/submission.ts`
+
+```ts
+import type { SkillForm, SkillFrontmatter } from './skill-types';
+
+export interface BuildEditorUrlResult {
+  url: string;                       // the URL to navigate to
+  fitsInUrl: boolean;                // true => direct redirect; false => clipboard fallback path
+}
+
+export interface SlugCollisionResult {
+  status: 'collision' | 'free' | 'unknown';
+  // 'collision' = GET .../contents/skills/<slug>.md returned 200
+  // 'free'      = returned 404
+  // 'unknown'   = 403, 429, or network error — non-blocking warning per F-P16
+}
+
+/** Pure: builds the YAML-frontmatter + body markdown string in canonical key order (see P.5.4). */
+export function serializeSkillToMarkdown(form: SkillForm): string;
+
+/** Pure: builds the github.com new-file URL. Sets `fitsInUrl: false` if url.length > 7000. */
+export function buildEditorUrl(slug: string, markdown: string): BuildEditorUrlResult;
+
+/** Pure: validates one SkillForm against the same rules as the CI validator. Returns ValidationIssue[]. */
+export function validateSkillForm(form: SkillForm): ValidationIssue[];
+
+/** Non-pure: writes to clipboard via navigator.clipboard.writeText(). Throws ClipboardUnavailableError on rejection. */
+export function copyToClipboard(markdown: string): Promise<void>;
+
+/** Non-pure: unauthenticated GET against api.github.com/repos/.../contents/skills/<slug>.md. */
+export function checkSlugCollision(slug: string): Promise<SlugCollisionResult>;
+
+/** Pure: derives the slug from the title using the duplicated slug.ts. Exposed for live preview in the form. */
+export function deriveSlugFromTitle(title: string): string;
+
+export class ClipboardUnavailableError extends Error { name: 'ClipboardUnavailableError' }
+export class SubmissionUrlTooLongError extends Error { name: 'SubmissionUrlTooLongError' }
+// (UrlTooLong is documented but typically never thrown — buildEditorUrl returns fitsInUrl:false
+//  and the caller chooses the clipboard branch. The class exists for callers that want exception flow.)
+
+export interface ValidationIssue {
+  field: keyof SkillForm | 'slug' | 'body';
+  rule: string;                      // e.g. 'install_command/prefix', 'skill_id/regex', 'required'
+  message: string;                   // human-readable, shown inline in the form
+}
+```
+
+**Side effects:** `copyToClipboard` (clipboard API) and `checkSlugCollision` (network). Everything else pure. **DI seam:** the slug-collision call uses `apiFetch` with `token: undefined`.
+
+**Hardcoded constants** (acceptable for MVP per NF-P2 note): `REPO_OWNER = 'chomovazuzana'`, `REPO_NAME = 'NbgAiHub'`, `DEFAULT_BRANCH = 'main'`, `SKILLS_PATH_PREFIX = 'skills'`, `URL_LENGTH_THRESHOLD = 7000`. Centralised at the top of `submission.ts`. If/when these become env vars in a future phase, the **no-fallback** rule kicks in (P.6).
+
+#### P.4.5 `site/src/lib/skill-types.ts`
+
+This is a new lightweight type-only module so `submission.ts` and `submit-skill.astro` import the same shape. **No runtime code.**
+
+```ts
+export type SkillOrigin = 'internal' | 'community' | 'external';
+export type SkillCategory =
+  | 'workflow' | 'code' | 'docs' | 'integration' | 'productivity' | 'testing' | 'other';
+export type SkillStatus = 'active' | 'experimental' | 'deprecated';
+export type SkillAudience = 'beginner' | 'advanced' | 'both';
+
+/** The 17-field frontmatter shape that lands in skills/<slug>.md. Matches the extended Zod schema in P.5.6. */
+export interface SkillFrontmatter {
+  // 10 canonical fields (baseShape):
+  type: 'skill';
+  title: string;
+  audience: SkillAudience;
+  topics: string[];
+  internal: boolean;
+  authored: string;                  // YYYY-MM-DD
+  last_reviewed: string;             // YYYY-MM-DD
+  external_link: string | null;
+  deeper_link: string | null;
+  ai_summary: string;
+  // 7 new fields (this phase):
+  install_command: string;           // starts with `/plugin marketplace add ` or `/plugin install `
+  skill_id: string;                  // matches /^[a-z0-9-]+$/
+  origin: SkillOrigin;
+  category: SkillCategory;
+  status: SkillStatus;
+  maintainer: string;                // `@<handle>` or appears in maintainers.json team_aliases
+  requires?: string[];               // optional, free-text array (A11)
+}
+
+/** What the form holds before serialisation — same as frontmatter + the body string. */
+export interface SkillForm extends SkillFrontmatter {
+  body: string;
+}
+```
+
+#### P.4.6 `site/src/lib/pin-store.ts`
+
+```ts
+import type { FavoriteType, FavoriteEntry } from './gist';
+
+export interface PinIndexEntry {
+  slug: string;
+  title: string;
+  audience: 'beginner' | 'advanced' | 'both';
+  topics: string[];
+}
+
+export interface PinIndexFile {
+  schema_version: 1;
+  items: PinIndexEntry[];
+}
+
+export interface ResolvedPin {
+  entry: FavoriteEntry;
+  resolved: PinIndexEntry | null;    // null => stale (AC10)
+}
+
+/** Non-pure: fetches /_data/<type>-index.json. Static asset — no auth. Returns parsed PinIndexFile. */
+export function fetchPinIndex(type: FavoriteType): Promise<PinIndexFile>;
+
+/** Pure: joins a list of favourites against an index. */
+export function joinFavoritesWithIndex(
+  favourites: FavoriteEntry[],
+  index: PinIndexFile,
+  filterType: FavoriteType,
+): ResolvedPin[];
+
+/** Pure: groups a flat favourites list by type, in the canonical display order (skill, tip, news, journey-step, glossary). */
+export function groupFavoritesByType(
+  favourites: FavoriteEntry[],
+): Record<FavoriteType, FavoriteEntry[]>;
+
+export const DISPLAY_ORDER: readonly FavoriteType[] = [
+  'skill',
+  'tip',
+  'news',
+  'journey-step',
+  'glossary',
+] as const;
+
+export class PinIndexNotFoundError extends Error { name: 'PinIndexNotFoundError' }
+export class PinIndexSchemaError extends Error { name: 'PinIndexSchemaError' }
+```
+
+**Side effects:** `fetchPinIndex` calls `fetch('/_data/<type>-index.json')` (same origin; not via `apiFetch` because it's a static asset). Others are pure.
+
+#### P.4.7 `site/src/lib/slug.ts`
+
+```ts
+export const SLUG_MAX_LENGTH = 60;
+
+/** Byte-for-byte mirror of pipeline/src/slug.ts. Drift test asserts parity. */
+export function slugify(title: string): string;
+```
+
+#### P.4.8 `site/src/components/PinButton.astro`
+
+**Props:**
+
+```ts
+interface Props {
+  type: 'news' | 'skill' | 'tip' | 'glossary' | 'journey-step';
+  slug: string;
+  initialPinned?: boolean;           // optional SSR-time hint; default false
+}
+```
+
+**Client-side state machine** (vanilla inline `<script is:inline>`, mirroring `AudienceFilter.astro`):
+
+```
+        signed-out
+         │
+         │ click → window.dispatchEvent('nbgaihub:open-signin')
+         │   (consumed by SignInModal.astro)
+         ▼
+        opens modal; PinButton stays in signed-out state until subscribe() fires
+
+        signed-in & unpinned
+         │
+         │ click → optimistic UI toggle to "pinned" + spinner
+         │       → gist.addFavorite(token, gistId, entry)
+         │       ├─ success → spinner off; stays "pinned"
+         │       └─ error   → revert UI; dispatch 'nbgaihub:toast' with the error
+         ▼
+        signed-in & pinned
+         │
+         │ click → optimistic UI toggle to "unpinned" + spinner
+         │       → gist.removeFavorite(token, gistId, {type, slug})
+         │       ├─ success → spinner off; stays "unpinned"
+         │       └─ error   → revert UI; dispatch 'nbgaihub:toast'
+         ▼
+        signed-in & unpinned
+```
+
+**DOM hooks:** `<button data-pin-type="skill" data-pin-slug="foo-bar" data-pin-state="unpinned">`. The inline script binds via `document.querySelectorAll('[data-pin-type]')` and subscribes to `auth.subscribe()` to switch between signed-in / signed-out renderings without a full re-render.
+
+**Visual contract (Designer-final per plan §9 item 6):** outline icon when unpinned, filled when pinned, spinner overlay during the network call. CSS uses Starlight tokens (`var(--sl-color-accent)`, `var(--sl-color-text)`); no hardcoded hex. Class names `pin-button`, `pin-button--pinned`, `pin-button--busy`, `pin-button--signed-out`.
+
+**Toast surface:** a single `<div id="nbgaihub-toast" role="status" aria-live="polite">` injected by `SocialIconsOverride.astro` once per page. Components dispatch `window.dispatchEvent(new CustomEvent('nbgaihub:toast', { detail: { message, kind: 'error'|'info' } }))`; the toast container's inline script renders + auto-dismisses after 4 s. **No third-party toast library.**
+
+#### P.4.9 `site/src/components/SocialIconsOverride.astro`
+
+**Props:** inherits Starlight's `SocialIcons` slot context; no custom props.
+
+**Slot anchors:**
+- Default (anonymous): renders `<button id="signin-trigger" class="signin-trigger">Sign in</button>`.
+- Authenticated: renders `<span class="auth-chip">@{login}</span><button id="signout-trigger">Sign out</button>`.
+
+**Inline script:** subscribes to `auth.subscribe()`; toggles the two renderings; opens the modal on `#signin-trigger` click; calls `auth.signOut()` on `#signout-trigger` click. Also mounts the global toast container exactly once.
+
+#### P.4.10 `site/src/components/SignInModal.astro`
+
+**Markup:** a single `<dialog id="nbgaihub-signin-modal">` with the PAT-paste UX copy (Designer-final per plan §9 item 5; investigation §5 is the starting point). Includes:
+- Explainer paragraph.
+- External link button to `https://github.com/settings/tokens/new?scopes=gist&description=NbgAiHub` (target=`_blank`, `rel="noopener"`).
+- `<input type="password" id="pat-input" autocomplete="off" spellcheck="false">`.
+- `<button id="pat-submit">Validate & sign in</button>`.
+- `<p id="pat-error" aria-live="polite">` for inline error display.
+
+**Inline script:** listens for `window.addEventListener('nbgaihub:open-signin', () => dialog.showModal())`. On submit:
+
+```
+await auth.signIn(token)            // calls validateToken + storeToken
+  .then(() => dialog.close())
+  .catch(err => {
+    if (err instanceof TokenInvalidError) errorEl.textContent = 'Invalid or expired token.';
+    else if (err instanceof NetworkError) errorEl.textContent = 'Network error — try again.';
+    else errorEl.textContent = `Validation failed (${err.message}).`;
+  });
+```
+
+#### P.4.11 `site/src/pages/my-pins.astro`
+
+**Front matter (Astro):** `import { StarlightPage } ...` wrapper per S.2 conventions. Page title `My Pins`.
+
+**Behaviour:**
+- Anonymous (no `nbgaihub.gh_token` in `localStorage`): renders a `<section>` with the "Sign in to see your pins" copy + a button that dispatches `nbgaihub:open-signin`.
+- Authenticated: an inline `<script type="module">` calls:
+  1. `auth.readToken()` → `{token, user}`.
+  2. `gist.findOrCreateFavoritesGist(token)` → `{gistId, document}`.
+  3. For each `FavoriteType` in `DISPLAY_ORDER`: `pin-store.fetchPinIndex(type)`, then `joinFavoritesWithIndex(document.favourites, index, type)`.
+  4. Renders one `<section data-pin-type="X">` per type, each populated by a `<ul>` of resolved entries; stale entries render with `class="pin--stale"` and an unpin button.
+
+**Privacy callout footer** (F-P21 verbatim): rendered server-side inside the page shell.
+
+#### P.4.12 `site/src/pages/submit-skill.astro`
+
+Anonymous-accessible (per F-P12). Multi-section `<form id="submit-skill-form">` with:
+- Inputs for all 17 frontmatter fields (Designer-final layout per plan §9 item 7).
+- `<textarea id="body">` for markdown body.
+- Live slug preview `<output id="slug-preview">` driven by `deriveSlugFromTitle()`.
+- Inline validation: every input has a sibling `<p class="field-error" aria-live="polite">` populated from `validateSkillForm()`.
+- `<button id="submit-skill-button" disabled>` enabled only when `validateSkillForm()` returns `[]` and `checkSlugCollision()` returned `'free'` or `'unknown'`.
+
+**Submit handler:**
+```
+const issues = validateSkillForm(form);
+if (issues.length > 0) { render issues; return; }
+const collision = await checkSlugCollision(form.skill_id);
+if (collision.status === 'collision') { show "exists" error; return; }
+const md = serializeSkillToMarkdown(form);
+const { url, fitsInUrl } = buildEditorUrl(form.skill_id, md);
+if (fitsInUrl) {
+  window.open(url, '_blank', 'noopener');           // A24 — new tab
+} else {
+  try { await copyToClipboard(md); show toast 'Copied'; }
+  catch { reveal the read-only <textarea> + manual "Copy" button; }
+  const bareUrl = buildEditorUrl(form.skill_id, '').url;  // no value=
+  window.open(bareUrl, '_blank', 'noopener');
+}
+```
+
+**Privacy callout** (different wording from `/my-pins/` per DoD #19): rendered above the form. Designer-final copy.
+
+#### P.4.13 `site/scripts/build-pin-index.ts`
+
+```ts
+import { getCollection } from 'astro:content';   // requires `astro sync` first; chained in package.json
+
+export interface BuildPinIndexOptions {
+  outDir?: string;                   // default 'site/public/_data'
+}
+
+/** Reads the 5 collections, emits site/public/_data/<type>-index.json. Throws ConfigNotFoundError if outDir resolves to a non-writable path. */
+export async function buildPinIndex(opts?: BuildPinIndexOptions): Promise<void>;
+
+// CLI entry point (top of file):
+//   if (import.meta.url === `file://${process.argv[1]}`) buildPinIndex().catch(err => { console.error(err); process.exit(1); });
+```
+
+**Emitted file shape:** `PinIndexFile` from P.4.6 — `{ schema_version: 1, items: PinIndexEntry[] }`. **Designer decision (plan §9 item 3):** the minimal shape `{slug, title, audience, topics}` is chosen — richer fields (`internal`, `external_link`, `last_reviewed`) are NOT included in the index, because `/my-pins/` only needs them for card rendering and the card style (Designer-final at plan Step 13) does not surface them. If a future phase needs more, the schema bump is `schema_version: 2`.
+
+#### P.4.14 `pipeline/src/validators/skill.ts`
+
+```ts
+import type { SkillFrontmatter } from '../types.js';   // OR a new types-validator.ts; Designer keeps it local to validators/
+
+export interface ValidationIssue {
+  filePath: string;                  // populated by validateSkillFile; absent in validateSkillFrontmatter
+  field: string;                     // e.g. 'install_command', 'skill_id', 'maintainer'
+  rule: string;                      // e.g. 'install_command/prefix', 'enum/category', 'required'
+  message: string;
+  line?: number;                     // for GH Actions annotation (1 for frontmatter-level)
+  severity: 'error' | 'warning';
+}
+
+export type ValidationResult =
+  | { ok: true; value: SkillFrontmatter; warnings: ValidationIssue[] }
+  | { ok: false; errors: ValidationIssue[]; warnings: ValidationIssue[] };
+
+export interface MaintainersConfig {
+  team_aliases: string[];
+}
+
+/** Pure (no IO except optional external_link HEAD). Accepts already-parsed frontmatter. */
+export function validateSkillFrontmatter(
+  parsed: unknown,
+  maintainers: MaintainersConfig,
+  options?: { checkExternalLink?: boolean; fetch?: typeof fetch },
+): Promise<ValidationResult>;
+
+/** Reads file, parses with gray-matter, calls validateSkillFrontmatter. Also enforces the path-vs-skill_id rule. */
+export function validateSkillFile(
+  filePath: string,
+  content: string,
+  maintainers: MaintainersConfig,
+  options?: { checkExternalLink?: boolean; fetch?: typeof fetch },
+): Promise<ValidationResult>;
+
+export const INSTALL_COMMAND_PREFIXES: readonly string[] = [
+  '/plugin marketplace add ',
+  '/plugin install ',
+];
+
+export const SKILL_ID_REGEX = /^[a-z0-9-]+$/;
+export const GITHUB_HANDLE_REGEX = /^@[A-Za-z0-9][A-Za-z0-9-]{0,38}$/;
+```
+
+**DI seam:** `fetch` is injectable via the `options` parameter so unit tests stub the `external_link` HEAD without intercepting `globalThis.fetch`. Pipeline convention (codebase scan note 7 of §3) is to accept the dependency explicitly when feasible.
+
+#### P.4.15 `pipeline/src/validators/config.ts`
+
+```ts
+import type { MaintainersConfig } from './skill.js';
+
+/** Reads config/maintainers.json from the path relative to repo root. Throws ConfigNotFoundError if absent. */
+export function loadMaintainers(configPath?: string): MaintainersConfig;
+
+export class ConfigNotFoundError extends Error { name: 'ConfigNotFoundError' }
+export class ConfigSchemaError extends Error { name: 'ConfigSchemaError' }
+```
+
+#### P.4.16 `pipeline/src/validators/cli.ts`
+
+```ts
+/** Entry point. Reads file paths from argv, validates each, prints ::error annotations, exits 0/1. */
+export function main(argv: string[]): Promise<number>;
+
+/** Pure: formats a ValidationIssue as a GitHub Actions annotation. */
+export function formatAnnotation(issue: ValidationIssue): string;
+//   → '::error file=skills/bad.md,line=1::install_command: must start with /plugin marketplace add or /plugin install'
+```
+
+### P.5 Data models
+
+#### P.5.1 `FavoritesDocument` (gist file)
+
+```jsonc
+{
+  "schema_version": 1,
+  "favourites": [
+    { "type": "skill", "slug": "create-api", "pinned_at": "2026-05-18" },
+    { "type": "tip", "slug": "esc-esc", "pinned_at": "2026-05-18" }
+  ]
+}
+```
+
+- `schema_version` literal `1`. Absent on legacy reads → treated as `1` with a one-time `console.warn` (AC22).
+- `favourites` is an array deduped by `(type, slug)`. Insertion order; new pins append.
+- `type` is one of the 5 collection literals. `slug` is the URL slug used by the site routes. `pinned_at` is `YYYY-MM-DD`.
+
+#### P.5.2 `PinIndexFile` (build artifact)
+
+```jsonc
+{
+  "schema_version": 1,
+  "items": [
+    { "slug": "create-api", "title": "Create API", "audience": "beginner", "topics": ["api", "backend"] }
+  ]
+}
+```
+
+One file per `FavoriteType` under `site/public/_data/<type>-index.json` → `site/dist/_data/<type>-index.json` after build. `schema_version` bumps if the shape changes.
+
+#### P.5.3 `SkillFrontmatter` (extended; 17 fields)
+
+See P.4.5 for the TypeScript shape. The frontmatter is what lands in `skills/<slug>.md`.
+
+#### P.5.4 `SkillForm` and canonical YAML key order
+
+The YAML frontmatter block written by `serializeSkillToMarkdown()` uses the following **stable canonical key order** (Designer-final per plan §9 item 4):
+
+```
+type
+title
+audience
+topics
+internal
+authored
+last_reviewed
+external_link
+deeper_link
+ai_summary
+install_command
+skill_id
+origin
+category
+status
+maintainer
+requires
+```
+
+The 10 base-shape keys come first (matching `baseShape('skill')` declaration order in `content.config.ts`), then the 7 new keys in the order they're added to the schema. **Rationale:** deterministic ordering means PR diffs are clean across submissions, and CI validator output references stable line offsets. `requires` is omitted entirely when absent (not `requires: []`) to keep diffs minimal.
+
+#### P.5.5 `ValidationIssue` (validator output)
+
+See P.4.14 for the shape. The CLI prints each issue as one `::error file=<path>,line=<n>::<field>: <rule violated>` line. Multiple issues → multiple lines. `warnings` (e.g., `external_link` 429) print as `::warning file=...` and do not fail the build.
+
+#### P.5.6 Extended Zod schema for `skills` collection
+
+```ts
+// site/src/content.config.ts — replaces lines 88-91 of the current file.
+const skills = defineCollection({
+  loader: glob({ pattern: '*.md', base: '../skills' }),
+  schema: z.object({
+    ...baseShape('skill'),
+    install_command: z
+      .string()
+      .refine(
+        (cmd) => cmd.startsWith('/plugin marketplace add ') || cmd.startsWith('/plugin install '),
+        { message: 'install_command must start with `/plugin marketplace add ` or `/plugin install `' },
+      ),
+    skill_id: z
+      .string()
+      .regex(/^[a-z0-9-]+$/, { message: 'skill_id must match /^[a-z0-9-]+$/' }),
+    origin: z.enum(['internal', 'community', 'external']),
+    category: z.enum(['workflow', 'code', 'docs', 'integration', 'productivity', 'testing', 'other']),
+    status: z.enum(['active', 'experimental', 'deprecated']),
+    maintainer: z.string().min(1),            // CI validator enforces handle-or-allowlist; site does shape-only
+    requires: z.array(z.string()).optional(), // free-text per A11; `undefined` when absent (NOT `[]`)
+  }),
+});
+```
+
+**Notes for the Coder:**
+- Spread `...baseShape('skill')` first — must remain the canonical 10-key prefix.
+- `astro check` must remain green against the empty `skills/` directory (PR-2: there are no files to validate yet).
+- The `.refine()` message text is load-bearing for AC13; do not paraphrase.
+- The regex literal must be the same regex string as in `INSTALL_COMMAND_PREFIXES` / `SKILL_ID_REGEX` in `pipeline/src/validators/skill.ts` — both sides enforce identical rules.
+
+#### P.5.7 `MaintainersConfig`
+
+```jsonc
+// config/maintainers.json
+{
+  "team_aliases": ["@nbg-ai-team"]
+}
+```
+
+`team_aliases` is a string array of allowlisted aliases (at least one initial entry seeded per AC27). The validator accepts `maintainer` if it matches `GITHUB_HANDLE_REGEX` OR appears verbatim in `team_aliases`.
+
+#### P.5.8 No new database tables
+
+This phase introduces zero database tables — all persistence is `localStorage` + the user's gist + the static build artifact. The **singular-naming** rule (global CLAUDE.md) is therefore vacuously satisfied for this phase. Asserted here for the record.
+
+### P.6 Error handling strategy
+
+#### P.6.1 Custom error classes
+
+All new error classes follow the pipeline precedent (codebase scan §3.8): named `XxxError`, extending `Error`, setting `this.name` in the constructor. **No shared base class.** Flat per-module hierarchy (Designer's resolution of plan §9 item 1) — a shared `NbgAiHubError` would couple modules unnecessarily; current pipeline practice (`MissingEnvVarError`, `FeedFetchError`, `ConfigSchemaError`, etc.) is flat and we mirror it.
+
+| Class | Module | Thrown when | UI surface |
+|---|---|---|---|
+| `NetworkError` | `api-fetch.ts` | `fetch()` rejects or response unparsable. | Toast: "Network error — try again." |
+| `NotFoundError` | `api-fetch.ts` | Any 404 from `api.github.com`. | Caller-specific (e.g. gist 404 → re-discover). |
+| `RateLimitedError` | `api-fetch.ts` | 403 with rate-limit headers, or 429. | Toast: "Rate-limited — try again in a few minutes." (OQ3) |
+| `GitHubApiError` | `api-fetch.ts` | Other non-2xx from `api.github.com`. | Toast with the GitHub-provided message. |
+| `TokenInvalidError` | `auth.ts` | 401 during `validateToken`. | Inline error in `SignInModal` ("Invalid or expired token"). |
+| `TokenRevokedError` | `auth.ts` | A previously-valid token returns 401 from a downstream call. | Caller (`gist.ts` / `PinButton`) catches → calls `auth.clearToken()` → toast "Your token was revoked — please sign in again." (OQ4) |
+| `GistNotFoundError` | `gist.ts` | 404 on cached `nbgaihub.gist_id`. | Internal: triggers re-discovery; no UI surface unless re-discovery also fails. |
+| `GistSchemaError` | `gist.ts` | Parsed gist content doesn't conform to `FavoritesDocument`. | Toast "Your favourites file is corrupt — open the gist at github.com to inspect." Do NOT auto-overwrite. |
+| `GistWriteConflictError` | `gist.ts` | Reserved for future use (ETag). Not thrown in MVP. | n/a |
+| `ClipboardUnavailableError` | `submission.ts` | `navigator.clipboard.writeText` rejects (permission, insecure context). | Falls back to the read-only `<textarea>` + manual Copy button (A5). |
+| `SubmissionUrlTooLongError` | `submission.ts` | Optional surface — never thrown in MVP (the caller branches on `fitsInUrl`). | n/a |
+| `PinIndexNotFoundError` | `pin-store.ts` | `fetch('/_data/<type>-index.json')` returns 404. | Toast "Pin index missing — rebuild the site." (Build-time bug, never user-facing under normal operation.) |
+| `PinIndexSchemaError` | `pin-store.ts` | Index file parses but doesn't match `PinIndexFile`. | Same as above. |
+| `ConfigNotFoundError` | `pipeline/src/validators/config.ts` | `config/maintainers.json` missing at validator runtime. | CLI prints the error to stderr, exits 1. No fallback (NF-P2). |
+| `ConfigSchemaError` | `pipeline/src/validators/config.ts` | `maintainers.json` parses but doesn't match `MaintainersConfig`. | Same as above. |
+
+#### P.6.2 No-fallback rule for configuration
+
+Per global CLAUDE.md: **never substitute defaults silently.**
+
+- **Validator** loads `config/maintainers.json` once at process start; absent file → `ConfigNotFoundError`. The validator does NOT proceed with an empty allowlist.
+- **Site build** does NOT require any environment variables (the PAT-paste architecture has no `client_id`). The hardcoded `chomovazuzana/NbgAiHub` repo path in `submission.ts` is acceptable as a constant for MVP, per refined-request NF-P2.
+- **`build-pin-index.ts`** does NOT default `outDir`; the caller passes it explicitly (or omits to use the documented default — but the script asserts the directory is writable and throws on failure).
+
+**Required env vars for this phase: NONE.** (If a future phase promotes `REPO_OWNER`, `REPO_NAME`, `DEFAULT_BRANCH` to `import.meta.env.PUBLIC_*` variables, the no-fallback rule will require an explicit build-time check that throws `MissingConfigError` if absent.)
+
+#### P.6.3 Global 401 detection
+
+`api-fetch.ts` wraps every `api.github.com` call. On any 401 from a *post-validation* call (i.e. the user is supposedly signed in), `apiFetch` throws `TokenInvalidError`. The caller's `catch` (typically `PinButton.astro`'s click handler) clears auth state via `auth.clearToken()` and dispatches the toast (OQ4). This is the global revocation detector.
+
+### P.7 Configuration model
+
+#### P.7.1 Required configuration files
+
+| File | Required by | Behaviour on absence |
+|---|---|---|
+| `config/maintainers.json` | CI validator (Wave B / B5) | `ConfigNotFoundError` thrown by `loadMaintainers()`. Validator exits 1. CI workflow goes red. |
+| `site/public/_data/<type>-index.json` | `/my-pins/` page client script | `PinIndexNotFoundError`. Surfaces a toast. Indicates a broken build, not a user problem. |
+| `pipeline/.nvmrc` (existing) | CI validator workflow | n/a — already exists per codebase scan. |
+
+#### P.7.2 Build-time environment variables (this phase)
+
+**None.** The PAT-paste architecture eliminates the need for `PUBLIC_GH_CLIENT_ID` that the original spec envisioned. Hardcoded constants live in `submission.ts` (P.4.4).
+
+**Future-proofing note:** if `REPO_OWNER`/`REPO_NAME` are promoted to env vars in a later phase (e.g., when the project transfers to a team org), the Coder must:
+1. Read via `import.meta.env.PUBLIC_REPO_OWNER` / `import.meta.env.PUBLIC_REPO_NAME`.
+2. Throw a named `MissingConfigError` at module init time if either is unset — **not at first use** and **not with a fallback**.
+3. Register the var in `site/README.md`.
+
+#### P.7.3 CI workflow configuration
+
+`.github/workflows/validate-skill-submission.yml`:
+
+```
+trigger:        pull_request
+                  types: [opened, synchronize, reopened]
+                  paths: ['skills/**/*.md']
+permissions:    contents: read           # nothing else
+secrets:        (none beyond default GITHUB_TOKEN)
+runner:         ubuntu-latest
+node:           via pipeline/.nvmrc (Node 22)
+working dir:    pipeline/
+steps:          checkout (fetch-depth: 0)
+                setup-node
+                npm ci
+                npm run build
+                compute changed files via git diff
+                node dist/validators/cli.js <files...>
+```
+
+`pull_request` (NOT `pull_request_target`) per R7 — fork-PR safety.
+
+#### P.7.4 Maintainers allowlist format
+
+```jsonc
+{ "team_aliases": ["@nbg-ai-team", "@hub-editors"] }
+```
+
+- `team_aliases` is required, must be a string array, at least one entry. Empty array → `ConfigSchemaError`.
+- Entries are matched verbatim against the `maintainer` frontmatter value.
+- File is checked into the repo (not a secret).
+
+### P.8 Integration points
+
+#### P.8.1 Browser ↔ `api.github.com`
+
+All calls go through `apiFetch` (P.4.1). Hostname assertion in `apiFetch` guarantees AC23.
+
+| Endpoint | Method | Auth | Body | Expected status | Retry policy |
+|---|---|---|---|---|---|
+| `/user` | GET | `Authorization: token <pat>` | — | 200 → valid; 401 → invalid | None (UX-driven retry: user re-pastes) |
+| `/gists` | GET | yes | — | 200 (paginated) | None |
+| `/gists` | POST | yes | `{public:false, description, files:{"nbgaihub-favorites.json":{content}}}` | 201 | None |
+| `/gists/<id>` | GET | yes | — | 200; 404 → `GistNotFoundError` → rediscover | None |
+| `/gists/<id>` | PATCH | yes | `{files:{"nbgaihub-favorites.json":{content}}}` | 200; 422 → `GistSchemaError` | None |
+| `/repos/chomovazuzana/NbgAiHub/contents/skills/<slug>.md` | GET | no | — | 200 → collision; 404 → free; 403/429 → unknown | None (non-blocking) |
+
+**Content-Type:** `application/vnd.github+json` (set by `apiFetch` `acceptJson: true` default).
+
+**Pagination:** `findOrCreateFavoritesGist` handles `Link: rel="next"` by iterating until exhausted or until a match is found. First match wins (OQ2).
+
+**Rate-limit signals:** 403 with `X-RateLimit-Remaining: 0` OR 429 → `RateLimitedError` (with `retryAfterSeconds` populated from `Retry-After` when present).
+
+#### P.8.2 Browser ↔ `localStorage`
+
+**Key namespace:** `nbgaihub.*` (matches existing `nbgaihub.audience` precedent).
+
+| Key | Owner module | Shape |
+|---|---|---|
+| `nbgaihub.gh_token` | `auth.ts` | `string` (the raw PAT) |
+| `nbgaihub.gh_user` | `auth.ts` | JSON-stringified `GitHubUser` (`{login: string}`) |
+| `nbgaihub.gist_id` | `gist.ts` (set), `auth.ts` (cleared on sign-out) | `string` (32-char hex gist id) |
+| `nbgaihub.audience` | `AudienceFilter.astro` (existing; untouched) | `string[]` JSON |
+
+**Strict containment:** `localStorage.getItem` / `setItem` are called ONLY in `auth.ts`, `gist.ts`, and `pin-store.ts`. No other module reads or writes `localStorage` directly. Components consume state via `auth.subscribe()`.
+
+**Cross-tab sync:** `auth.ts` listens to `window.addEventListener('storage', ...)` and re-fires `subscribe` callbacks when a sibling tab signs in/out.
+
+#### P.8.3 Browser ↔ `github.com` new-file URL
+
+```
+https://github.com/chomovazuzana/NbgAiHub/new/main/skills?filename=<slug>.md&value=<encodeURIComponent(markdown)>
+```
+
+- `<slug>` = `deriveSlugFromTitle(form.title)` = `slugify(form.title)`. **Must equal** `form.skill_id` (the CI validator enforces this).
+- `<markdown>` = `serializeSkillToMarkdown(form)`.
+- Encoding: `encodeURIComponent` for both query param values.
+- Length cutoff: 7000 chars total URL length. Above → clipboard fallback (P.4.4 / AC12).
+- Navigation: `window.open(url, '_blank', 'noopener')` per A24.
+
+#### P.8.4 Build script ↔ Astro build pipeline
+
+`scripts/build-pin-index.ts` runs **before** `astro check` and `astro build` via `site/package.json` `scripts.build`:
+
+```jsonc
+{
+  "scripts": {
+    "build": "tsx scripts/build-pin-index.ts && astro check && astro build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
+}
+```
+
+**Rationale (plan §9 item 3 + investigation R6 secondary):** standalone script over Astro integration hook chosen for surface-area minimisation. The script reads via `getCollection()` which requires `astro sync` to have run; `astro check` triggers `astro sync` as a side effect, so chaining works. **If the order causes `getCollection` to read stale types**, the Coder swaps to invoking `astro sync` explicitly first: `astro sync && tsx scripts/build-pin-index.ts && astro check && astro build`.
+
+#### P.8.5 CI workflow ↔ `pull_request` event
+
+- Trigger: `on: pull_request: types: [opened, synchronize, reopened] paths: ['skills/**/*.md']`.
+- Default `GITHUB_TOKEN` permissions: `contents: read` only.
+- Workflow runs in the fork's security context per R7. No repo secrets, no write access — token alteration in a malicious fork PR cannot leak anything.
+- Annotations posted via `::error file=...,line=...::...` stdout commands. GitHub's runner picks them up and surfaces in the Files Changed tab.
+
+### P.9 Parallel implementation unit assignments
+
+Translation of plan Wave B + Wave C to Coder units. Each unit is **sole writer** of the files listed. Cross-unit dependencies are on *exported contracts* (already specified above), not file content, so contracts are sufficient for compile-time integration.
+
+#### Wave A — Foundations (single Coder or any subset in parallel; trivial files)
+
+| Unit | Files owned | Plan step(s) | Depends on |
+|---|---|---|---|
+| **P-A0** | `site/src/content.config.ts` | Step 1 | none |
+| **P-A1** | `site/package.json`, `site/vitest.config.ts`, `site/tests/.gitkeep` | Step 3 | none |
+| **P-A2** | `config/maintainers.json` | Step 2 | none |
+| **P-A3** | `site/src/lib/slug.ts`, `site/tests/slug.test.ts` | Step 4 | P-A1 (vitest) |
+
+**Barrier α** (Wave A complete): the schema, the vitest harness, the maintainers config, and `slug.ts` all in main.
+
+#### Wave B — Core libraries (5 parallel units)
+
+| Unit | Files owned (sole writer) | Plan step(s) | Depends on (contracts) |
+|---|---|---|---|
+| **P-B1** | `site/scripts/build-pin-index.ts`, `site/tests/build-pin-index.test.ts` + `site/package.json` *build* script update | Step 5 | P-A0 (schema), P-A1 (vitest, tsx) — **edits `package.json` again**; serialise with P-A1 if both run together. **Resolution:** P-A1 lands `vitest` + `test` script; P-B1 *amends* `package.json` to update `build`. Coordinate in one commit if both done by same coder. |
+| **P-B2** | `site/src/lib/auth.ts`, `site/src/lib/api-fetch.ts`, `site/tests/auth.test.ts`, `site/tests/api-fetch.test.ts` | Step 6 | P-A1 |
+| **P-B3** | `site/src/lib/gist.ts`, `site/tests/gist.test.ts` | Step 7 | P-A1, **P-B2** (auth.ts + api-fetch.ts contracts) |
+| **P-B4** | `site/src/lib/submission.ts`, `site/src/lib/skill-types.ts`, `site/tests/submission.test.ts` | Step 8 | P-A1, P-A3 (slug.ts) |
+| **P-B5** | `pipeline/src/validators/skill.ts`, `pipeline/src/validators/cli.ts`, `pipeline/src/validators/config.ts`, `pipeline/tests/validators/skill.test.ts`, `pipeline/tests/validators/fixtures/*.md` | Step 9 | P-A2 (maintainers.json) |
+
+**Critical path inside Wave B:** P-B2 → P-B3 (gist.ts imports `auth.ts` and `api-fetch.ts`). The other three can start in parallel.
+
+**Barrier β** (Wave B complete): all `site/src/lib/*.ts` modules typecheck and pass their unit tests; the validator passes its suite; `dist/_data/<type>-index.json` builds cleanly.
+
+#### Wave C — UI + page wiring (4 effective parallel units)
+
+| Unit | Files owned (sole writer) | Plan step(s) | Depends on |
+|---|---|---|---|
+| **P-C1 (exclusive lock)** | `site/astro.config.mjs`, `site/src/components/SocialIconsOverride.astro`, `site/src/components/SignInModal.astro` | Steps 10 + sidebar bits of Step 14 | P-B2 (auth.ts), `site/src/lib/pin-store.ts` only for toast wiring imports |
+| **P-C2** | `site/src/components/PinButton.astro` | Step 11 | P-B2, P-B3 |
+| **P-C3** | `site/src/components/NewsPanel.astro`, `NewsList.astro`, `SkillCard.astro`; `site/src/pages/tips.astro`, `glossary.astro`, `news/[slug].astro` | Step 12 | **P-C2** (`<PinButton />` must exist) |
+| **P-C4** | `site/src/pages/my-pins.astro`, `site/src/lib/pin-store.ts`, `site/tests/pin-store.test.ts` | Step 13 | P-B1 (build-time index), P-B2, P-B3 |
+| **P-C5** | `site/src/pages/submit-skill.astro` (page body only — NOT the sidebar wiring, which is P-C1) | Step 14 page-body | P-A0, P-B4 |
+| **P-C6** | `.github/workflows/validate-skill-submission.yml` | Step 15 | P-B5 (validator must build) |
+
+**Critical path inside Wave C:** P-C2 → P-C3 (the embed step waits on the button file). All others can run after their B dependencies. **P-C1 owns ALL `astro.config.mjs` edits** for Wave C — no other unit touches that file (resolves the plan §4 file-coordination concern).
+
+**Barrier γ** (Wave C complete): `cd site && npm run build` exits 0; `dist/my-pins/index.html` and `dist/submit-skill/index.html` exist; pin buttons render in all targeted cards; sign-in flow integrates end-to-end.
+
+#### Wave D — Docs (7 parallel units, plan Steps 16–22)
+
+Each plan step owns a distinct doc file. No design-level coordination needed; the contracts above are sufficient input for each doc writer.
+
+#### Wave E — Integration verification (single Coder, plan Step 23)
+
+Terminal. Produces `docs/reference/integration-verification-personalization.md` with the AC1..AC31 evidence matrix.
+
+#### Unit dependency DAG (terse)
+
+```
+P-A0, P-A1, P-A2 (parallel)
+  └─ P-A3 ← P-A1
+       └─ Barrier α
+            ├─ P-B1 ← P-A0, P-A1
+            ├─ P-B2 ← P-A1
+            │    └─ P-B3 ← P-B2
+            ├─ P-B4 ← P-A1, P-A3
+            └─ P-B5 ← P-A2
+                 └─ Barrier β
+                      ├─ P-C1 ← P-B2
+                      ├─ P-C2 ← P-B2, P-B3
+                      │    └─ P-C3 ← P-C2
+                      ├─ P-C4 ← P-B1, P-B2, P-B3
+                      ├─ P-C5 ← P-A0, P-B4
+                      └─ P-C6 ← P-B5
+                           └─ Barrier γ
+                                └─ Wave D (7 parallel)
+                                     └─ Wave E (Step 23)
+```
+
+#### File-ownership invariant
+
+For every file listed under "Files owned" in P.9, exactly one Coder writes it. Any cross-unit need touches only **exported symbols** (types, function signatures, error classes) from this document — never another unit's file content. If a Coder finds a need to edit a file outside their unit, they STOP and escalate to the orchestrator. This invariant is the load-bearing parallelism guarantee.
+
+### P.10 Naming conventions (reiterated, not redesigned)
+
+- **File names:** kebab-case for `.ts`, `.css`, `.md`, `.json` (`auth.ts`, `pin-store.ts`, `maintainers.json`). PascalCase for `.astro` components (`PinButton.astro`, `SignInModal.astro`, `SocialIconsOverride.astro`).
+- **Type / interface names:** PascalCase (`FavoritesDocument`, `SkillForm`, `ValidationIssue`).
+- **Function / variable names:** camelCase (`validateToken`, `findOrCreateFavoritesGist`, `slugify`).
+- **Custom error classes:** `XxxError` suffix; flat hierarchy, each `extends Error` and sets `this.name` in the constructor (per pipeline precedent).
+- **localStorage keys:** `nbgaihub.<field>` (matches `nbgaihub.audience` precedent).
+- **CSS class names:** kebab-case with BEM-light modifiers (`pin-button`, `pin-button--pinned`, `pin-button--busy`, `auth-chip`, `signin-trigger`).
+- **Custom DOM events:** `nbgaihub:<verb>-<noun>` (`nbgaihub:open-signin`, `nbgaihub:toast`).
+- **Public env-var prefix:** `PUBLIC_*` per Astro convention (none used in this phase; reserved for future).
+- **No `index.ts` aggregators** — every import is explicit per pipeline convention (codebase scan §3.2).
+
+### P.11 Cross-cutting design rules
+
+1. **TypeScript strict + `noUncheckedIndexedAccess`** in both workspaces. All new code conforms.
+2. **ESM only** (matches existing site + pipeline). Pipeline imports use `.js` extensions (`from './types.js'`); site imports do not (`from './types'`). New modules follow each workspace's existing convention.
+3. **No fallback configuration values.** See P.6.2.
+4. **Centralised network access.** All client-side calls to `api.github.com` go through `apiFetch` from `api-fetch.ts`. No raw `fetch('https://api.github.com/...')` anywhere else. Hostname assertion in `apiFetch` is the AC23 guard.
+5. **Centralised `localStorage` access.** Only `auth.ts`, `gist.ts`, and `pin-store.ts` touch `localStorage` for new keys; existing `AudienceFilter.astro` retains its own access for `nbgaihub.audience`. No scattered `localStorage.getItem`/`setItem` in components.
+6. **Centralised YAML serialisation.** `submission.ts` reuses the `yaml` npm package version already present in `pipeline/`. Add `yaml@<same-major>` to `site/package.json` `devDependencies` for client-side use. **Do NOT bring in a second YAML library.**
+7. **No client framework islands.** All client behaviour is vanilla `<script is:inline>` or `<script type="module">` in `.astro` components, mirroring `AudienceFilter.astro`. No `@astrojs/react` / vue / svelte / preact.
+8. **No new direct dependencies that emit deprecation warnings** (NF-P13). Validator dependencies (`gray-matter`, `yaml`) are already in `pipeline/`. Site additions: `vitest`, `tsx`, `yaml` — all current.
+9. **No version-control side effects** from site or pipeline runtime code (NF-P8). The validator workflow READS the PR diff, never writes.
+10. **CSP-friendly client code.** Per A7, `connect-src 'self' https://api.github.com`. Inline scripts use `is:inline`; no eval; no third-party origins for scripts, styles, or fonts. Designer-final CSP `<meta http-equiv>` placement (plan §9 item 14): inside the Starlight layout's `<head>` slot via a small `site/src/components/CspMeta.astro` component referenced from `astro.config.mjs` `head:` config — alternatively, the meta tag is injected via Starlight's `head` config option directly in `astro.config.mjs` (Coder picks whichever is shorter; both achieve identical output).
+11. **No third-party scripts on the site.** Reaffirmed for this phase. The toast container, modal, pin buttons are all hand-rolled in `.astro`.
+
+### P.12 Verification checklist (design-level)
+
+Reverse-mapping each plan step to its design anchor (Coder picks up step N → reads design anchor M):
+
+| Plan step | Design anchor | Coder hand-off complete? |
+|---|---|---|
+| Step 1 (extend schema) | P.5.6 | YES — full Zod schema written |
+| Step 2 (maintainers.json) | P.5.7 | YES — shape + seed example |
+| Step 3 (vitest in site) | P.4.x test signatures + P.11 #6 (`yaml` add) | YES |
+| Step 4 (slug.ts duplicate) | P.4.7 | YES |
+| Step 5 (build-pin-index) | P.4.13 + P.5.2 + P.8.4 | YES — signature, output shape, invocation chain |
+| Step 6 (auth.ts) | P.4.2 + P.6.1 (errors) + P.8.2 (localStorage) | YES |
+| Step 7 (gist.ts) | P.4.3 + P.5.1 + P.6.1 + P.8.1 | YES |
+| Step 8 (submission.ts) | P.4.4 + P.4.5 + P.5.4 + P.8.3 | YES |
+| Step 9 (validator) | P.4.14 + P.4.15 + P.4.16 + P.5.5 + P.6.1 + P.6.2 | YES |
+| Step 10 (sign-in + override) | P.4.9 + P.4.10 + P.9 (P-C1) | YES |
+| Step 11 (PinButton) | P.4.8 + P.6.1 (toast surface) | YES |
+| Step 12 (embed buttons) | P.2.2 (modified files table) + P.9 (P-C3) | YES |
+| Step 13 (/my-pins/) | P.4.6 + P.4.11 + P.5.2 | YES |
+| Step 14 (/submit-skill/) | P.4.4 + P.4.5 + P.4.12 + P.5.4 + P.9 (P-C5 + P-C1 split) | YES |
+| Step 15 (CI workflow) | P.7.3 + P.8.5 | YES |
+| Steps 16–22 (docs) | P.9 Wave D (contracts above are inputs) | YES |
+| Step 23 (verification) | All ACs map to a design anchor — see below | YES |
+
+**AC-level evidence anchors:**
+
+| AC | Design anchor backing the AC |
+|---|---|
+| AC1 (PAT sign-in end-to-end) | P.4.2 + P.4.10 |
+| AC2 (token persistence) | P.4.2 `readToken` + P.8.2 |
+| AC3 (sign-out clears all keys) | P.4.2 `clearToken` + P.8.2 |
+| AC4 (anonymous unchanged) | P.4.8 signed-out branch + P.4.11 anon panel + P.4.12 anon access |
+| AC5 (first pin creates gist) | P.4.3 `findOrCreateFavoritesGist` |
+| AC6 (RMW on subsequent pin) | P.4.3 `addFavorite` |
+| AC7 (unpin via RMW) | P.4.3 `removeFavorite` |
+| AC8 (/my-pins/ renders) | P.4.11 + P.4.6 |
+| AC9 (/my-pins/ anon) | P.4.11 anonymous branch |
+| AC10 (stale references) | P.4.6 `joinFavoritesWithIndex` returning `resolved: null` |
+| AC11 (submission happy path) | P.4.12 + P.8.3 |
+| AC12 (URL-length fallback) | P.4.4 `buildEditorUrl.fitsInUrl` + P.4.12 submit handler |
+| AC13 (install_command invalid) | P.4.4 `validateSkillForm` + P.5.4 (rule wording in P.5.6) |
+| AC14 (skill_id invalid) | P.4.4 + P.5.6 |
+| AC15 (slug collision) | P.4.4 `checkSlugCollision` |
+| AC16–AC20 (CI validator) | P.4.14 + P.4.15 + P.4.16 + P.7.3 |
+| AC21 (gist JSON shape) | P.5.1 + P.4.3 `serializeFavoritesDocument` |
+| AC22 (schema_version tolerance) | P.4.3 `parseFavoritesDocument` (treats absent as 1, warns once) |
+| AC23 (token only to api.github.com) | P.4.1 hostname assertion |
+| AC24 (SCOPE.md updated) | plan Step 19 (no design contract; doc edit) |
+| AC25 (DECISIONS.md appended) | plan Step 20 |
+| AC26 (schema 7 new fields) | P.5.6 |
+| AC27 (maintainers.json) | P.5.7 |
+| AC28 (gist-contract.md) | plan Step 16 + P.5.1 |
+| AC29 (project-design.md) | THIS section |
+| AC30 (project-functions.md) | plan Step 18 |
+| AC31 (no VCS side effects) | P.11 #9 + workflow rule |
+
+**Result:** every plan step has a design anchor; every AC has a backing design contract or an explicit doc-only step. A Coder can pick up any unit P-A0..P-C6 and execute given only this design + the plan.
+
+---
+
+*End of Personalization architecture section.*
