@@ -1,0 +1,27 @@
+{
+  "name": "site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "check": "astro sync && astro check",
+    "typecheck": "astro check",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^6.0.0",
+    "@astrojs/starlight": "^0.39.0",
+    "sharp": "^0.34.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.0",
+    "typescript": "^5.5.0"
+  }
+}

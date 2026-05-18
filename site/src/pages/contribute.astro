@@ -1,0 +1,50 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+---
+
+<StarlightPage frontmatter={{ title: 'Contribute' }}>
+  <p>
+    The hub is a git repo. Everything you see lives as markdown under
+    <code>news/</code>, <code>skills/</code>, <code>tips/</code>,
+    <code>glossary/</code>, or <code>journeys/</code>. To add something, open a
+    PR.
+  </p>
+
+  <h2>The flow</h2>
+  <ol>
+    <li>Fork or clone the repo.</li>
+    <li>
+      Drop a new markdown file in the appropriate folder. Frontmatter must
+      satisfy the Zod schema — see <a href="/glossary/">the glossary entries</a>
+      for working examples.
+    </li>
+    <li>
+      Run <code>cd site && npm run check</code> locally. If your frontmatter
+      is wrong, this will tell you exactly which field on which file is off.
+    </li>
+    <li>Open a PR. Keep it small. One topic per PR.</li>
+  </ol>
+
+  <h2>Required frontmatter</h2>
+  <p>Every content file needs these 10 keys (news adds 3 more):</p>
+  <ul>
+    <li><code>type</code> — literal: <code>news</code> | <code>skill</code> | <code>tip</code> | <code>glossary</code> | <code>journey-step</code></li>
+    <li><code>title</code> — short, opinionated</li>
+    <li><code>audience</code> — <code>beginner</code> | <code>advanced</code> | <code>both</code></li>
+    <li><code>topics</code> — array of strings, lowercase, kebab-case</li>
+    <li><code>internal</code> — boolean, almost always <code>false</code></li>
+    <li><code>authored</code> — <code>YYYY-MM-DD</code></li>
+    <li><code>last_reviewed</code> — <code>YYYY-MM-DD</code></li>
+    <li><code>external_link</code> — URL or <code>null</code></li>
+    <li><code>deeper_link</code> — URL or <code>null</code></li>
+    <li><code>ai_summary</code> — 1-3 sentences</li>
+  </ul>
+  <p>News additionally carries <code>editor_confidence</code>, <code>source</code>, <code>fingerprint</code>, and optional <code>hero_image</code>.</p>
+
+  <h2>Tone</h2>
+  <p>
+    "What I wish I knew a year ago." Opinionated, plainspoken, no marketing
+    voice, no AI-slop hedging. Assume the reader is a smart colleague new to
+    Claude Code.
+  </p>
+</StarlightPage>

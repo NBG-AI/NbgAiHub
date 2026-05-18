@@ -4,7 +4,14 @@ Pending items first (most critical at top). Completed items after. Remove fixed 
 
 ## Pending
 
-*(none)*
+3. **Site — User-side smoke test of `npm run dev`** (low / one-time).
+   Phase 10 verifier could not start the dev server (task brief forbids long-running processes). Manual follow-up: `cd site && npm run dev`, confirm 200 on `http://localhost:4321`, click each of the 9 sidebar entries (Home, Start Here → Day 1 / Week 1, News, Skills, Tips & Tricks, Glossary, Reference, Contribute), verify no 404, and exercise the audience filter on `/news/` (it's a no-op when news/published/ is empty but the checkboxes should still toggle visually).
+
+2. **Site — Refactor `z.string().url()` → `z.url()` in `content.config.ts`** (low / cosmetic).
+   `astro check` flags 4 Zod 4 deprecation hints on the URL validator form at `site/src/content.config.ts:46, 47, 69, 76`. Zod 4 keeps the old form working; no behavioral change. Refactor when convenient (e.g., the next time anyone touches the schema).
+
+1. **Site — Periodic `npm audit fix` for dev-tree** (low / housekeeping).
+   `npm audit` reports 5 moderate advisories chained through `@astrojs/check` → `@astrojs/language-server` → `volar-service-yaml` → `yaml-language-server` → `yaml`. All dev-only. `npm audit --omit=dev` is clean. Track upstream `@astrojs/check` releases; re-audit periodically.
 
 ## Completed
 

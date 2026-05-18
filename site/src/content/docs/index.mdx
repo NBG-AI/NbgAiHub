@@ -1,0 +1,17 @@
+---
+title: NbgAiHub
+description: A field manual for newcomers to Claude Code — what I wish I knew a year ago.
+template: splash
+---
+
+import HomeHero from '../../components/HomeHero.astro';
+import NewsPanel from '../../components/NewsPanel.astro';
+
+<HomeHero
+  title="NbgAiHub"
+  tagline="What I wish I knew a year ago."
+  ctaPrimary={{ label: 'Start Here → Day 1', href: '/start-here/day-1/' }}
+  ctaSecondary={{ label: 'Browse Skills', href: '/skills/' }}
+/>
+
+<NewsPanel limit={5} />

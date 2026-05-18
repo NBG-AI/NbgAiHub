@@ -1,0 +1,47 @@
+---
+import { getCollection } from 'astro:content';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import AudienceBadge from '../components/AudienceBadge.astro';
+import AudienceFilter from '../components/AudienceFilter.astro';
+
+const items = await getCollection('tips');
+---
+
+<StarlightPage frontmatter={{ title: 'Tips & Tricks' }}>
+  <p>
+    Hard-won lessons. Short, opinionated, no fluff.
+  </p>
+
+  {items.length === 0 ? (
+    <p class="empty-state">
+      No items yet. See <a href="/contribute/">Contribute</a> for how to add
+      one.
+    </p>
+  ) : (
+    <>
+      <AudienceFilter scope=".skill-card[data-audience]" />
+      <div class="card-grid">
+        {items.map((entry) => (
+          <article
+            class="skill-card"
+            data-audience={entry.data.audience}
+            data-topics={entry.data.topics.join(',')}
+          >
+            <h3>{entry.data.title}</h3>
+            <div class="news-card__meta">
+              <AudienceBadge audience={entry.data.audience} />
+            </div>
+            {entry.data.topics.length > 0 && (
+              <div class="skill-card__topics">
+                {entry.data.topics.map((topic) => (
+                  <span class="topic-chip">{topic}</span>
+                ))}
+              </div>
+            )}
+            <p class="skill-card__summary">{entry.data.ai_summary}</p>
+          </article>
+        ))}
+      </div>
+    </>
+  )}
+</StarlightPage>

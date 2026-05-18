@@ -1,0 +1,38 @@
+---
+// HomeHero.astro — Splash-page hero with title, tagline, and two CTAs.
+// See project-design.md §S.3.1.
+
+interface CtaLink {
+  label: string;
+  href: string;
+}
+
+interface Props {
+  title?: string;
+  tagline?: string;
+  ctaPrimary?: CtaLink;
+  ctaSecondary?: CtaLink;
+}
+
+const {
+  title = 'NbgAiHub',
+  tagline = 'What I wish I knew a year ago.',
+  ctaPrimary = { label: 'Start Here → Day 1', href: '/start-here/day-1/' },
+  ctaSecondary = { label: 'Browse Skills', href: '/skills/' },
+} = Astro.props;
+---
+
+<section class="home-hero not-content">
+  <h1>{title}</h1>
+  <p class="home-hero__tagline">{tagline}</p>
+  <div class="home-hero__cta-row">
+    <a
+      class="home-hero__cta home-hero__cta--primary"
+      href={ctaPrimary.href}>{ctaPrimary.label}</a
+    >
+    <a
+      class="home-hero__cta home-hero__cta--secondary"
+      href={ctaSecondary.href}>{ctaSecondary.label}</a
+    >
+  </div>
+</section>

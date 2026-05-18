@@ -1,0 +1,12 @@
+---
+// AudienceBadge.astro — Renders an audience pill (beginner | advanced | both).
+// See project-design.md §S.3.4.
+
+interface Props {
+  audience: 'beginner' | 'advanced' | 'both';
+}
+
+const { audience } = Astro.props;
+---
+
+<span class={`audience-badge audience-badge--${audience}`}>{audience}</span>

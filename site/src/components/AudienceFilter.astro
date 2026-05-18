@@ -1,0 +1,78 @@
+---
+// AudienceFilter.astro — Three-checkbox audience filter.
+// Vanilla DOM, persists to localStorage. See project-design.md §S.3.6.
+
+interface Props {
+  scope?: string;
+}
+
+const { scope = '[data-audience]' } = Astro.props;
+---
+
+<form class="audience-filter not-content" data-scope={scope}>
+  <strong>Audience:</strong>
+  <label
+    ><input type="checkbox" value="beginner" checked /> Beginner</label
+  >
+  <label
+    ><input type="checkbox" value="advanced" checked /> Advanced</label
+  >
+  <label><input type="checkbox" value="both" checked /> Both</label>
+</form>
+
+<script is:inline>
+  (function () {
+    const KEY = 'nbgaihub.audience';
+    const DEFAULT = ['beginner', 'advanced', 'both'];
+
+    function applyAll() {
+      document.querySelectorAll('.audience-filter').forEach(function (form) {
+        const scope = form.getAttribute('data-scope') || '[data-audience]';
+        const boxes = form.querySelectorAll('input[type="checkbox"]');
+        const visible = new Set();
+        boxes.forEach(function (b) {
+          if (b.checked) visible.add(b.value);
+        });
+        document.querySelectorAll(scope).forEach(function (el) {
+          const a = el.getAttribute('data-audience') || 'both';
+          el.classList.toggle('audience-hidden', !visible.has(a));
+        });
+        try {
+          localStorage.setItem(KEY, JSON.stringify(Array.from(visible)));
+        } catch (e) {
+          /* private-mode / quota: ignore */
+        }
+      });
+    }
+
+    function restore() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        const saved = raw ? JSON.parse(raw) : DEFAULT;
+        document
+          .querySelectorAll('.audience-filter input[type="checkbox"]')
+          .forEach(function (box) {
+            box.checked = saved.indexOf(box.value) !== -1;
+          });
+      } catch (e) {
+        /* malformed or unavailable: keep defaults */
+      }
+    }
+
+    function init() {
+      restore();
+      applyAll();
+      document
+        .querySelectorAll('.audience-filter input[type="checkbox"]')
+        .forEach(function (box) {
+          box.addEventListener('change', applyAll);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+</script>

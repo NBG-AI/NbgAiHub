@@ -1,0 +1,72 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+---
+
+<StarlightPage frontmatter={{ title: 'Reference' }}>
+  <p>
+    A tight cheatsheet. The things you keep needing to look up. Opinionated —
+    "what I wish I knew a year ago."
+  </p>
+
+  <h2>Slash commands worth knowing</h2>
+  <ul>
+    <li>
+      <code>/clear</code> — wipes the conversation. Use it between unrelated
+      tasks. Cheap context = better answers.
+    </li>
+    <li>
+      <code>/init</code> — generates a starter <code>CLAUDE.md</code> for the
+      current repo. Don't skip the human pass — Claude's first draft is rarely
+      what you want long-term.
+    </li>
+    <li>
+      <code>/cost</code> — shows your token usage for the session. Watch this
+      when you're iterating on a big plan.
+    </li>
+    <li>
+      <code>/agents</code> — manage subagents. Subagents = fresh context window
+      for a sub-task. Huge for long sessions.
+    </li>
+  </ul>
+
+  <h2>File patterns that pay off</h2>
+  <ul>
+    <li>
+      <strong>One CLAUDE.md per repo, plus a global <code>~/.claude/CLAUDE.md</code></strong>.
+      Project rules go in the repo; personal preferences in global.
+    </li>
+    <li>
+      <strong>Issues - Pending Items.md</strong> — a project-root file where
+      Claude logs unresolved questions. Saves you from "wait, what did I decide
+      about X?" three weeks later.
+    </li>
+    <li>
+      <strong>Plan files (<code>docs/design/plan-*.md</code>)</strong> — write
+      the plan before the code. Reviewing a plan is 10× cheaper than reviewing
+      a diff.
+    </li>
+  </ul>
+
+  <h2>Triage shortcuts</h2>
+  <ul>
+    <li>
+      <strong>"Don't write code yet — just outline."</strong> Use this every
+      time a feature touches more than one file.
+    </li>
+    <li>
+      <strong>"List your assumptions before proceeding."</strong> Catches the
+      AI's drift earlier than reading 200 lines of code.
+    </li>
+    <li>
+      <strong>"What's the smallest change that makes this work?"</strong>
+      Antidote to gold-plating.
+    </li>
+  </ul>
+
+  <h2>Where to go next</h2>
+  <ul>
+    <li><a href="/start-here/day-1/">Start Here → Day 1</a></li>
+    <li><a href="/glossary/">Glossary</a></li>
+    <li><a href="/contribute/">Contribute</a></li>
+  </ul>
+</StarlightPage>

@@ -1,0 +1,52 @@
+---
+// NewsPanel.astro — Top-N news cards for the homepage.
+// See project-design.md §S.3.2.
+
+import AudienceBadge from './AudienceBadge.astro';
+import ConfidenceChip from './ConfidenceChip.astro';
+import { getRecentNews } from '../lib/news.ts';
+
+interface Props {
+  limit?: number;
+}
+
+const { limit = 5 } = Astro.props;
+const items = await getRecentNews(limit);
+---
+
+<section class="news-panel not-content">
+  <h2>Latest news</h2>
+
+  {items.length === 0 ? (
+    <p class="empty-state">
+      No items yet. See <a href="/contribute/">Contribute</a> for how to add one.
+    </p>
+  ) : (
+    <div class="news-card-grid">
+      {items.map((item) => (
+        <article
+          class="news-card"
+          data-audience={item.data.audience}
+          data-topics={item.data.topics.join(',')}
+        >
+          <h3>
+            <a href={`/news/${item.id}/`}>{item.data.title}</a>
+          </h3>
+          <div class="news-card__meta">
+            <AudienceBadge audience={item.data.audience} />
+            <ConfidenceChip confidence={item.data.editor_confidence} />
+            <span class="news-card__source">{item.data.source}</span>
+            <span class="news-card__date">{item.data.authored}</span>
+          </div>
+          {item.data.topics.length > 0 && (
+            <div class="skill-card__topics">
+              {item.data.topics.map((topic) => (
+                <span class="topic-chip">{topic}</span>
+              ))}
+            </div>
+          )}
+        </article>
+      ))}
+    </div>
+  )}
+</section>

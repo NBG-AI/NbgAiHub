@@ -1,0 +1,15 @@
+---
+// ConfidenceChip.astro — Renders the editor_confidence value on news cards.
+// Low = orange (editors should review carefully); medium/high are muted.
+// See user instructions: surface editor_confidence visibly to reviewers.
+
+interface Props {
+  confidence: 'high' | 'medium' | 'low';
+}
+
+const { confidence } = Astro.props;
+---
+
+<span class={`confidence-chip confidence-chip--${confidence}`}
+  >confidence: {confidence}</span
+>

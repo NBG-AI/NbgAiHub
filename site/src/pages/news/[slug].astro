@@ -1,0 +1,47 @@
+---
+import { getCollection, render } from 'astro:content';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import AudienceBadge from '../../components/AudienceBadge.astro';
+import ConfidenceChip from '../../components/ConfidenceChip.astro';
+
+export async function getStaticPaths() {
+  const items = await getCollection('news');
+  return items.map((item) => ({
+    params: { slug: item.id },
+    props: { item },
+  }));
+}
+
+const { item } = Astro.props;
+const { Content } = await render(item);
+---
+
+<StarlightPage frontmatter={{ title: item.data.title }}>
+  <div class="news-card__meta">
+    <AudienceBadge audience={item.data.audience} />
+    <ConfidenceChip confidence={item.data.editor_confidence} />
+    <span class="news-card__source">{item.data.source}</span>
+    <span class="news-card__date">{item.data.authored}</span>
+  </div>
+
+  {item.data.topics.length > 0 && (
+    <div class="skill-card__topics">
+      {item.data.topics.map((topic) => (
+        <span class="topic-chip">{topic}</span>
+      ))}
+    </div>
+  )}
+
+  {item.data.external_link && (
+    <p>
+      <a href={item.data.external_link} rel="noopener noreferrer" target="_blank"
+        >Read on source ↗</a
+      >
+    </p>
+  )}
+
+  <h2>Summary</h2>
+  <p>{item.data.ai_summary}</p>
+
+  <Content />
+</StarlightPage>

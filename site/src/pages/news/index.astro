@@ -1,0 +1,14 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import NewsList from '../../components/NewsList.astro';
+import AudienceFilter from '../../components/AudienceFilter.astro';
+---
+
+<StarlightPage frontmatter={{ title: 'News' }}>
+  <p>
+    Curated Claude Code news from the RSS pipeline. Filter by audience to focus
+    on what's relevant to you.
+  </p>
+  <AudienceFilter scope=".news-card[data-audience]" />
+  <NewsList />
+</StarlightPage>

@@ -1,0 +1,39 @@
+---
+// SkillCard.astro — Card layout for a skill entry.
+// See project-design.md §S.3.5.
+
+import type { CollectionEntry } from 'astro:content';
+import AudienceBadge from './AudienceBadge.astro';
+
+interface Props {
+  entry: CollectionEntry<'skills'>;
+}
+
+const { entry } = Astro.props;
+const { data } = entry;
+---
+
+<article
+  class="skill-card"
+  data-audience={data.audience}
+  data-topics={data.topics.join(',')}
+>
+  <h3>
+    {data.external_link ? (
+      <a href={data.external_link}>{data.title} ↗</a>
+    ) : (
+      data.title
+    )}
+  </h3>
+  <div class="news-card__meta">
+    <AudienceBadge audience={data.audience} />
+  </div>
+  {data.topics.length > 0 && (
+    <div class="skill-card__topics">
+      {data.topics.map((topic) => (
+        <span class="topic-chip">{topic}</span>
+      ))}
+    </div>
+  )}
+  <p class="skill-card__summary">{data.ai_summary}</p>
+</article>

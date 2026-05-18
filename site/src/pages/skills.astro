@@ -1,0 +1,29 @@
+---
+import { getCollection } from 'astro:content';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import SkillCard from '../components/SkillCard.astro';
+import AudienceFilter from '../components/AudienceFilter.astro';
+
+const items = await getCollection('skills');
+---
+
+<StarlightPage frontmatter={{ title: 'Skills' }}>
+  <p>
+    The skills catalog — reusable Claude Code skills and plugins worth your
+    attention.
+  </p>
+
+  {items.length === 0 ? (
+    <p class="empty-state">
+      No items yet. See <a href="/contribute/">Contribute</a> for how to add
+      one.
+    </p>
+  ) : (
+    <>
+      <AudienceFilter scope=".skill-card[data-audience]" />
+      <div class="card-grid">
+        {items.map((entry) => <SkillCard entry={entry} />)}
+      </div>
+    </>
+  )}
+</StarlightPage>

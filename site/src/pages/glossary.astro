@@ -1,0 +1,45 @@
+---
+import { getCollection, render } from 'astro:content';
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+
+const items = await getCollection('glossary');
+const sorted = items.sort((a, b) => a.data.title.localeCompare(b.data.title));
+
+// Render every entry's body up-front (top-level await is fine in Astro
+// frontmatter; per-entry Content components are streamed below).
+const rendered = await Promise.all(
+  sorted.map(async (entry) => {
+    const { Content } = await render(entry);
+    return { entry, Content };
+  }),
+);
+---
+
+<StarlightPage frontmatter={{ title: 'Glossary' }}>
+  <p>
+    Plain-language definitions for the Claude Code vocabulary. Link directly to
+    any term with <code>/glossary#&lt;slug&gt;</code>.
+  </p>
+
+  {rendered.length === 0 ? (
+    <p class="empty-state">
+      No items yet. See <a href="/contribute/">Contribute</a> for how to add
+      one.
+    </p>
+  ) : (
+    <>
+      <ul class="glossary-toc">
+        {rendered.map(({ entry }) => (
+          <li><a href={`#${entry.id}`}>{entry.data.title}</a></li>
+        ))}
+      </ul>
+
+      {rendered.map(({ entry, Content }) => (
+        <section id={entry.id} class="glossary-term">
+          <h2 id={entry.id}>{entry.data.title}</h2>
+          <Content />
+        </section>
+      ))}
+    </>
+  )}
+</StarlightPage>
