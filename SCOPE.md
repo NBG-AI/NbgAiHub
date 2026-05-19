@@ -1,6 +1,6 @@
 # NbgAiHub — Scope
 
-**Last updated:** 2026-05-19 (Variant C auto-promote shipped — high-confidence items from `auto_promote_eligible: true` feeds now bypass editorial review and land directly in `news/published/`; workflow branches on a `mode` step output across `auto_only` / `mixed` / `review_only` / `empty`; pipeline tests 112 → 124. See DECISIONS 2026-05-19 — Auto-promotion. Earlier same-day: Personalization + community contributions shipped — PAT-paste sign-in, unlisted-gist-backed favourites, /my-pins/, /submit-skill/ with URL-redirect, CI validator on skills PRs; site 127 tests. Hub plugin also shipped — eleven `/hub-*` commands in `plugin/`, 130/130 tests including end-to-end entry-script smoke.)
+**Last updated:** 2026-05-19 (Content port from team Onboarding guide shipped — 32 entries: 10 new glossary terms (5→15), 12 tips (0→12), 9 skills (0→9) cataloguing `556LowCodeNoCode/Skills`, Day-1 journey rewritten with 6 full steps; site 20 pages build, plugin 130/130 tests, site 127/127 tests, all green. Same day: Variant C auto-promote shipped — high-confidence items from `auto_promote_eligible: true` feeds now bypass editorial review and land directly in `news/published/`; workflow branches on a `mode` step output across `auto_only` / `mixed` / `review_only` / `empty`; pipeline tests 112 → 124. Personalization + community contributions shipped — PAT-paste sign-in, unlisted-gist-backed favourites, /my-pins/, /submit-skill/ with URL-redirect, CI validator on skills PRs. Hub plugin shipped — eleven `/hub-*` commands in `plugin/`, 130 tests including end-to-end entry-script smoke.)
 
 ## Vision
 
@@ -25,11 +25,11 @@ A curated Claude Code knowledge hub for bank colleagues — a one-stop shop comb
 
 | # | Pillar | What it offers | Consumption pattern | Status |
 |---|---|---|---|---|
-| 1 | **Skills catalog** | Discovery layer over installable plugins (internal + external) | Browse → install via plugin marketplace | site page exists; catalog empty |
-| 2 | **Tips & Tricks** | Patterns, prompts, gotchas, workflow recipes | Read & apply manually | site page exists; content empty |
+| 1 | **Skills catalog** | Discovery layer over installable plugins (internal + external) | Browse → install via plugin marketplace | **✅ 9 entries cataloguing `556LowCodeNoCode/Skills` marketplace** (team, claudemd, deploy, uat-panel, frontend-design, database-schema-designer, commit-work, jira, gsd) |
+| 2 | **Tips & Tricks** | Patterns, prompts, gotchas, workflow recipes | Read & apply manually | **✅ 12 entries** — prompting fundamentals, survival keys, context discipline, compliance |
 | 3 | **News** | Curated tech news, AI-triaged from RSS feeds at build-time | Skim weekly | **✅ pipeline operational; site reads `/news/published/` via glob loader** |
-| 4 | **Curated journeys** | Day 1, Week 1, by-role onboarding paths | Follow step-by-step | Day 1 page placeholder rendered; content TBD |
-| 5 | **Glossary + Reference** | Term definitions (hybrid page + anchor links) + cheatsheet | Lookup as needed | **✅ 5 seeded glossary terms (claudemd, mcp, skill, plugin, agent); reference page placeholder** |
+| 4 | **Curated journeys** | Day 1, Week 1, by-role onboarding paths | Follow step-by-step | **✅ Day-1 full 6 steps** (install → first session → survival keys → CLAUDE.md → skills marketplace → tomorrow); Week-1 + by-role still TBD |
+| 5 | **Glossary + Reference** | Term definitions (hybrid page + anchor links) + cheatsheet | Lookup as needed | **✅ 15 glossary terms** (original 5 + claude-code, context-window, build-time-vs-runtime, gsd, gh, repository, commit, branch, pull-request, issue); reference page placeholder |
 
 **Cross-cutting substrate** (the same plumbing serves all five pillars):
 
@@ -44,10 +44,10 @@ A curated Claude Code knowledge hub for bank colleagues — a one-stop shop comb
 
 | Item | Status |
 |---|---|
-| **One curated Day 1 journey** — 6-step path: install → first session → survival keys (incl. `Esc Esc`) → CLAUDE.md (global + project) → skills & team marketplace → where to go next | **Page rendered (placeholder); 6-step content TBD** |
-| **~10 Tips & Tricks entries** | site page exists; content TBD |
-| **~5 Skills catalog entries** — internal + external, description + install link | site page exists; catalog TBD |
-| **~10 Glossary terms** — CLAUDE.md, MCP, skill, plugin, agent, hook, GSD, build-time vs runtime, etc. | **5/10 seeded** (claudemd, mcp, skill, plugin, agent); 5 more TBD |
+| **One curated Day 1 journey** — 6-step path: install → first session → survival keys (incl. `Esc Esc`) → CLAUDE.md (global + project) → skills & team marketplace → where to go next | **✅ SHIPPED 2026-05-19** — `journeys/day-1.md` populated with full 6-step walkthrough; `site/src/pages/start-here/day-1.astro` rewritten to render the journey collection entry via `getEntry('journeys', 'day-1')`; same content also feeds `/hub-onboard day-1` |
+| **~10 Tips & Tricks entries** | **✅ 12 SHIPPED 2026-05-19** — prompting fundamentals (6 rules + bad-vs-good openers), correction phrasing, survival keys (Esc), context discipline (`/compact` `/clear`), review-before-accept, Azure-OpenAI compliance |
+| **~5 Skills catalog entries** — internal + external, description + install link | **✅ 9 SHIPPED 2026-05-19** — team, claudemd, deploy, uat-panel, frontend-design, database-schema-designer, commit-work, jira, gsd (all cataloguing `556LowCodeNoCode/Skills` marketplace) |
+| **~10 Glossary terms** — CLAUDE.md, MCP, skill, plugin, agent, hook, GSD, build-time vs runtime, etc. | **✅ 15 SHIPPED** — original 5 (claudemd, mcp, skill, plugin, agent) + 10 added 2026-05-19 (claude-code, context-window, build-time-vs-runtime, gsd, gh, repository, commit, branch, pull-request, issue) |
 | **RSS curation pipeline** — daily GH Action: fetch feeds → Azure OpenAI triage → `/news/incoming` → PR → editorial review → promote to `/news/published` | **✅ BUILT & OPERATIONAL** — 93/93 tests pass (after triage tightening); live runs producing daily PRs. Spec: `docs/refined-requests/rss-pipeline.md`. Verification: `docs/reference/integration-verification-rss-pipeline.md`. **+ variant C auto-promote for high-confidence professional-source items (2026-05-19)** — items satisfying `triage.editor_confidence === "high"` AND `auto_promote_eligible: true` on the source feed write directly to `news/published/` and (when no review-needed items remain) commit straight to `main`. Workflow now branches on a `mode` output across `auto_only` / `mixed` / `review_only` / `empty`. DECISIONS 2026-05-19. |
 | **Astro Starlight static site** with beginner/advanced filter | **✅ BUILT** — Astro 6.3.5 + Starlight 0.39.2, 10 pages (Home, Start Here→Day 1/Week 1, News, Skills, Tips, Glossary, Reference, Contribute, 404), 7 components (HomeHero, NewsPanel, NewsList, AudienceBadge, SkillCard, AudienceFilter + bonus ConfidenceChip), Pagefind search, dark theme default. Spec: `docs/refined-requests/astro-starlight-site.md`. Verification: `docs/reference/integration-verification-astro-site.md`. Hosting open. |
 | **Hub-as-skill plugin** — eleven `/hub-*` commands (`/hub`, `/hub-search`, `/hub-news`, `/hub-tips`, `/hub-skills`, `/hub-glossary`, `/hub-onboard <journey>`, `/hub-install <skill-id>`, `/hub-audience <b|a|both>`, `/hub-refresh`, `/hub-open [section] [subsection]`) | **✅ BUILT & OPERATIONAL (2026-05-19)** — TypeScript workspace at `plugin/` sibling to `pipeline/` and `site/`. **130/130 tests pass** (12 lib test files + manifest + end-to-end entry-script smoke), typecheck + lint clean, esbuild produces 11 ESM entries in `dist/`, bundled snapshot of repo content via `npm run build:snapshot`. Marketplace at repo-root `.claude-plugin/marketplace.json`, plugin manifest at `plugin/.claude-plugin/plugin.json`. Spec: `docs/refined-requests/hub-plugin.md`. Plan: `docs/design/plan-003-hub-plugin.md`. Verification: `docs/reference/integration-verification-hub-plugin.md`. |
@@ -102,9 +102,9 @@ For full RSS pipeline context, see refined request: `docs/refined-requests/rss-p
 ## Demo-ability checklist (manager review)
 
 - [x] **Site renders locally** — `cd site && npm run dev` → `http://localhost:4321` returns 200; homepage shows hero + tagline; all 9 sidebar entries clickable
-- [ ] Day 1 journey page populated with all 6 steps + deep-links into the Onboarding guide *(page renders; content placeholder)*
-- [ ] At least 1 skill entry, 1 tip visible
-- [x] **At least 5 glossary terms visible** *(5/10 seeded)*
+- [x] **Day 1 journey page populated with all 6 steps + deep-links into the Onboarding guide** *(2026-05-19 — `journeys/day-1.md` + `site/src/pages/start-here/day-1.astro` renders from the collection)*
+- [x] **At least 1 skill entry, 1 tip visible** *(2026-05-19 — 9 skills + 12 tips shipped)*
+- [x] **At least 5 glossary terms visible** *(15/10 seeded — 2026-05-19)*
 - [x] At least 1 news item visible *(43 items in PR #1 on 2026-05-18; need PR merge to surface in `news/published/`)*
 - [x] **Beginner/Advanced/Both filter wired** *(AudienceFilter component built, `localStorage.nbgaihub.audience` persistence; visible no-op until news populated)*
 - [x] **`/hub` commands work from a fresh Claude Code install** *(eleven commands ship in `plugin/`; install via `/plugin marketplace add chomovazuzana/NbgAiHub`; smoke-tested end-to-end on 2026-05-19)*

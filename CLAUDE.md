@@ -29,10 +29,10 @@ A curated Claude Code knowledge hub for bank colleagues, framed around *"what I 
 ├── news/
 │   ├── incoming/              ← Action writes triaged items here, PR opens for review
 │   └── published/             ← editor moves approved items here (permanent archive)
-├── glossary/                  ← 5 seeded terms (claudemd, mcp, skill, plugin, agent)
-├── skills/                    ← .gitkeep — catalog content TBD (extended schema lives in site/src/content.config.ts)
-├── tips/                      ← .gitkeep — content TBD
-├── journeys/                  ← day-1.md placeholder (6-step content TBD)
+├── glossary/                  ← 15 terms (original 5 + claude-code, context-window, build-time-vs-runtime, gsd, gh, repository, commit, branch, pull-request, issue)
+├── skills/                    ← 9 entries cataloguing 556LowCodeNoCode/Skills marketplace (extended 17-key schema lives in site/src/content.config.ts)
+├── tips/                      ← 12 entries (prompting, survival keys, context, compliance)
+├── journeys/                  ← day-1.md (full 6-step walkthrough; week-1.md + by-role TBD)
 ├── pipeline/                  ← TypeScript workspace for the RSS Action + skill validator
 │   ├── package.json           ← Node 22, ESM, vitest 4.x, @rowanmanning/feed-parser
 │   ├── src/                   ← 15 RSS modules + src/validators/ (skill, cli, config)
