@@ -1,30 +1,14 @@
 ---
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { getEntry, render } from 'astro:content';
+
+const entry = await getEntry('journeys', 'day-1');
+if (!entry) {
+  throw new Error("Missing journeys collection entry 'day-1' — expected at /journeys/day-1.md");
+}
+const { Content } = await render(entry);
 ---
 
-<StarlightPage frontmatter={{ title: 'Start Here — Day 1' }}>
-  <p>
-    Your first day with Claude Code. Six steps. The deeper write-up is coming
-    soon — this page is the scaffold so the sidebar entry doesn't 404.
-  </p>
-
-  <h2>1. Install Claude Code</h2>
-  <p><em>Coming soon.</em></p>
-
-  <h2>2. Run <code>/init</code> on a real repo</h2>
-  <p><em>Coming soon.</em></p>
-
-  <h2>3. Write your first <code>CLAUDE.md</code></h2>
-  <p><em>Coming soon.</em></p>
-
-  <h2>4. Try one slash command from the Reference</h2>
-  <p><em>Coming soon. See <a href="/reference/">Reference</a>.</em></p>
-
-  <h2>5. Capture one decision in <code>DECISIONS.md</code></h2>
-  <p><em>Coming soon.</em></p>
-
-  <h2>6. Tomorrow: pick a skill from the catalog</h2>
-  <p>
-    <em>Coming soon. See <a href="/skills/">Skills</a>.</em>
-  </p>
+<StarlightPage frontmatter={{ title: entry.data.title }}>
+  <Content />
 </StarlightPage>
