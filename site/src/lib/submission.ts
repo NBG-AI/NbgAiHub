@@ -339,9 +339,16 @@ export async function copyToClipboard(markdown: string): Promise<void> {
  *   429/403/network -> 'unknown' (do not block the user; they can still
  *                                 submit and GitHub will reject on conflict)
  *
- * We intentionally do NOT pass a token here — this is a public read of a
- * private repo's existence signal would leak, so we accept "unknown" for
- * the unauthenticated case rather than route through the user's PAT.
+ * We intentionally do NOT pass a token here — the slug-collision check is
+ * an opportunistic UX signal, not an authoritative one. Authenticating with
+ * the user's PAT would leak the existence of the (private) repo's skills
+ * directory into the user's token-scoped audit trail; we'd rather accept
+ * "unknown" for the unauthenticated case. NOTE: because the repo is
+ * private, unauthenticated requests will always return 404 in production
+ * regardless of slug availability — the check is therefore best-effort
+ * even in the happy path, and the authoritative collision detection is
+ * the CI validator's path-vs-skill_id rule + GitHub's own "file already
+ * exists" gate in the new-file editor.
  */
 export async function checkSlugCollision(
   slug: string,

@@ -4,6 +4,14 @@ Pending items first (most critical at top). Completed items after. Remove fixed 
 
 ## Pending
 
+11. **Personalization — `/submit-skill/` slug collision pre-check returns false-"free" against private repo** (important / UX bug; identified in code review).
+   `site/src/lib/submission.ts::checkSlugCollision` calls an **unauthenticated** `GET https://api.github.com/repos/chomovazuzana/NbgAiHub/contents/skills/<slug>.md`. Because the repo is private, the unauthenticated request will return 404 for every slug — taken or not — so the form will always say "Available — `<slug>.md` is free", defeating AC15's intent.
+   **Recommended remediation:** drop the network call and check against the build-time `public/_data/skill-index.json` (already emitted by `scripts/build-pin-index.ts`). Pure-client lookup, zero new infra, anonymous-form-compatible. See `docs/reference/code-review-personalization.md §6 OUT-1`.
+   Not a security issue — the CI validator + GitHub's "file already exists" gate are the authoritative collision checks. UX-only.
+
+10. **Personalization — pinned `skill` / `tip` items deep-link to the catalog index, not the per-item page** (minor / UX, deferred).
+   `site/src/pages/my-pins.astro::urlForPin()` routes skill and tip pins to `/skills/` and `/tips/` respectively because no per-slug pages exist yet. News (`/news/<slug>/`), glossary (`/glossary#<slug>`) and journey-step (`/start-here/<slug>/`) all work. Acceptable for MVP. Revisit when skill/tip per-slug pages are introduced.
+
 9. **Personalization — PAT-paste UX fallback to OAuth App + Cloudflare Worker proxy** (low / follow-up).
    If PAT-paste UX proves clunky for non-technical users, consider migrating to OAuth App + Cloudflare Worker proxy (designed but not built — see `docs/reference/investigation-personalization.md` §1 historical sections; the worker proxy design is documented as an alternative the user rejected on the zero-infrastructure promise). Not a blocker. Revisit only if user feedback specifically calls out PAT friction.
 
