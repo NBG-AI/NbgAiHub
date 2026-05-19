@@ -1,0 +1,6 @@
+node_modules/
+dist/*.mjs
+dist/*.mjs.map
+*.tsbuildinfo
+coverage/
+.DS_Store

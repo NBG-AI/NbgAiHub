@@ -1,0 +1,16 @@
+{
+  "productionUrl": "https://chomovazuzana.github.io/NbgAiHub",
+  "devUrl": "http://localhost:4321",
+  "devMode": true,
+  "search": {
+    "weights": {
+      "title": 5,
+      "topics": 3,
+      "body": 1
+    },
+    "snippetLength": 200
+  },
+  "snapshotPath": "./snapshot",
+  "refreshCachePath": "~/.cache/nbg-ai-hub/snapshot",
+  "repoUrl": "https://github.com/chomovazuzana/NbgAiHub.git"
+}

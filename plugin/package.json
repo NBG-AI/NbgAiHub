@@ -1,0 +1,35 @@
+{
+  "name": "nbgaihub-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "NbgAiHub Claude Code plugin — eleven /hub-* commands over a bundled markdown snapshot.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "build:snapshot": "node scripts/build-snapshot.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "js-yaml": "^4.1.0",
+    "open": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.0.0",
+    "memfs": "^4.11.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^4.1.6"
+  }
+}

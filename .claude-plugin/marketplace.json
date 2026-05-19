@@ -1,0 +1,14 @@
+{
+  "name": "nbg-ai-hub-marketplace",
+  "owner": {
+    "name": "NbgAiHub",
+    "url": "https://github.com/chomovazuzana/NbgAiHub"
+  },
+  "plugins": [
+    {
+      "name": "nbg-ai-hub",
+      "source": "./plugin",
+      "description": "Claude Code knowledge hub for bank colleagues — eleven /hub-* commands over a bundled markdown snapshot."
+    }
+  ]
+}
