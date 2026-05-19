@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "type": "news",
+  "items": [
+    {
+      "slug": "11-claude-things-i-wish-someone-had-told-me-12-months-ago",
+      "title": "11 Claude things I wish someone had told me 12 months ago",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "tips",
+        "claudecode",
+        "model-selection",
+        "memory",
+        "projects-feature",
+        "custom-styles",
+        "mobile-voice-mode",
+        "skills"
+      ]
+    },
+    {
+      "slug": "5-claude-patterns-that-helped-non-technical-users-get",
+      "title": "5 Claude patterns that helped non-technical users get better results",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "prompt-engineering",
+        "hallucination-mitigation",
+        "context-management"
+      ]
+    },
+    {
+      "slug": "anthropic-acquires-stainless",
+      "title": "Anthropic acquires Stainless",
+      "audience": "both",
+      "topics": [
+        "industry-news",
+        "strategic-move",
+        "company-acquisition"
+      ]
+    },
+    {
+      "slug": "anthropic-security-usage-policy",
+      "title": "Anthropic security Usage Policy",
+      "audience": "advanced",
+      "topics": [
+        "platform-news",
+        "security-policy",
+        "usage-restrictions"
+      ]
+    },
+    {
+      "slug": "claude-code-weekly-limits-are-increasing-50-now-through",
+      "title": "Claude Code weekly limits are increasing 50%, now through July 13.",
+      "audience": "both",
+      "topics": [
+        "platform-news",
+        "usage-limits",
+        "claudecode"
+      ]
+    },
+    {
+      "slug": "how-i-stopped-claude-code-from-over-engineering-everything",
+      "title": "How I stopped Claude Code from over-engineering everything",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "prompt-engineering",
+        "field-report"
+      ]
+    },
+    {
+      "slug": "made-claude-code-warn-you-time-before-it-hits-usage-to",
+      "title": "Made claude code warn you, time before it hits usage to transfer the pending work, all dynamically",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "rate-limits",
+        "usage-monitoring",
+        "agent-hooks",
+        "field-report"
+      ]
+    },
+    {
+      "slug": "new-ui-preview-feature-on-claude-code-is-really-great",
+      "title": "New UI Preview feature on Claude Code is really great.",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "ui-preview",
+        "interactive-prompting"
+      ]
+    }
+  ]
+}

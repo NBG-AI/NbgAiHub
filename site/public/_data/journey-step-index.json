@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "type": "journey-step",
+  "items": [
+    {
+      "slug": "day-1",
+      "title": "Day 1",
+      "audience": "beginner",
+      "topics": [
+        "onboarding",
+        "getting-started"
+      ]
+    }
+  ]
+}

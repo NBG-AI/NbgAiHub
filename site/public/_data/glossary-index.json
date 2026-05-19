@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "type": "glossary",
+  "items": [
+    {
+      "slug": "agent",
+      "title": "Agent",
+      "audience": "both",
+      "topics": [
+        "agents",
+        "orchestration"
+      ]
+    },
+    {
+      "slug": "claudemd",
+      "title": "CLAUDE.md",
+      "audience": "beginner",
+      "topics": [
+        "conventions",
+        "setup"
+      ]
+    },
+    {
+      "slug": "mcp",
+      "title": "MCP (Model Context Protocol)",
+      "audience": "both",
+      "topics": [
+        "protocol",
+        "integrations"
+      ]
+    },
+    {
+      "slug": "plugin",
+      "title": "Plugin",
+      "audience": "advanced",
+      "topics": [
+        "extensibility",
+        "marketplace"
+      ]
+    },
+    {
+      "slug": "skill",
+      "title": "Skill",
+      "audience": "both",
+      "topics": [
+        "skills",
+        "automation"
+      ]
+    }
+  ]
+}
