@@ -185,9 +185,9 @@ Each criterion is falsifiable with concrete evidence (test name, `file:line`, ob
 
 - **AC21 — Graceful not-yet-deployed handling end-to-end.** With `plugin/config.json` set to the literal "not-yet-deployed" placeholder, `/hub-open` prints the would-be URL + a clear deferral message. With the placeholder, `/hub-search`, `/hub-news`, etc. continue to work against the bundled snapshot (they don't depend on the production URL). Evidence: test `commands operate against snapshot when site URL is placeholder` in `plugin/tests/deployment.test.ts`.
 
-- **AC22 — Marketplace manifest validity.** `plugin/marketplace.json` is loadable by Claude Code's marketplace loader. Schema conformance is verified either via (a) a unit test that parses the file and asserts the required keys, or (b) a documented manual test invoking `/plugin marketplace add chomovazuzana/NbgAiHub` against a local checkout (recorded in `docs/reference/integration-verification-hub-plugin.md`). Evidence: test `marketplace.json conforms to required schema` in `plugin/tests/marketplace.test.ts`.
+- **AC22 — Marketplace manifest validity.** `.claude-plugin/marketplace.json` (at repo root, per Claude Code spec — corrected from earlier `plugin/marketplace.json`) is loadable by Claude Code's marketplace loader. Asserts: marketplace `name`, `owner` object, `plugins[0].name === "nbg-ai-hub"`, `plugins[0].source === "./plugin"`. Evidence: assertions in `plugin/tests/manifest.test.ts` (the marketplace + plugin manifest tests were folded into the same file during implementation).
 
-- **AC23 — Plugin manifest validity.** `plugin/plugin.json` declares exactly eleven commands matching the raw-request table. Test asserts the command name set is exactly `{hub, hub-search, hub-skills, hub-tips, hub-news, hub-glossary, hub-onboard, hub-install, hub-audience, hub-refresh, hub-open}`. Evidence: test `plugin.json declares the exact eleven commands` in `plugin/tests/manifest.test.ts`.
+- **AC23 — Plugin manifest validity (rewritten per Phase 3a / plan-003 R-3).** `plugin/.claude-plugin/plugin.json` (not `plugin/plugin.json` — Claude Code spec requires `.claude-plugin/` subdir) declares `name`, `description`, `author`. **The manifest does NOT enumerate commands** — slash commands are filesystem-discovered from `plugin/commands/*.md`. The "exactly eleven commands" assertion is therefore a directory check: `ls plugin/commands/*.md` returns exactly the eleven `.md` files matching `{hub, hub-search, hub-skills, hub-tips, hub-news, hub-glossary, hub-onboard, hub-install, hub-audience, hub-refresh, hub-open}.md`. Evidence: parse-shape assertions in `plugin/tests/manifest.test.ts` (no `commands` key, no `version` key, required keys present) + filesystem listing of `plugin/commands/`.
 
 - **AC24 — README documents all eleven commands.** `plugin/README.md` contains a section for each of the eleven commands with: command name as a heading, one-line description, at least one usage example. Evidence: grep — each command name appears at least once as a heading in the README.
 
@@ -259,7 +259,7 @@ Locked-in user decisions (treated as Assumptions per the raw request, not Open Q
 
 - **OQ5 — `/plugin install` mechanics.** Does Claude Code's marketplace install flow expect a specific manifest schema version? `plugin/marketplace.json` may need to declare a `schemaVersion` key — confirm against current Claude Code marketplace spec before publishing.
 
-- **OQ6 — `editor_confidence` and `hero_image` in plugin output.** News items in the snapshot may carry these optional fields. Should `/hub-news` surface `editor_confidence` (e.g., as a `[confidence: medium]` marker per the RSS pipeline's PR-body convention)? Decision affects AC5 / AC28.
+- ~~**OQ6 — `editor_confidence` and `hero_image` in plugin output.**~~ Resolved → `/hub-news` surfaces `editor_confidence` as a `[confidence: high|medium|low]` marker on each news entry, matching the RSS pipeline's PR-body convention. `hero_image` remains optional in frontmatter but is not yet rendered (terminal output is plain-text by design — A18). See `src/hub-news.ts:38`.
 
 ## Definition of Done
 
