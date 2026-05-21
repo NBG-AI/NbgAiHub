@@ -26,17 +26,23 @@ export class FeedFetchError extends Error {
 export async function fetchFeedXml(
   url: string,
   fetchImpl: typeof globalThis.fetch = globalThis.fetch,
-  options?: { timeoutMs?: number },
+  options?: { timeoutMs?: number; authToken?: string },
 ): Promise<string> {
   const timeoutMs = options?.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+  const headers: Record<string, string> = { "User-Agent": FEED_USER_AGENT };
+  if (options?.authToken) {
+    // Reddit-OAuth path: oauth.reddit.com requires Bearer auth.
+    headers["Authorization"] = `Bearer ${options.authToken}`;
+  }
+
   let response: Response;
   try {
     response = await fetchImpl(url, {
       signal: controller.signal,
-      headers: { "User-Agent": FEED_USER_AGENT },
+      headers,
     });
   } catch (err) {
     throw new FeedFetchError(

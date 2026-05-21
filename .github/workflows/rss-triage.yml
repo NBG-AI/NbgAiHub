@@ -79,6 +79,12 @@ jobs:
           AZURE_OPENAI_DEPLOYMENT:  ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
           AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
           AZURE_OPENAI_API_KEY:     ${{ secrets.AZURE_OPENAI_API_KEY }}
+          # Reddit Application-Only OAuth (DECISIONS 2026-05-21 OAuth pivot).
+          # Required when any reddit-json feed is enabled; the orchestrator
+          # gates the env-var read on config so the secrets only need to exist
+          # if the Reddit feeds are turned on.
+          REDDIT_CLIENT_ID:         ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET:     ${{ secrets.REDDIT_CLIENT_SECRET }}
 
       # Direct-to-main path (post-DECISIONS 2026-05-19 unconditional-auto-promote
       # + rolling 7-day retention). Fires when ANY change occurred — new

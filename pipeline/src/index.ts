@@ -43,7 +43,8 @@ import {
   RETENTION_DAYS,
 } from "./retention.js";
 import { makeAzureClient } from "./azure-client.js";
-import { readEnv } from "./env.js";
+import { readEnv, readRedditCreds } from "./env.js";
+import { getRedditAccessToken, RedditAuthError } from "./reddit-auth.js";
 import { makeLogger, type Logger } from "./logger.js";
 
 type FsLike = typeof import("node:fs/promises");
@@ -127,6 +128,31 @@ export async function run(options: RunOptions = {}): Promise<RunResult> {
   // 2. Load seen fingerprints.
   const seen = await loadSeenFingerprints(newsRoot, fs);
 
+  // 2b. Acquire a Reddit OAuth token if any enabled feed needs one. This is
+  // conditional: configs without reddit-json feeds skip the env-var read AND
+  // the network call. Token lives ~24h; we acquire once per run (DECISIONS
+  // 2026-05-21 OAuth pivot).
+  let redditToken: string | null = null;
+  const hasRedditFeed = enabled.some((f) => f.type === "reddit-json");
+  if (hasRedditFeed) {
+    try {
+      const creds = readRedditCreds();
+      const tok = await getRedditAccessToken(creds.clientId, creds.clientSecret, fetchImpl);
+      redditToken = tok.accessToken;
+      logger.info("reddit_auth_ok", { expiresInSec: tok.expiresInSec });
+    } catch (err) {
+      // Reddit auth failure is per-source, not fatal. Reddit feeds will then
+      // fail individually with FeedFetchError (401 from oauth.reddit.com),
+      // matching the existing per-feed failure contract (AC6).
+      logger.warn("reddit_auth_failed", { reason: String(err) });
+      if (err instanceof RedditAuthError) {
+        // fall through; redditToken stays null; Reddit feeds will error out
+      } else {
+        throw err;
+      }
+    }
+  }
+
   // 3. Per feed: fetch + parse. Promise.allSettled so one failure does not abort.
   type FeedOutcome =
     | { ok: true; feed: FeedSource; items: FeedItem[] }
@@ -136,8 +162,13 @@ export async function run(options: RunOptions = {}): Promise<RunResult> {
     enabled.map(async (feed): Promise<FeedOutcome> => {
       try {
         // fetchFeedXml is a generic body-fetcher; the name is historical
-        // (XML-only days). Reddit JSON rides the same code path.
-        const body = await fetchFeedXml(feed.url, fetchImpl);
+        // (XML-only days). Reddit JSON rides the same code path with an
+        // OAuth Bearer header attached.
+        const fetchOpts =
+          feed.type === "reddit-json" && redditToken
+            ? { authToken: redditToken }
+            : undefined;
+        const body = await fetchFeedXml(feed.url, fetchImpl, fetchOpts);
         const items =
           feed.type === "reddit-json"
             ? parseRedditJson(feed.name, body)

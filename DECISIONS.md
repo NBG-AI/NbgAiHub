@@ -687,3 +687,86 @@ The pipeline now emits four step outputs on `$GITHUB_OUTPUT`: `new_items`, `auto
 
 **Status:** accepted; in-session implementation 2026-05-21. Operational effect (Reddit volume drop, sticky leakage gone) visible from the first cron run at 22:00 UTC tonight.
 
+---
+
+## 2026-05-21 — Reddit access via Application-Only OAuth (supersedes JSON-endpoint detail above)
+
+**Decision:** Pull Reddit feeds through Reddit's Application-Only OAuth flow against `https://oauth.reddit.com/r/<sub>/new?limit=25` instead of the public `www.reddit.com` / `old.reddit.com` JSON endpoints.
+
+**Why:** Empirical — when the engagement-floor work landed on `main` and was dispatched via `gh workflow run`, both Reddit JSON endpoints returned **403 Forbidden** from the GitHub Actions runner. The same URLs returned 200 from a residential IP with the same `User-Agent`. Tested in this order on the runner:
+
+1. `https://www.reddit.com/r/<sub>/new.json?limit=25` — 403
+2. Same URL with descriptive `User-Agent: NbgAiHub-RSS-Pipeline/1.0 (+...)` — 403
+3. `https://old.reddit.com/r/<sub>/new.json?limit=25` with the same UA — 403
+
+All three failed identically. The block is IP-based, applied by Reddit to unauthenticated JSON access from cloud ranges. `.rss` endpoints (the prior pipeline) had been working from the same runners — Reddit applies a tighter rule to JSON because it's effectively their public API.
+
+The pre-flagged "long-term fix" in `SECRETS.md §5` was exactly this scenario. We're now implementing it.
+
+**The OAuth flow we use:**
+
+1. Once per pipeline run, POST to `https://www.reddit.com/api/v1/access_token`:
+   - `Authorization: Basic base64(client_id:client_secret)`
+   - `User-Agent: NbgAiHub-RSS-Pipeline/1.0 (+https://github.com/chomovazuzana/NbgAiHub)`
+   - Body: `grant_type=client_credentials`
+2. Reddit returns `{ access_token, expires_in: 86400, token_type: "bearer", scope: "*" }`. Token lives ~24h; we don't cache across runs because the daily cron is well under that lifetime.
+3. Subsequent feed fetches: `https://oauth.reddit.com/r/<sub>/new?limit=25` with `Authorization: Bearer <token>` (note: no `.json` suffix on the `oauth.` subdomain).
+
+Application-Only OAuth (the `client_credentials` grant) gives us a read-only token with no user context — sufficient for pulling public subreddit listings, no impersonation risk, no user-account secrets in the codebase.
+
+**Alternatives considered:**
+
+- *`grant_type=password` (user-impersonation script app)* — would have required adding the Reddit user's username + password as secrets. Rejected: bigger blast radius if leaked, no functional advantage for read-only public-listing pulls.
+- *Revert Reddit to `.rss` + drop engagement filter* — would have worked immediately (RSS still passes through GH Actions) but lost everything from the earlier 2026-05-21 entry (engagement floor, sticky drop). Rejected as Option B in the user-facing decision flow.
+- *Disable Reddit feeds entirely* — clean cut but loses the field-reports content stream. Rejected as Option C.
+- *Third-party proxy (r.jina.ai / scrape APIs)* — adds external dependency + reliability risk + cost. Rejected as Option D.
+
+**Where the code lives:**
+
+- New: `pipeline/src/reddit-auth.ts` (~90 LOC) — `getRedditAccessToken(clientId, clientSecret, fetchImpl)` returning `{ accessToken, expiresInSec }`. Throws `RedditAuthError` on 401 / 5xx / network / malformed payload.
+- Changed: `pipeline/src/env.ts` — new `readRedditCreds(env)` (~25 LOC). Conditionally required: orchestrator calls it only when an enabled feed has `type: "reddit-json"`. Per project no-fallback rule; `MissingEnvVarError` on the first missing value.
+- Changed: `pipeline/src/fetch.ts` — `fetchFeedXml` accepts optional `authToken`; attaches `Authorization: Bearer <token>` when present. UA header stays.
+- Changed: `pipeline/src/index.ts` — before the parallel fetch, gate on `enabled.some(f => f.type === "reddit-json")`; if so, acquire token, log `reddit_auth_ok` / `reddit_auth_failed`. Pass `authToken` per Reddit feed during the `Promise.allSettled` mapper. Auth failures are logged as `::warning::` and Reddit feeds fail-soft per AC6 — HN/Wired/Verge still succeed.
+- Changed: `config/rss-sources.json` — Reddit URLs from `https://old.reddit.com/r/<sub>/new.json?limit=25` → `https://oauth.reddit.com/r/<sub>/new?limit=25`.
+- Changed: `.github/workflows/rss-triage.yml` — `REDDIT_CLIENT_ID` + `REDDIT_CLIENT_SECRET` added to the pipeline step's `env:` block.
+- Changed: `SECRETS.md` — new §1 entries for both secrets including the Reddit-app-creation walkthrough; §5 weak-spot note replaced with the now-implemented architecture; §3 first-time-setup checklist gained two lines.
+- Tests: new `reddit-auth.test.ts` (12 tests covering happy path, 401, 5xx, network, malformed JSON, missing fields, empty creds, Basic-auth construction, grant_type body, UA, canonical URL). `env.test.ts` gained 4 `readRedditCreds` tests. Pipeline 188 → 205 passing.
+
+**One-time operator action required:** create a script-type app at <https://www.reddit.com/prefs/apps> and add `REDDIT_CLIENT_ID` + `REDDIT_CLIENT_SECRET` as GitHub Actions secrets. See `SECRETS.md §1` for the field-by-field walkthrough. Without these, the orchestrator logs the auth failure and Reddit feeds fail-soft — HN / Wired / Verge keep working.
+
+**Status:** accepted; in-session implementation 2026-05-21. Verification gated on operator completing the one-time Reddit-app setup; once secrets are in place, `gh workflow run rss-triage.yml --ref main` should produce 200s from `oauth.reddit.com` and items begin landing in `news/published/` again.
+
+---
+
+## 2026-05-21 — Reddit OAuth path parked; reverting Reddit feeds to `.rss`
+
+**Decision:** Flip `config/rss-sources.json` Reddit feeds back to `type: "rss"` + `https://www.reddit.com/r/<sub>/.rss`. Keep the OAuth scaffolding (`pipeline/src/reddit-auth.ts`, `readRedditCreds`, `fetchFeedXml`'s `authToken` option, the engagement filter, the Reddit JSON parser) in the repo as inert / ready-to-reactivate code.
+
+**Why:** Operator attempted to register a Reddit script-type app per the OAuth-pivot entry above. Reddit's app-creation form silently rejected captcha submissions across two attempts — the reCAPTCHA either failed to validate ("Incorrect response. Try again.") or did not register the click (checkbox stayed empty after submit). Likely causes: browser extension interference with reCAPTCHA's third-party calls, low-trust-account heuristics on Reddit's side, or network-level filtering. None of these are something we can fix from the code side in this session.
+
+Rather than burn more time on captcha forensics, we revert to the proven path: Reddit's `.rss` endpoints. The 08:25 UTC scheduled cron run earlier today (commit `6494b36` — "News triage 2026-05-21: 7 auto-promoted, 0 pruned") confirms `.rss` still works from GitHub Actions runners with whatever default `User-Agent` Node 22's `fetch` sends.
+
+**What this trade-off costs:**
+
+- The engagement floor from the first 2026-05-21 entry (drop stickies, `score>=50`, `num_comments>=10`) is **not active**. Atom doesn't carry those fields. Reddit volume / sticky-leakage / low-engagement-noise concerns from the original conversation are back on the table.
+- The pre-LLM-triage cost reduction is gone. We're back to spending Azure tokens on Reddit items that the engagement filter would have rejected at fetch time.
+- The 22:00 UTC cron shift from the first 2026-05-21 entry **stays** (it's an independent decision; doesn't depend on JSON-feed access).
+
+**What this trade-off preserves:**
+
+- All other work today: cron shift, type discriminator in config schema, the engagement filter / parser / OAuth client code (parked but not deleted), the LLM-side triage tightening from prior sessions, the rolling-7-day retention.
+- A clean reactivation path: if Reddit OAuth ever becomes available to this operator (e.g. captcha resolves on a different browser, account ages enough, or operator switches Reddit accounts), the entire path lights up by flipping `type: "rss"` → `type: "reddit-json"` and `https://www.reddit.com/r/<sub>/.rss` → `https://oauth.reddit.com/r/<sub>/new?limit=25` in two entries of `config/rss-sources.json`. No code change.
+
+**Alternatives considered (this time around):**
+
+- *Disable Reddit feeds entirely* — `enabled: false`. Loses the field-reports content stream; cleaner but harsher. Rejected: the user wanted to retry OAuth later, which is easier with feeds enabled.
+- *Keep config pointed at `oauth.reddit.com` and accept that Reddit feeds fail every run* — would clutter logs with `feed_failed` warnings on every cron, with no upside until OAuth is wired. Rejected.
+
+**Code state after this entry:**
+
+- `pipeline/src/reddit-auth.ts`, `pipeline/src/parse-reddit.ts`, `pipeline/src/reddit-filter.ts`, `readRedditCreds`, `fetchFeedXml`'s `authToken` option — all **present but dormant**. Unit tests for all of them still run and pass (205/205). The orchestrator's `enabled.some(f => f.type === "reddit-json")` gate evaluates to `false` with the current config, so the OAuth token-acquisition code path is not exercised at runtime.
+- `.github/workflows/rss-triage.yml`'s `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` env passthrough stays. With the secrets unset on GitHub, they pass empty strings — harmless because `readRedditCreds` is never called.
+- `SECRETS.md`'s new §1 entries for the Reddit secrets stay; future-operator setup guide is now in the repo. §5 description of the OAuth flow stays — accurate when the path is reactivated.
+
+**Status:** accepted; in-session implementation 2026-05-21. The pipeline is functional again with the same Reddit behavior as before this session, plus the cron shift to 22:00 UTC. If OAuth becomes accessible later, the flip-back is two URLs + two `type` values.
+

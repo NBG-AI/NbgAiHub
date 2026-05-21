@@ -45,3 +45,32 @@ export function readEnv(env: NodeJS.ProcessEnv = process.env): EnvConfig {
 
   return { endpoint, deployment, apiVersion, apiKey };
 }
+
+export type RedditCreds = {
+  clientId: string;
+  clientSecret: string;
+};
+
+const REDDIT_REQUIRED_VARS = ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET"] as const;
+
+/**
+ * Reads Reddit OAuth credentials. Only call this when at least one feed in
+ * config has `type: "reddit-json"` and `enabled: true` — orchestrator gates
+ * on that to keep the env-var requirement CONDITIONAL on what config asks for
+ * (still no-fallback: when needed, required; when not needed, not read).
+ *
+ * Throws MissingEnvVarError on the FIRST missing/empty value.
+ */
+export function readRedditCreds(env: NodeJS.ProcessEnv = process.env): RedditCreds {
+  for (const name of REDDIT_REQUIRED_VARS) {
+    const value = env[name];
+    if (value === undefined || value === null || value === "") {
+      throw new MissingEnvVarError(name);
+    }
+  }
+
+  return {
+    clientId: env.REDDIT_CLIENT_ID as string,
+    clientSecret: env.REDDIT_CLIENT_SECRET as string,
+  };
+}

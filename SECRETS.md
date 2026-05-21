@@ -43,6 +43,23 @@ Add all four under **`Settings → Secrets and variables → Actions → New rep
 - **Rotation:** Azure provides two keys so you can rotate without downtime — update the secret in GitHub with KEY 2, regenerate KEY 1 in Azure, then optionally swap back. This pipeline does not cache the key, so the next run picks up the new value automatically.
 - **Treat as opaque.** Do not paste into chat, do not commit, do not log. Compromise = rotate immediately via the Azure Portal.
 
+### `REDDIT_CLIENT_ID` (required when any `reddit-json` feed is enabled)
+
+- **Value:** Reddit app's `client_id` from your developer-app registration.
+- **Format:** Short opaque string (~16 chars) shown directly below the app name on the apps page.
+- **Why required:** Reddit blocks unauthenticated JSON access from cloud IP ranges including GitHub Actions runners (observed 2026-05-21). The pipeline uses Reddit's Application-Only OAuth (client_credentials grant) — see DECISIONS 2026-05-21 OAuth-pivot entry. Required only when at least one feed in `config/rss-sources.json` has `type: "reddit-json"` and `enabled: true`. The orchestrator gates the env-var read on config (see `pipeline/src/index.ts` and `readRedditCreds` in `pipeline/src/env.ts`).
+- **Where to find it:** <https://www.reddit.com/prefs/apps> → your `NbgAiHub-RSS-Pipeline` (or similar) script app → short opaque string under "personal use script".
+- **Creating the app (one-time):** Sign in to Reddit → scroll to "create another app..." → fill in: name `NbgAiHub-RSS-Pipeline`, type **"script"**, about URL `https://github.com/chomovazuzana/NbgAiHub`, redirect URI `http://localhost:8080` (required field but unused — Application-Only OAuth doesn't redirect). Click "create app". Two values appear on the new app card — `client_id` (under app name) and `client_secret` (the "secret" field).
+
+### `REDDIT_CLIENT_SECRET` (required when any `reddit-json` feed is enabled)
+
+- **Value:** Reddit app's `client_secret` from the same developer-app registration.
+- **Format:** Longer opaque string (~27 chars) shown next to the "secret" label on the apps page.
+- **Why required:** Same as `REDDIT_CLIENT_ID`. The pair is sent as HTTP Basic auth to `https://www.reddit.com/api/v1/access_token` once per pipeline run to acquire a ~24h bearer token used against `https://oauth.reddit.com/r/<sub>/new`.
+- **Where to find it:** Same Reddit-apps page — the "secret" field on the same app.
+- **Rotation:** Reddit's apps page has a "edit" → "regenerate secret" button. Update the GitHub secret with the new value, then click regenerate in the Reddit UI. The pipeline does not cache the secret across runs — the next run picks up the new value.
+- **Treat as opaque.** Do not paste into chat, do not commit, do not log. Compromise = regenerate immediately via the Reddit apps page.
+
 ---
 
 ## 2. One-time repo-level toggle (Assumption A15)
@@ -75,6 +92,9 @@ Run through this end-to-end the first time the pipeline ships in a new fork or a
 - [ ] **`AZURE_OPENAI_DEPLOYMENT`** added under `Settings → Secrets and variables → Actions`.
 - [ ] **`AZURE_OPENAI_API_VERSION`** added under `Settings → Secrets and variables → Actions`.
 - [ ] **`AZURE_OPENAI_API_KEY`** added under `Settings → Secrets and variables → Actions`.
+- [ ] **Reddit script-type app created** at <https://www.reddit.com/prefs/apps> (only if you intend to keep `reddit-json` feeds enabled in `config/rss-sources.json`). See §1 for the field-by-field walkthrough.
+- [ ] **`REDDIT_CLIENT_ID`** added under `Settings → Secrets and variables → Actions` (only if Reddit feeds enabled).
+- [ ] **`REDDIT_CLIENT_SECRET`** added under `Settings → Secrets and variables → Actions` (only if Reddit feeds enabled).
 - [ ] **Repo-level "Allow GitHub Actions to create and approve pull requests"** toggled ON under `Settings → Actions → General → Workflow permissions` (§2 above).
 - [ ] **Default branch is `main`.** The workflow's `gh pr create --base main` and the editorial flow assume this. If you renamed the default branch, edit the YAML accordingly.
 - [ ] **`config/rss-sources.json` is in good shape.** At least one entry has `enabled: true` and a reachable HTTPS URL. The orchestrator exits non-zero with a clear message if zero feeds are enabled.
@@ -120,13 +140,16 @@ Open Question OQ2 in `SCOPE.md` owns the final answer. The current schedule is *
 
 These are not blockers — they are facts the team should know.
 
-### Reddit `r/ClaudeAI` 429s (Reconciliation R-3)
+### Reddit access — Application-Only OAuth (DECISIONS 2026-05-21)
 
-The feed at `https://www.reddit.com/r/ClaudeAI/.rss` is one of the five seed sources. Reddit has been throttling anonymous `.rss` access aggressively since 2023 (Investigation §2). GitHub Actions runners share IP ranges with millions of users, so 429 (rate-limited) responses from this endpoint are likely.
+Reddit blocks unauthenticated JSON access from cloud IP ranges including GitHub Actions runners. The pipeline now uses Reddit's Application-Only OAuth flow:
 
-**What this looks like in practice:** the pipeline's per-feed-failure-non-fatal contract (Assumption A14, AC6) absorbs the 429 cleanly — the offending feed is logged as a `::warning::` in the run summary, and the other four feeds continue. The cost is that `r/ClaudeAI` may yield zero items per run more often than not.
+1. Once per run, POST to `https://www.reddit.com/api/v1/access_token` with HTTP Basic auth (`client_id:client_secret`) and body `grant_type=client_credentials`. Reddit returns a `~24h` bearer token.
+2. Subsequent feed fetches hit `https://oauth.reddit.com/r/<sub>/new?limit=25` with `Authorization: Bearer <token>`.
 
-**Long-term fix** (if/when OQ1 lands on "keep this feed"): switch to OAuth-authenticated Reddit API access. Adds three more secrets (`REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USER_AGENT`) and ~30 lines of code in `pipeline/src/fetch.ts`. Out of scope for the MVP.
+If `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` are missing or invalid when a `reddit-json` feed is enabled, the orchestrator logs `reddit_auth_failed` as a `::warning::` and the affected Reddit feeds fail individually with `FeedFetchError 401` — same non-fatal per-feed contract (Assumption A14, AC6) as any other feed failure. HN / Wired / Verge are unaffected and the run still succeeds.
+
+Token acquisition lives in `pipeline/src/reddit-auth.ts`; the env-var read is conditional and lives in `readRedditCreds` (`pipeline/src/env.ts`).
 
 ### Azure OpenAI cost estimate
 
@@ -152,11 +175,12 @@ The pipeline runs on `ubuntu-latest` with `timeout-minutes: 10`. Typical wall-cl
 
 ## 6. Where these credentials live in the codebase
 
-For traceability, the four secrets are referenced by name in exactly two places:
+For traceability, the six secrets are referenced by name in exactly two places each:
 
-| Location | Line | Purpose |
-|---|---|---|
-| `.github/workflows/rss-triage.yml` | `env:` block of the **Run RSS triage pipeline** step | Passes the secrets from GitHub into the Node child process as environment variables. |
-| `pipeline/src/env.ts` | `readEnv()` function | Reads the four `AZURE_OPENAI_*` env vars; throws `MissingEnvVarError` on the first missing/empty value. |
+| Location | Purpose |
+|---|---|
+| `.github/workflows/rss-triage.yml` `env:` block of the **Run RSS triage pipeline** step | Passes the secrets from GitHub into the Node child process as environment variables. |
+| `pipeline/src/env.ts` `readEnv()` | Reads the four `AZURE_OPENAI_*` env vars; throws `MissingEnvVarError` on the first missing/empty value. |
+| `pipeline/src/env.ts` `readRedditCreds()` | Reads `REDDIT_CLIENT_ID` + `REDDIT_CLIENT_SECRET`. Called only when a `reddit-json` feed is enabled. |
 
-Anywhere else they appear (test fixtures, mocks, docs) is non-load-bearing. If you grep the codebase and find a fifth reference, that is a bug — please open an issue.
+Anywhere else they appear (test fixtures, mocks, docs) is non-load-bearing. If you grep the codebase and find another reference, that is a bug — please open an issue.

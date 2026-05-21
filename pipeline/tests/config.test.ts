@@ -41,14 +41,17 @@ describe("config.loadConfig", () => {
     expect(eligible.get("The Verge")).toBe(true);
   });
 
-  it("real seed routes Reddit feeds through the JSON parser (DECISIONS 2026-05-21)", async () => {
+  it("real seed assigns a valid type discriminator to every feed", async () => {
+    // DECISIONS 2026-05-21 added the `type` field; Reddit feeds were briefly
+    // wired to `reddit-json` then reverted to `rss` when Reddit's app-creation
+    // captcha blocked the OAuth path. The OAuth code stays in the repo ready
+    // to reactivate via config flip. This test asserts only the contract
+    // (every feed has a valid type), not the current routing.
     const sources = await loadConfig(REPO_CONFIG);
-    const byName = new Map(sources.map((s) => [s.name, s]));
-    expect(byName.get("r/ClaudeAI")?.type).toBe("reddit-json");
-    expect(byName.get("r/ClaudeCode")?.type).toBe("reddit-json");
-    expect(byName.get("Hacker News frontpage")?.type).toBe("rss");
-    expect(byName.get("Wired AI")?.type).toBe("rss");
-    expect(byName.get("The Verge")?.type).toBe("rss");
+    const VALID = new Set(["rss", "reddit-json"]);
+    for (const s of sources) {
+      expect(VALID.has(s.type)).toBe(true);
+    }
   });
 
   it("loads the valid fixture file with both enabled and disabled entries", async () => {
