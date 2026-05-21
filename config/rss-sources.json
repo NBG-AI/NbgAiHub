@@ -1,14 +1,14 @@
 [
   {
     "name": "r/ClaudeAI",
-    "url": "https://www.reddit.com/r/ClaudeAI/new.json?limit=25",
+    "url": "https://old.reddit.com/r/ClaudeAI/new.json?limit=25",
     "type": "reddit-json",
     "enabled": true,
     "auto_promote_eligible": true
   },
   {
     "name": "r/ClaudeCode",
-    "url": "https://www.reddit.com/r/ClaudeCode/new.json?limit=25",
+    "url": "https://old.reddit.com/r/ClaudeCode/new.json?limit=25",
     "type": "reddit-json",
     "enabled": true,
     "auto_promote_eligible": true
