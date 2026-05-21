@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { fetchFeedXml, FeedFetchError } from "../src/fetch.js";
+import { fetchFeedXml, FeedFetchError, FEED_USER_AGENT } from "../src/fetch.js";
 
 function okResponse(body: string): Response {
   return new Response(body, {
@@ -59,5 +59,16 @@ describe("fetch.fetchFeedXml", () => {
     );
     // Just ensure the call is made; the signal is passed via init.
     expect(fakeFetch).toHaveBeenCalled();
+  });
+
+  // Reddit's /new.json 403s unauthenticated requests with no UA (or a
+  // generic UA). DECISIONS 2026-05-21: send a descriptive UA on every call.
+  it("sends a descriptive User-Agent on every request", async () => {
+    const fakeFetch = vi.fn(async (_url, _init) => okResponse("<x/>"));
+    await fetchFeedXml("https://example.com/x.xml", fakeFetch as unknown as typeof fetch);
+    const init = fakeFetch.mock.calls[0]?.[1] as RequestInit | undefined;
+    const headers = init?.headers as Record<string, string> | undefined;
+    expect(headers?.["User-Agent"]).toBe(FEED_USER_AGENT);
+    expect(FEED_USER_AGENT).toContain("NbgAiHub");
   });
 });
