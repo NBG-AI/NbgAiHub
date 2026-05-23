@@ -1,0 +1,113 @@
+---
+/**
+ * Chip.astro — Tag chip with optional selected + interactive modes.
+ *
+ * Purpose: Replaces legacy .topic-chip. Three render modes:
+ *   - inert label   → <span>
+ *   - linked tag    → <a href>
+ *   - selectable    → <button aria-pressed>
+ *
+ * Related: project-design.md §S.13.2.4 + §S.13.5.10.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Tag = 'span' | 'a' | 'button';
+
+interface Props {
+  selected?: boolean;
+  interactive?: boolean;
+  href?: string;
+  as?: Tag;
+  type?: 'button' | 'submit' | 'reset';
+  'aria-label'?: string;
+}
+
+const {
+  selected = false,
+  interactive = false,
+  href,
+  as,
+  type,
+  'aria-label': ariaLabel,
+} = Astro.props;
+
+// Auto-resolve the element type when `as` is not provided.
+let resolved: Tag;
+if (as) {
+  resolved = as;
+} else if (interactive) {
+  resolved = 'button';
+} else if (href) {
+  resolved = 'a';
+} else {
+  resolved = 'span';
+}
+const Tag: Tag = resolved;
+
+const isButton = Tag === 'button';
+const isAnchor = Tag === 'a';
+---
+<Tag
+  class="nbg-chip"
+  data-selected={String(selected)}
+  aria-label={ariaLabel}
+  {...(isButton ? { type: type ?? 'button', 'aria-pressed': (selected ? 'true' : 'false') as 'true' | 'false' } : {})}
+  {...(isAnchor && href ? { href } : {})}
+>
+  <slot />
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-chip {
+      --nbg-chip-bg:              var(--nbg-color-bg-surface);
+      --nbg-chip-bg-hover:        var(--nbg-color-bg-surface-hover);
+      --nbg-chip-bg-selected:     var(--nbg-color-accent-bg);
+      --nbg-chip-fg:              var(--nbg-color-fg-secondary);
+      --nbg-chip-fg-selected:     var(--nbg-color-accent-fg);
+      --nbg-chip-border:          var(--nbg-color-border-subtle);
+      --nbg-chip-border-selected: var(--nbg-color-accent);
+      --nbg-chip-radius:          var(--nbg-r-pill);
+
+      display: inline-flex;
+      align-items: center;
+      gap: var(--nbg-sp-1);
+      padding: var(--nbg-sp-1) var(--nbg-sp-3);
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-xs);
+      font-weight: var(--nbg-fw-medium);
+      line-height: 1.3;
+      background: var(--nbg-chip-bg);
+      color: var(--nbg-chip-fg);
+      border: 1px solid var(--nbg-chip-border);
+      border-radius: var(--nbg-chip-radius);
+      text-decoration: none;
+      cursor: default;
+      transition:
+        background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        color            var(--nbg-dur-fast) var(--nbg-ease-out),
+        border-color     var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    a.nbg-chip,
+    button.nbg-chip {
+      cursor: pointer;
+    }
+    a.nbg-chip:hover,
+    button.nbg-chip:hover {
+      background: var(--nbg-chip-bg-hover);
+      color: var(--nbg-color-fg-primary);
+    }
+    .nbg-chip[data-selected='true'] {
+      background: var(--nbg-chip-bg-selected);
+      color: var(--nbg-chip-fg-selected);
+      border-color: var(--nbg-chip-border-selected);
+    }
+    .nbg-chip:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
+    /* Strip default button background — we manage our own */
+    button.nbg-chip {
+      font-family: inherit;
+    }
+  }
+</style>

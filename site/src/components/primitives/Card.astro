@@ -1,0 +1,139 @@
+---
+/**
+ * Card.astro — Generic card primitive with four variants.
+ *
+ * Purpose: Consumed by SkillCard, NewsPanel/NewsList cards, my-pins panels,
+ * glossary terms, contribute CTA cards.
+ *
+ * Variants:
+ *   feature — lead card; accent outline, larger shadow, accent glow on hover.
+ *   content — standard card; bg-surface, subtle border, sm shadow.
+ *   link    — clickable card; renders as <a> when `href` is provided.
+ *   stat    — numeric callout; subtle bg, large numeric content.
+ *
+ * Related: project-design.md §S.13.2.4 + §S.13.5.7.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Variant = 'feature' | 'content' | 'link' | 'stat';
+type Tag = 'article' | 'div' | 'a' | 'li';
+
+interface Props {
+  variant?: Variant;
+  as?: Tag;
+  href?: string;
+  target?: '_blank' | '_self';
+  rel?: string;
+}
+
+const { variant = 'content', as, href, target, rel } = Astro.props;
+
+// If href provided and `as` not explicitly set, render as <a>.
+const Tag: Tag = (as ?? (href ? 'a' : 'article')) as Tag;
+
+const hasHeader = Astro.slots.has('header');
+const hasFooter = Astro.slots.has('footer');
+const hasMedia  = Astro.slots.has('media');
+---
+<Tag
+  class="nbg-card"
+  data-variant={variant}
+  {...(href ? { href, target, rel } : {})}
+>
+  {hasMedia && <div class="nbg-card__media"><slot name="media" /></div>}
+  {hasHeader && <header class="nbg-card__header"><slot name="header" /></header>}
+  <div class="nbg-card__body"><slot /></div>
+  {hasFooter && <footer class="nbg-card__footer"><slot name="footer" /></footer>}
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-card {
+      --nbg-card-bg:              var(--nbg-color-bg-surface);
+      --nbg-card-bg-hover:        var(--nbg-color-bg-surface-hover);
+      --nbg-card-fg:              var(--nbg-color-fg-primary);
+      --nbg-card-border:          var(--nbg-color-border-subtle);
+      --nbg-card-border-hover:    var(--nbg-color-border-default);
+      --nbg-card-radius:          var(--nbg-r-lg);
+      --nbg-card-padding:         var(--nbg-sp-6);
+      --nbg-card-shadow:          var(--nbg-sh-sm);
+      --nbg-card-shadow-hover:    var(--nbg-sh-md);
+      --nbg-card-feature-outline: var(--nbg-color-accent);
+      --nbg-card-feature-shadow:  var(--nbg-sh-lg);
+
+      container-type: inline-size;
+      container-name: nbg-card;
+
+      display: flex;
+      flex-direction: column;
+      gap: var(--nbg-sp-3);
+      background: var(--nbg-card-bg);
+      color: var(--nbg-card-fg);
+      border: 1px solid var(--nbg-card-border);
+      border-radius: var(--nbg-card-radius);
+      padding: var(--nbg-card-padding);
+      box-shadow: var(--nbg-card-shadow);
+      text-decoration: none;
+      transition:
+        background-color var(--nbg-dur-base) var(--nbg-ease-out),
+        border-color     var(--nbg-dur-base) var(--nbg-ease-out),
+        box-shadow       var(--nbg-dur-base) var(--nbg-ease-out),
+        transform        var(--nbg-dur-base) var(--nbg-ease-out);
+    }
+
+    /* Variant — feature: lead card */
+    .nbg-card[data-variant='feature'] {
+      border-color: var(--nbg-card-feature-outline);
+      box-shadow: var(--nbg-card-feature-shadow);
+    }
+
+    /* Variant — stat: subtle numeric callout */
+    .nbg-card[data-variant='stat'] {
+      background: var(--nbg-color-bg-page);
+      padding: var(--nbg-sp-4);
+    }
+
+    /* Variant — link: interactive card */
+    .nbg-card[data-variant='link'],
+    a.nbg-card {
+      cursor: pointer;
+    }
+    .nbg-card[data-variant='link']:hover,
+    a.nbg-card:hover,
+    .nbg-card[data-variant='feature']:hover {
+      background: var(--nbg-card-bg-hover);
+      border-color: var(--nbg-card-border-hover);
+      box-shadow: var(--nbg-card-shadow-hover);
+      transform: translateY(-2px);
+    }
+    .nbg-card[data-variant='feature']:hover {
+      box-shadow: var(--nbg-card-feature-shadow), var(--nbg-color-accent-glow);
+    }
+
+    /* Focus visibility — single source of truth */
+    .nbg-card[data-variant='link']:focus-visible,
+    a.nbg-card:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
+
+    .nbg-card__header {
+      display: contents;
+    }
+    .nbg-card__body {
+      display: flex;
+      flex-direction: column;
+      gap: var(--nbg-sp-2);
+      min-width: 0;
+    }
+    .nbg-card__footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--nbg-sp-2);
+      margin-top: auto;
+    }
+    .nbg-card__media {
+      overflow: hidden;
+      border-radius: var(--nbg-r-md);
+    }
+  }
+</style>

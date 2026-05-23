@@ -4,216 +4,28 @@
 // Replaces Starlight 0.39's `SocialIcons` slot (per investigation R6 — we
 // override the slot, NOT the whole Header) to host the sign-in affordance.
 //
-// Both states (anonymous + signed-in) are rendered server-side; a small
-// client-side `<script>` reads `localStorage` via the auth module and toggles
-// `[hidden]` to pick the right one. The SignInModal is mounted from this
-// same component so it ships with the header on every page.
+// Scope after the 2026-05-19 unified-header refactor: this file is used
+// ONLY on non-splash (content-detail) pages, where Starlight's default
+// Header renders. On splash pages, the SplashAwareHeader override takes
+// over and renders AuthControls + SignInModal directly inside the unified
+// nbg-topnav — SocialIcons is never rendered there.
 //
-// Graceful degradation: if `auth.readToken()` throws (no localStorage) or
-// returns null, we keep the anonymous state visible and never throw.
+// This component is intentionally a thin wrapper now: AuthControls handles
+// the Sign in XOR chip render + JS, and SignInModal mounts the dialog. The
+// only reason this file still exists is that Starlight's component override
+// map needs a single .astro file at the `SocialIcons` slot.
+//
+// Related: project-design.md §S.13.6.1.
+import AuthControls from './AuthControls.astro';
 import SignInModal from './SignInModal.astro';
+
+const { entry } = Astro.locals.starlightRoute;
+const isSplash = entry.data.template === 'splash';
 ---
 
-<div class="nbg-auth" data-nbg-auth-root>
-  <!-- Anonymous state -->
-  <button
-    type="button"
-    class="nbg-auth__signin"
-    data-nbg-auth-signin
-    aria-label="Sign in to pin items"
-  >
-    <svg
-      aria-hidden="true"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-      <polyline points="10 17 15 12 10 7" />
-      <line x1="15" y1="12" x2="3" y2="12" />
-    </svg>
-    <span>Sign in</span>
-  </button>
-
-  <!-- Signed-in state (hidden by default; script flips on read) -->
-  <div class="nbg-auth__chip" data-nbg-auth-chip hidden>
-    <img
-      class="nbg-auth__avatar"
-      data-nbg-auth-avatar
-      alt=""
-      width="22"
-      height="22"
-    />
-    <span class="nbg-auth__login" data-nbg-auth-login></span>
-    <button
-      type="button"
-      class="nbg-auth__signout"
-      data-nbg-auth-signout
-      aria-label="Sign out"
-      title="Sign out"
-    >
-      Sign out
-    </button>
-  </div>
-</div>
-
-<SignInModal />
-
-<style>
-  .nbg-auth {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.85rem;
-  }
-
-  .nbg-auth__signin {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.35rem 0.7rem;
-    border-radius: 0.35rem;
-    border: 1px solid var(--sl-color-gray-5);
-    background: transparent;
-    color: var(--sl-color-text);
-    cursor: pointer;
-    font: inherit;
-    line-height: 1;
-  }
-  .nbg-auth__signin:hover {
-    background: var(--sl-color-gray-6);
-    color: var(--sl-color-text-accent);
-  }
-  .nbg-auth__signin:focus-visible {
-    outline: 2px solid var(--sl-color-accent);
-    outline-offset: 2px;
-  }
-
-  .nbg-auth__chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.2rem 0.55rem 0.2rem 0.25rem;
-    border-radius: 999px;
-    border: 1px solid var(--sl-color-gray-5);
-    background: var(--sl-color-gray-6);
-    color: var(--sl-color-text);
-  }
-
-  .nbg-auth__avatar {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    display: block;
-    background: var(--sl-color-gray-5);
-  }
-
-  .nbg-auth__login {
-    font-weight: 600;
-    line-height: 1;
-  }
-
-  .nbg-auth__signout {
-    margin-left: 0.25rem;
-    padding: 0.15rem 0.45rem;
-    border-radius: 0.25rem;
-    border: 1px solid transparent;
-    background: transparent;
-    color: var(--sl-color-text);
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.75rem;
-    line-height: 1;
-    opacity: 0.85;
-  }
-  .nbg-auth__signout:hover {
-    border-color: var(--sl-color-gray-5);
-    opacity: 1;
-  }
-  .nbg-auth__signout:focus-visible {
-    outline: 2px solid var(--sl-color-accent);
-    outline-offset: 2px;
-  }
-</style>
-
-<script>
-  // Bundled by Vite as a client module — import from the auth lib works here.
-  import { readToken, signOut, subscribe } from '../lib/auth.ts';
-
-  type Refs = {
-    root: HTMLElement;
-    signinBtn: HTMLButtonElement;
-    chip: HTMLElement;
-    avatar: HTMLImageElement;
-    login: HTMLElement;
-    signoutBtn: HTMLButtonElement;
-  };
-
-  function collect(root: HTMLElement): Refs | null {
-    const signinBtn = root.querySelector<HTMLButtonElement>('[data-nbg-auth-signin]');
-    const chip = root.querySelector<HTMLElement>('[data-nbg-auth-chip]');
-    const avatar = root.querySelector<HTMLImageElement>('[data-nbg-auth-avatar]');
-    const login = root.querySelector<HTMLElement>('[data-nbg-auth-login]');
-    const signoutBtn = root.querySelector<HTMLButtonElement>('[data-nbg-auth-signout]');
-    if (!signinBtn || !chip || !avatar || !login || !signoutBtn) return null;
-    return { root, signinBtn, chip, avatar, login, signoutBtn };
-  }
-
-  function render(refs: Refs): void {
-    let state: ReturnType<typeof readToken> = null;
-    try {
-      state = readToken();
-    } catch {
-      // localStorage unavailable — keep anonymous state, no throw.
-      state = null;
-    }
-    if (state === null) {
-      refs.signinBtn.hidden = false;
-      refs.chip.hidden = true;
-      refs.avatar.removeAttribute('src');
-      refs.login.textContent = '';
-    } else {
-      refs.signinBtn.hidden = true;
-      refs.chip.hidden = false;
-      refs.avatar.src = state.user.avatar_url;
-      refs.avatar.alt = `@${state.user.login} avatar`;
-      refs.login.textContent = `@${state.user.login}`;
-    }
-  }
-
-  function init(): void {
-    const root = document.querySelector<HTMLElement>('[data-nbg-auth-root]');
-    if (!root) return;
-    const refs = collect(root);
-    if (!refs) return;
-
-    refs.signinBtn.addEventListener('click', () => {
-      document.dispatchEvent(new CustomEvent('nbgaihub:open-signin-modal'));
-    });
-
-    refs.signoutBtn.addEventListener('click', () => {
-      try {
-        signOut();
-      } catch {
-        // Storage unavailable — nothing to clear. Fall through to re-render.
-      }
-      render(refs);
-    });
-
-    // Re-render on any auth state change (signIn from modal, signOut from chip).
-    subscribe(() => render(refs));
-
-    render(refs);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init, { once: true });
-  } else {
-    init();
-  }
-</script>
+{!isSplash && (
+  <>
+    <AuthControls />
+    <SignInModal />
+  </>
+)}

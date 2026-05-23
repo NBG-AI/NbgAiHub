@@ -1,6 +1,20 @@
 ---
-// HomeHero.astro — Splash-page hero with title, tagline, and two CTAs.
-// See project-design.md §S.3.1.
+// HomeHero.astro — Legacy splash-page hero with title, tagline, and two CTAs.
+// See project-design.md §S.13.12 (migration contract).
+//
+// @deprecated — superseded by the new homepage hero composed inline in
+// index.mdx (P4.E) using primitives (Eyebrow, Display, Lede, Button,
+// HomeStats). The centered single-column-with-two-CTAs pattern is
+// exactly what AC5 of the redesign forbids. Wave 3 will delete this file.
+//
+// Restyled to token-driven CSS (no flat hex colors) so any residual
+// consumer still renders coherently while the migration completes.
+
+import Display from './primitives/Display.astro';
+import Lede from './primitives/Lede.astro';
+import Cluster from './primitives/Cluster.astro';
+import Stack from './primitives/Stack.astro';
+import Button from './primitives/Button.astro';
 
 interface CtaLink {
   label: string;
@@ -22,17 +36,22 @@ const {
 } = Astro.props;
 ---
 
-<section class="home-hero not-content">
-  <h1>{title}</h1>
-  <p class="home-hero__tagline">{tagline}</p>
-  <div class="home-hero__cta-row">
-    <a
-      class="home-hero__cta home-hero__cta--primary"
-      href={ctaPrimary.href}>{ctaPrimary.label}</a
-    >
-    <a
-      class="home-hero__cta home-hero__cta--secondary"
-      href={ctaSecondary.href}>{ctaSecondary.label}</a
-    >
-  </div>
+<section class="home-hero-deprecated not-content" data-deprecated="HomeHero">
+  <Stack gap="6" align="center">
+    <Display level={1} size="lg">{title}</Display>
+    <Lede>{tagline}</Lede>
+    <Cluster gap="3" justify="center">
+      <Button variant="primary" size="lg" href={ctaPrimary.href}>{ctaPrimary.label}</Button>
+      <Button variant="secondary" size="lg" href={ctaSecondary.href}>{ctaSecondary.label}</Button>
+    </Cluster>
+  </Stack>
 </section>
+
+<style>
+  @layer nbg.components {
+    .home-hero-deprecated {
+      padding-block: var(--nbg-sp-12) var(--nbg-sp-8);
+      text-align: center;
+    }
+  }
+</style>

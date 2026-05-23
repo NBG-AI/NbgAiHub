@@ -38,39 +38,61 @@ const { type, slug } = Astro.props;
 </button>
 
 <style>
-  .nbg-pin {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.2rem 0.5rem;
-    border-radius: 0.3rem;
-    border: 1px solid var(--sl-color-gray-5);
-    background: transparent;
-    color: var(--sl-color-text);
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.8rem;
-    line-height: 1;
-  }
-  .nbg-pin:hover {
-    background: var(--sl-color-gray-6);
-    color: var(--sl-color-text-accent);
-  }
-  .nbg-pin:focus-visible {
-    outline: 2px solid var(--sl-color-accent);
-    outline-offset: 2px;
-  }
-  .nbg-pin[aria-pressed='true'] {
-    border-color: var(--sl-color-accent);
-    background: var(--sl-color-gray-6);
-    color: var(--sl-color-text-accent);
-  }
-  .nbg-pin[disabled] {
-    opacity: 0.6;
-    cursor: progress;
-  }
-  .nbg-pin__icon {
-    font-size: 0.85rem;
+  /* P4.I restyle — tokens drive everything; pressed state gets an accent
+   * halo. Script-driven attributes (data-pin-type, data-pin-slug, aria-pressed,
+   * aria-label) and DOM selectors (.nbg-pin, .nbg-pin__icon, .nbg-pin__label)
+   * are preserved bit-for-bit (AC23). Visual surface mirrors Button "ghost". */
+  @layer nbg.components {
+    .nbg-pin {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--nbg-sp-1);
+      padding: var(--nbg-sp-1) var(--nbg-sp-2);
+      border-radius: var(--nbg-r-md);
+      border: 1px solid var(--nbg-color-border-subtle);
+      background: transparent;
+      color: var(--nbg-color-fg-secondary);
+      cursor: pointer;
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-xs);
+      font-weight: var(--nbg-fw-medium);
+      line-height: 1.2;
+      transition:
+        background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        color            var(--nbg-dur-fast) var(--nbg-ease-out),
+        border-color     var(--nbg-dur-fast) var(--nbg-ease-out),
+        box-shadow       var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-pin:hover {
+      background: var(--nbg-color-bg-surface-hover);
+      color: var(--nbg-color-fg-primary);
+      border-color: var(--nbg-color-border-default);
+    }
+    .nbg-pin:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
+    .nbg-pin[aria-pressed='true'] {
+      background: var(--nbg-color-accent-bg);
+      color: var(--nbg-color-accent-fg);
+      border-color: var(--nbg-color-accent);
+      /* P7 code-review fix: replaced ad-hoc hsl(265 85% 60% / 0.25) glow
+       * literal with the design's accent-glow token. Same look, single
+       * source of truth, light-mode-aware. */
+      box-shadow: var(--nbg-color-accent-glow);
+    }
+    .nbg-pin[aria-pressed='true']:hover {
+      background: var(--nbg-color-accent-bg);
+      color: var(--nbg-color-accent);
+    }
+    .nbg-pin[disabled] {
+      opacity: 0.6;
+      cursor: progress;
+    }
+    .nbg-pin__icon {
+      font-size: var(--nbg-fs-sm);
+      line-height: 1;
+    }
   }
 </style>
 

@@ -1,11 +1,233 @@
 ---
-import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+/**
+ * /start-here/week-1 — Opinionated "still drafting" surface.
+ *
+ * Composition: MarketingShell hero (Eyebrow + Display + Lede) + a grid of
+ * planned-topic Card variant="link" items (currently inert — anchored to
+ * the existing surface that covers each topic today) + a ghost Button
+ * back to /start-here/day-1/. No centered "Coming soon" + stub button
+ * (AC7 explicitly forbids that pattern).
+ *
+ * Tone: "what I wish I knew a year ago" — explain what week-1 will become
+ * and why it matters, point readers at Day 1 as the canonical onboarding
+ * for now. No hedging, no apology.
+ *
+ * Related: project-design.md §S.13.10.3, plan-004 §P4.G.
+ * Backs: AC7.
+ */
+import MarketingShell from '../../components/MarketingShell.astro';
+import Section from '../../components/primitives/Section.astro';
+import Stack from '../../components/primitives/Stack.astro';
+import Cluster from '../../components/primitives/Cluster.astro';
+import Grid from '../../components/primitives/Grid.astro';
+import Card from '../../components/primitives/Card.astro';
+import Eyebrow from '../../components/primitives/Eyebrow.astro';
+import Display from '../../components/primitives/Display.astro';
+import Lede from '../../components/primitives/Lede.astro';
+import Badge from '../../components/primitives/Badge.astro';
+import Button from '../../components/primitives/Button.astro';
+import MotionReveal from '../../components/primitives/MotionReveal.astro';
+
+interface PlannedTopic {
+  eyebrow: string;
+  title: string;
+  body: string;
+  href: string;
+  cta: string;
+}
+
+const plannedTopics: PlannedTopic[] = [
+  {
+    eyebrow: 'Foundations',
+    title: 'Repo-wide CLAUDE.md',
+    body: "Day 1 showed you the personal CLAUDE.md. Week 1 is when you co-author the project-level one — the rules everyone on the repo inherits.",
+    href: '/glossary/#claudemd',
+    cta: 'See the term →',
+  },
+  {
+    eyebrow: 'Workflow',
+    title: 'GSD workflows',
+    body: "Get-Stuff-Done — the team's phase-based workflow. By the end of week 1 you should have driven a small change through plan → execute → verify.",
+    href: '/glossary/#gsd',
+    cta: 'What GSD is →',
+  },
+  {
+    eyebrow: 'Shipping',
+    title: 'Your first proper feature',
+    body: 'Stop using Claude for toy tasks. Pick something on the actual backlog — small but real — and let the workflow carry you.',
+    href: '/skills/',
+    cta: 'Skills that help →',
+  },
+  {
+    eyebrow: 'Discipline',
+    title: 'Reviewing AI output',
+    body: "Trust nothing on first pass. By week's end you should know the three review traps every newcomer falls into (and the prompt that prevents them).",
+    href: '/tips/',
+    cta: 'Browse tips →',
+  },
+  {
+    eyebrow: 'Reflexes',
+    title: 'Survival keys, deeper',
+    body: "Esc you already know. Esc Esc, /compact, /clear, screenshot Ctrl-V — internalise the muscle memory so you stop losing minutes to friction.",
+    href: '/tips/',
+    cta: 'Survival tips →',
+  },
+  {
+    eyebrow: 'Community',
+    title: 'Where to ask',
+    body: 'Every newcomer hits the same walls in their first week. Knowing which channel to ask in — and how to ask — saves hours.',
+    href: '/contribute/',
+    cta: 'How we contribute →',
+  },
+];
 ---
 
-<StarlightPage frontmatter={{ title: 'Start Here — Week 1' }}>
-  <p>Week 1 — coming soon.</p>
-  <p>
-    In the meantime, do <a href="/start-here/day-1/">Day 1</a> and then poke
-    around the <a href="/skills/">Skills</a> catalog.
-  </p>
-</StarlightPage>
+<MarketingShell
+  title="Week 1"
+  description="The week-1 onboarding journey is still drafting — here's what's coming and where to look in the meantime."
+  surfaceId="week-1"
+  width="wide"
+>
+  <Stack slot="hero" gap="6">
+    <Cluster gap="3" align="center">
+      <Eyebrow tone="accent">Week 1</Eyebrow>
+      <Badge tone="beginner">beginner</Badge>
+    </Cluster>
+    <Display level={1} size="lg">Still drafting.</Display>
+    <Lede size="sm">
+      Day 1 is the canonical onboarding for now. Week 1 will pick up where
+      it leaves off — the project-level CLAUDE.md, your first real feature,
+      the GSD workflow, and the small habits that compound over a year of
+      working with Claude Code. Until it's written, each topic below
+      already has somewhere on this hub that covers most of the ground.
+    </Lede>
+    <Cluster gap="3" align="center">
+      <Button variant="primary" size="md" href="/start-here/day-1/">
+        Day 1 first →
+      </Button>
+      <Button variant="ghost" size="md" href="/contribute/">
+        Help write Week 1
+      </Button>
+    </Cluster>
+  </Stack>
+
+  <Stack gap="12">
+    <Section spacing="default" surfaceId="week-1-topics">
+      <Stack gap="6">
+        <Stack gap="3">
+          <Eyebrow tone="accent">What's coming</Eyebrow>
+          <Display level={2} size="sm">Six topics, in roughly this order.</Display>
+          <Lede size="sm">
+            None of these are written up as proper journey steps yet — but
+            the underlying material exists. Each card points to the closest
+            thing on the hub today.
+          </Lede>
+        </Stack>
+
+        <Grid columns="auto-fit" min="20rem" gap="6">
+          {plannedTopics.map((topic) => (
+            <MotionReveal>
+              <Card variant="link" href={topic.href}>
+                <Stack slot="header" gap="2">
+                  <Cluster gap="2" align="center">
+                    <Eyebrow>{topic.eyebrow}</Eyebrow>
+                    <Badge tone="neutral">Planned</Badge>
+                  </Cluster>
+                  <h3 class="week1-topic__title">{topic.title}</h3>
+                </Stack>
+                <p class="week1-topic__body">{topic.body}</p>
+                <Cluster slot="footer" gap="2" align="center">
+                  <span class="week1-topic__cta">{topic.cta}</span>
+                </Cluster>
+              </Card>
+            </MotionReveal>
+          ))}
+        </Grid>
+      </Stack>
+    </Section>
+
+    <Section spacing="default" surfaceId="week-1-meanwhile" tone="subtle">
+      <Stack gap="6">
+        <Stack gap="3">
+          <Eyebrow tone="accent">Meanwhile</Eyebrow>
+          <Display level={2} size="sm">Three things worth doing this week.</Display>
+          <Lede size="sm">
+            If you finished Day 1, don't sit waiting for Week 1 to ship —
+            here's the leanest sequence to keep the momentum.
+          </Lede>
+        </Stack>
+        <ol class="week1-list">
+          <li>
+            <strong>Re-read your project's <code>CLAUDE.md</code>.</strong> Once.
+            Then keep it open in a tab. Add to it the first time you correct
+            Claude on the same thing twice.
+          </li>
+          <li>
+            <strong>Run <code>/team</code> on one small task.</strong> Fix a
+            bug, add a small feature. See the multi-agent workflow end-to-end
+            on something low-stakes.
+          </li>
+          <li>
+            <strong>Pin three things on this hub.</strong> Anything you'll
+            re-open in week two — a tip, a skill, a glossary term. Sign in,
+            click the pin, move on.
+          </li>
+        </ol>
+        <Cluster gap="3" align="center">
+          <Button variant="secondary" size="md" href="/my-pins/">
+            Your pins
+          </Button>
+          <Button variant="ghost" size="md" href="/start-here/day-1/">
+            ← Back to Day 1
+          </Button>
+        </Cluster>
+      </Stack>
+    </Section>
+  </Stack>
+</MarketingShell>
+
+<style>
+  @layer nbg.components {
+    .week1-topic__title {
+      margin: 0;
+      font-family: var(--nbg-type-display);
+      font-size: var(--nbg-fs-display-sm);
+      font-weight: var(--nbg-fw-semibold);
+      letter-spacing: var(--nbg-ls-tight);
+      color: var(--nbg-color-fg-primary);
+      text-wrap: balance;
+    }
+    .week1-topic__body {
+      margin: 0;
+      color: var(--nbg-color-fg-secondary);
+      font-size: var(--nbg-fs-md);
+      line-height: var(--nbg-lh-base);
+    }
+    .week1-topic__cta {
+      font-family: var(--nbg-type-mono);
+      font-size: var(--nbg-fs-sm);
+      letter-spacing: var(--nbg-ls-wide);
+      color: var(--nbg-color-link);
+    }
+
+    .week1-list {
+      margin: 0;
+      padding-left: var(--nbg-sp-5);
+      color: var(--nbg-color-fg-primary);
+      font-size: var(--nbg-fs-md);
+      line-height: var(--nbg-lh-relaxed);
+      max-width: 64ch;
+    }
+    .week1-list li + li {
+      margin-top: var(--nbg-sp-3);
+    }
+    .week1-list code {
+      font-family: var(--nbg-type-mono);
+      font-size: 0.95em;
+      background: var(--nbg-color-bg-surface);
+      padding: 0.1em 0.35em;
+      border-radius: var(--nbg-r-sm);
+      border: 1px solid var(--nbg-color-border-subtle);
+    }
+  }
+</style>

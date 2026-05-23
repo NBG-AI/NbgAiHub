@@ -1,46 +1,169 @@
 ---
 // NewsList.astro — Full news list for /news/.
-// See project-design.md §S.3.3.
+// See project-design.md §S.3.3 + §S.13.5.7.
+//
+// Public API preserved: no props. `getRecentNews()` call unchanged.
+// Internally composes <Card variant="feature"> for the lead item +
+// <Card variant="content"> for the rest in a magazine-style list.
 
+import Card from './primitives/Card.astro';
+import Stack from './primitives/Stack.astro';
+import Cluster from './primitives/Cluster.astro';
+import Chip from './primitives/Chip.astro';
+import Eyebrow from './primitives/Eyebrow.astro';
 import AudienceBadge from './AudienceBadge.astro';
 import ConfidenceChip from './ConfidenceChip.astro';
 import PinButton from './PinButton.astro';
 import { getRecentNews } from '../lib/news.ts';
 
 const items = await getRecentNews();
+const [lead, ...rest] = items;
 ---
 
 {items.length === 0 ? (
-  <p class="empty-state">
-    No items yet. See <a href="/contribute/">Contribute</a> for how to add one.
-  </p>
+  <Card variant="content">
+    <p class="news-list__empty">
+      No items yet. See <a href="/contribute/">Contribute</a> for how to add one.
+    </p>
+  </Card>
 ) : (
-  <div class="news-card-grid">
-    {items.map((item) => (
+  <div class="news-list" data-news-list>
+    {lead && (
       <article
-        class="news-card"
-        data-audience={item.data.audience}
-        data-topics={item.data.topics.join(',')}
+        class="news-list__item news-list__item--lead"
+        data-audience={lead.data.audience}
+        data-topics={lead.data.topics.join(',')}
       >
-        <h3>
-          <a href={`/news/${item.id}/`}>{item.data.title}</a>
-        </h3>
-        <div class="news-card__meta">
-          <AudienceBadge audience={item.data.audience} />
-          <ConfidenceChip confidence={item.data.editor_confidence} />
-          <span class="news-card__source">{item.data.source}</span>
-          <span class="news-card__date">{item.data.authored}</span>
-        </div>
-        <PinButton type="news" slug={item.id} />
-        {item.data.topics.length > 0 && (
-          <div class="skill-card__topics">
-            {item.data.topics.map((topic) => (
-              <span class="topic-chip">{topic}</span>
-            ))}
-          </div>
-        )}
-        <p class="news-card__summary">{item.data.ai_summary}</p>
+        <Card variant="feature">
+          <Stack gap="3">
+            <Eyebrow tone="accent">Latest</Eyebrow>
+            <h3 class="news-list__title news-list__title--lead">
+              <a href={`/news/${lead.id}/`}>{lead.data.title}</a>
+            </h3>
+            <Cluster gap="2">
+              <AudienceBadge audience={lead.data.audience} />
+              <ConfidenceChip confidence={lead.data.editor_confidence} />
+              <span class="news-list__meta">{lead.data.source}</span>
+              <span class="news-list__meta">{lead.data.authored}</span>
+            </Cluster>
+            {lead.data.topics.length > 0 && (
+              <Cluster gap="2">
+                {lead.data.topics.map((topic) => (
+                  <Chip>{topic}</Chip>
+                ))}
+              </Cluster>
+            )}
+            <p class="news-list__summary news-list__summary--lead">
+              {lead.data.ai_summary}
+            </p>
+            <Cluster gap="2" justify="end">
+              <PinButton type="news" slug={lead.id} />
+            </Cluster>
+          </Stack>
+        </Card>
       </article>
-    ))}
+    )}
+
+    {rest.length > 0 && (
+      <ol class="news-list__rest" role="list">
+        {rest.map((item) => (
+          <li
+            class="news-list__item"
+            data-audience={item.data.audience}
+            data-topics={item.data.topics.join(',')}
+          >
+            <Card variant="content">
+              <Stack gap="2">
+                <h3 class="news-list__title">
+                  <a href={`/news/${item.id}/`}>{item.data.title}</a>
+                </h3>
+                <Cluster gap="2">
+                  <AudienceBadge audience={item.data.audience} />
+                  <ConfidenceChip confidence={item.data.editor_confidence} />
+                  <span class="news-list__meta">{item.data.source}</span>
+                  <span class="news-list__meta">{item.data.authored}</span>
+                </Cluster>
+                {item.data.topics.length > 0 && (
+                  <Cluster gap="2">
+                    {item.data.topics.map((topic) => (
+                      <Chip>{topic}</Chip>
+                    ))}
+                  </Cluster>
+                )}
+                <p class="news-list__summary">{item.data.ai_summary}</p>
+                <Cluster gap="2" justify="end">
+                  <PinButton type="news" slug={item.id} />
+                </Cluster>
+              </Stack>
+            </Card>
+          </li>
+        ))}
+      </ol>
+    )}
   </div>
 )}
+
+<style>
+  @layer nbg.components {
+    .news-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--nbg-sp-6);
+    }
+    .news-list__rest {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: var(--nbg-sp-5);
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 48rem) {
+      .news-list__rest {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    .news-list__item {
+      min-width: 0;
+    }
+    .news-list__title {
+      margin: 0;
+      font-family: var(--nbg-type-display);
+      font-size: var(--nbg-fs-xl);
+      font-weight: var(--nbg-fw-semibold);
+      letter-spacing: var(--nbg-ls-tight);
+      line-height: var(--nbg-lh-headline);
+      color: var(--nbg-color-fg-primary);
+    }
+    .news-list__title--lead {
+      font-size: var(--nbg-fs-2xl);
+    }
+    .news-list__title a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .news-list__title a:hover {
+      color: var(--nbg-color-link-hover);
+      text-decoration: underline;
+      text-underline-offset: 0.18em;
+    }
+    .news-list__meta {
+      color: var(--nbg-color-fg-muted);
+      font-size: var(--nbg-fs-sm);
+      font-family: var(--nbg-type-body);
+    }
+    .news-list__summary {
+      margin: 0;
+      color: var(--nbg-color-fg-secondary);
+      font-size: var(--nbg-fs-md);
+      line-height: var(--nbg-lh-relaxed);
+    }
+    .news-list__summary--lead {
+      font-size: var(--nbg-fs-lg);
+    }
+    .news-list__empty {
+      margin: 0;
+      color: var(--nbg-color-fg-secondary);
+    }
+  }
+</style>

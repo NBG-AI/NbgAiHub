@@ -1,0 +1,56 @@
+/* site/src/styles/motion.css
+ *
+ * Motion stylesheet — owns:
+ *   1. The native cross-document View Transitions at-rule (§S.13.7.3).
+ *   2. A token-driven root fade for ::view-transition-old/new(root).
+ *   3. A reduced-motion guard that disables the view-transition animation.
+ *
+ * Note: the scroll-reveal CSS contract (initial state + .is-revealed) lives
+ * inside `MotionReveal.astro`'s scoped `<style>` block per §S.13.5.15, so
+ * it does not need to be duplicated here. This file complements that
+ * primitive with the cross-page motion contract.
+ *
+ * Loaded via `customCss` in astro.config.mjs AFTER tokens/index.css so the
+ * @layer order from tokens/layers.css is in scope.
+ *
+ * Related: project-design.md §S.13.7 (Motion contract), AC22 (reduced motion).
+ */
+
+/* Native cross-document View Transitions.
+ * Falls back to a normal navigation in unsupported browsers — no broken UX.
+ * Per §S.13.7.3: no per-element `view-transition-name` morphing; only the
+ * root crossfade plays. Escalation to Astro's <ClientRouter /> is deferred
+ * unless Phase-6 evaluation flags chip-flicker as a blocker. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: nbg-view-transition-fade-out var(--nbg-dur-base) var(--nbg-ease-out);
+}
+
+::view-transition-new(root) {
+  animation: nbg-view-transition-fade-in var(--nbg-dur-base) var(--nbg-ease-out);
+}
+
+@keyframes nbg-view-transition-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes nbg-view-transition-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Reduced-motion: short-circuit the root crossfade. The duration tokens
+ * already collapse to instant under prefers-reduced-motion: reduce (per
+ * tokens/primitives.css §S.13.2.6) — this block neutralizes the animation
+ * itself for engines that don't fully honor the token collapse on
+ * pseudo-elements. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}

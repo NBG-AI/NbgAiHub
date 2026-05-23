@@ -1,0 +1,643 @@
+---
+/**
+ * SplashAwareHeader.astro
+ *
+ * Override for Starlight 0.39's `Header` component, wired in
+ * astro.config.mjs via `components: { Header: ... }`. Replaces the
+ * "two stacked nav bars" pattern (Starlight header + MarketingShell
+ * top-nav) with ONE unified nav on splash pages, while preserving
+ * Starlight's default chrome on content-detail pages.
+ *
+ * Routing logic:
+ *
+ *   const isSplash = Astro.locals.starlightRoute.entry.data.template === 'splash';
+ *
+ *   if (isSplash)
+ *     → render the unified nbg-topnav: brand + section links + Pagefind
+ *       search trigger + AuthControls (Sign in XOR chip) + ThemeSelect +
+ *       mobile drawer + SignInModal.
+ *
+ *   else (content-detail page)
+ *     → render the default Starlight Header markup verbatim. SocialIcons
+ *       resolves to SocialIconsOverride.astro which keeps AuthControls +
+ *       SignInModal mounted there.
+ *
+ * Why an override (reverses the earlier "Header override rejected as
+ * fragile" decision in §S.13.14): the override is narrow — one conditional,
+ * one DOM tree — and reuses Starlight's own Search + ThemeSelect via
+ * virtual modules, so a Starlight upgrade only breaks us if those
+ * components' *public surface* changes (rare and noisy when it does).
+ * The benefit — a single, coherent header on every marketing surface —
+ * outweighs the upgrade-fragility risk.
+ *
+ * Option-2 escape hatch (delete Starlight entirely): this file is on the
+ * rewrite list alongside MarketingShell.astro, tokens/aliases.css, and
+ * SocialIconsOverride.astro. The unified-nav branch of this file IS the
+ * post-Starlight header, so the migration mostly becomes "delete the
+ * non-splash branch + replace Search/ThemeSelect imports".
+ *
+ * Related: project-design.md §S.13.6.1 (new), §S.13.14 (decision reversal).
+ * Backs: AC31, AC32, AC33, AC34, AC36.
+ */
+import config from 'virtual:starlight/user-config';
+
+import LanguageSelect from 'virtual:starlight/components/LanguageSelect';
+import Search from 'virtual:starlight/components/Search';
+import SiteTitle from 'virtual:starlight/components/SiteTitle';
+import SocialIcons from 'virtual:starlight/components/SocialIcons';
+import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
+
+import AuthControls from './AuthControls.astro';
+import SignInModal from './SignInModal.astro';
+
+const { entry } = Astro.locals.starlightRoute;
+const isSplash = entry.data.template === 'splash';
+
+// Mirror of the gate in Starlight's own Header.astro.
+const shouldRenderSearch =
+  config.pagefind ||
+  config.components.Search !== '@astrojs/starlight/components/Search.astro';
+
+// Single source of truth for the top-nav section links on splash pages.
+// Mirrors astro.config.mjs sidebar but is intentionally flatter — splash
+// pages need a horizontal nav, not a tree. Order ranks by how often
+// newcomers reach for them.
+const navLinks = [
+  { label: 'Start Here', href: '/start-here/day-1/' },
+  { label: 'Skills',     href: '/skills/' },
+  { label: 'Tips',       href: '/tips/' },
+  { label: 'News',       href: '/news/' },
+  { label: 'Glossary',   href: '/glossary/' },
+  { label: 'Reference',  href: '/reference/' },
+  { label: 'My Pins',    href: '/my-pins/' },
+  { label: 'Contribute', href: '/contribute/' },
+] as const;
+
+const currentPath = Astro.url.pathname;
+function isCurrent(href: string): boolean {
+  if (href === '/' && currentPath === '/') return true;
+  if (href !== '/' && currentPath.startsWith(href)) return true;
+  return false;
+}
+---
+
+{isSplash ? (
+  <nav
+    class="nbg-topnav"
+    aria-label="Primary"
+    data-nbg-topnav
+  >
+    <div class="nbg-topnav__inner">
+      <a class="nbg-topnav__brand" href="/" aria-label="NBG AI Hub home">
+        <img
+          class="nbg-topnav__logo nbg-topnav__logo--light"
+          src="/brand/nbg-wordmark-blue.png"
+          alt=""
+          width="1338"
+          height="302"
+          decoding="async"
+        />
+        <img
+          class="nbg-topnav__logo nbg-topnav__logo--dark"
+          src="/brand/nbg-wordmark-white.png"
+          alt=""
+          width="1338"
+          height="302"
+          decoding="async"
+        />
+        <span class="nbg-topnav__brand-text">NBG AI Hub</span>
+      </a>
+
+      <ul class="nbg-topnav__links" role="list">
+        {navLinks.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              data-current={isCurrent(link.href) ? 'true' : undefined}
+              aria-current={isCurrent(link.href) ? 'page' : undefined}
+            >
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+
+      <div class="nbg-topnav__actions">
+        {shouldRenderSearch && (
+          <div class="nbg-topnav__search">
+            <Search />
+          </div>
+        )}
+        <AuthControls />
+        <div class="nbg-topnav__theme">
+          <ThemeSelect />
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="nbg-topnav__toggle"
+        data-nbg-topnav-toggle
+        aria-label="Open navigation menu"
+        aria-expanded="false"
+        aria-controls="nbg-topnav-drawer"
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+    </div>
+
+    <div
+      id="nbg-topnav-drawer"
+      class="nbg-topnav__drawer"
+      data-nbg-topnav-drawer
+      hidden
+    >
+      <ul role="list">
+        {navLinks.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              data-current={isCurrent(link.href) ? 'true' : undefined}
+              aria-current={isCurrent(link.href) ? 'page' : undefined}
+            >
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </nav>
+
+  <SignInModal />
+) : (
+  <div class="header">
+    <div class="title-wrapper sl-flex">
+      <SiteTitle />
+    </div>
+    <div class="sl-flex print:hidden">
+      {shouldRenderSearch && <Search />}
+    </div>
+    <div class="sl-hidden md:sl-flex print:hidden right-group">
+      <div class="sl-flex social-icons">
+        <SocialIcons />
+      </div>
+      <ThemeSelect />
+      <LanguageSelect />
+    </div>
+  </div>
+)}
+
+<script>
+  // Mobile drawer toggle for the splash unified nav. No-op on content-detail
+  // pages (the drawer DOM doesn't render there).
+  function initTopnav() {
+    const toggle = document.querySelector<HTMLButtonElement>('[data-nbg-topnav-toggle]');
+    const drawer = document.querySelector<HTMLElement>('[data-nbg-topnav-drawer]');
+    if (!toggle || !drawer) return;
+
+    function setOpen(open: boolean) {
+      toggle!.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle!.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+      if (open) {
+        drawer!.hidden = false;
+        // next frame so the CSS transition runs
+        requestAnimationFrame(() => drawer!.setAttribute('data-open', 'true'));
+      } else {
+        drawer!.removeAttribute('data-open');
+        // wait for the transition before hiding
+        setTimeout(() => { drawer!.hidden = true; }, 180);
+      }
+    }
+
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') === 'true';
+      setOpen(!open);
+    });
+    drawer.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).tagName === 'A') setOpen(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') setOpen(false);
+    });
+    document.addEventListener('click', (e) => {
+      if (!(e.target instanceof Node)) return;
+      if (toggle.getAttribute('aria-expanded') !== 'true') return;
+      if (toggle.contains(e.target) || drawer.contains(e.target)) return;
+      setOpen(false);
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTopnav, { once: true });
+  } else {
+    initTopnav();
+  }
+</script>
+
+<style>
+  /* Default Starlight header styles — copied verbatim from
+   * @astrojs/starlight/components/Header.astro@0.39.x so that content-detail
+   * pages render identically to upstream. If a Starlight upgrade changes
+   * the default Header styling, mirror those changes here. */
+  @layer starlight.core {
+    .header {
+      display: flex;
+      gap: var(--sl-nav-gap);
+      justify-content: space-between;
+      align-items: center;
+      height: 100%;
+    }
+
+    .title-wrapper {
+      overflow: clip;
+      padding: 0.25rem;
+      margin: -0.25rem;
+      min-width: 0;
+    }
+
+    .right-group,
+    .social-icons {
+      gap: 1rem;
+      align-items: center;
+    }
+    .social-icons::after {
+      content: '';
+      height: 2rem;
+      border-inline-end: 1px solid var(--sl-color-gray-5);
+    }
+
+    @media (min-width: 50rem) {
+      :global(:root[data-has-sidebar]) {
+        --__sidebar-pad: calc(2 * var(--sl-nav-pad-x));
+      }
+      :global(:root:not([data-has-toc])) {
+        --__toc-width: 0rem;
+      }
+      .header {
+        --__sidebar-width: max(0rem, var(--sl-content-inline-start, 0rem) - var(--sl-nav-pad-x));
+        --__main-column-fr: calc(
+          (
+              100% + var(--__sidebar-pad, 0rem) - var(--__toc-width, var(--sl-sidebar-width)) -
+                (2 * var(--__toc-width, var(--sl-nav-pad-x))) - var(--sl-content-inline-start, 0rem) -
+                var(--sl-content-width)
+            ) / 2
+        );
+        display: grid;
+        grid-template-columns:
+          minmax(
+            calc(var(--__sidebar-width) + max(0rem, var(--__main-column-fr) - var(--sl-nav-gap))),
+            auto
+          )
+          1fr
+          auto;
+        align-content: center;
+      }
+    }
+  }
+
+  /* Unified nav on splash pages.
+   *
+   * Design contract (2026-05-19 refinement, Linear/Vercel/Stripe anchor):
+   *   - Single 32px row of action controls on the right (search, auth, theme).
+   *     No competing button shapes; everything snaps to the same height.
+   *   - Brand wordmark only — no decorative dot.
+   *   - Section links: slim text with subtle hover, no boxed pills.
+   *   - Search: compact icon + ⌘K chip, max ~10rem wide.
+   *   - Theme: icon-only (no "Auto" text), inherits Starlight's <select> JS.
+   *
+   * Lives at @layer nbg.components which sits ABOVE starlight.core in the
+   * cascade (per tokens/layers.css), so reuses of Starlight's Search and
+   * ThemeSelect can be restyled here without !important.
+   */
+  @layer nbg.components {
+    .nbg-topnav {
+      background: color-mix(in srgb, var(--nbg-color-bg-canvas) 92%, transparent);
+      backdrop-filter: saturate(180%) blur(10px);
+      -webkit-backdrop-filter: saturate(180%) blur(10px);
+      /* No border-bottom: Starlight's outer <header class="header"> in
+       * PageFrame.astro already has a 1px hairline. Adding one here too
+       * produced a doubled 2px line that read as a visual error. */
+      width: 100%;
+      height: 100%;
+    }
+    .nbg-topnav__inner {
+      display: flex;
+      align-items: center;
+      gap: var(--nbg-sp-6);
+      max-width: 88rem;
+      margin-inline: auto;
+      height: 100%;
+      padding: 0 var(--nbg-sp-4);
+    }
+    @media (min-width: 40rem) {
+      .nbg-topnav__inner { padding-inline: var(--nbg-sp-6); }
+    }
+
+    .nbg-topnav__brand {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--nbg-sp-3);
+      font-family: var(--nbg-type-body);
+      font-weight: var(--nbg-fw-semibold);
+      font-size: var(--nbg-fs-md);
+      color: var(--nbg-color-fg-primary);
+      text-decoration: none;
+      letter-spacing: var(--nbg-ls-tight);
+      white-space: nowrap;
+      transition: opacity var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-topnav__brand:hover { opacity: 0.85; }
+    .nbg-topnav__brand:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+      border-radius: var(--nbg-r-sm);
+    }
+
+    /* NBG wordmark logo. Cropped PNG aspect ratio ~4.4:1 (1338×302).
+     * Height capped at 22px so the wordmark sits comfortably below the
+     * "NBG AI Hub" cap-height line and doesn't dominate the bar. Width is
+     * auto so the wordmark scales proportionally. */
+    .nbg-topnav__logo {
+      display: block;
+      height: 22px;
+      width: auto;
+    }
+    /* Theme-aware swap. Defaults to the light variant; semantic.css sets
+     * data-theme="dark" on :root which flips the visibility. */
+    .nbg-topnav__logo--dark { display: none; }
+    :global(:root[data-theme='dark']) .nbg-topnav__logo--light { display: none; }
+    :global(:root[data-theme='dark']) .nbg-topnav__logo--dark  { display: block; }
+
+    /* Subtle vertical separator between the NBG corporate wordmark and
+     * the property name so the two brands read as parent + child. */
+    .nbg-topnav__brand-text {
+      position: relative;
+      padding-left: var(--nbg-sp-3);
+    }
+    .nbg-topnav__brand-text::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 1px;
+      height: 18px;
+      transform: translateY(-50%);
+      background: var(--nbg-color-border-default);
+    }
+
+    .nbg-topnav__links {
+      display: none;
+      flex: 1;
+      gap: var(--nbg-sp-0-5);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      justify-content: flex-start;
+      flex-wrap: nowrap;
+    }
+    @media (min-width: 64rem) {
+      .nbg-topnav__links { display: inline-flex; }
+    }
+    .nbg-topnav__links a {
+      display: inline-flex;
+      align-items: center;
+      height: 32px;
+      padding-inline: var(--nbg-sp-2-5);
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-sm);
+      font-weight: var(--nbg-fw-medium);
+      color: var(--nbg-color-fg-secondary);
+      text-decoration: none;
+      border-radius: var(--nbg-r-md);
+      white-space: nowrap;
+      transition:
+        background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        color            var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-topnav__links a:hover {
+      color: var(--nbg-color-fg-primary);
+      background: var(--nbg-color-bg-surface-hover);
+    }
+    .nbg-topnav__links a[data-current='true'] {
+      color: var(--nbg-color-fg-primary);
+      font-weight: var(--nbg-fw-semibold);
+    }
+    .nbg-topnav__links a[data-current='true']::after {
+      content: '';
+      display: block;
+      width: 4px;
+      height: 4px;
+      margin-left: var(--nbg-sp-1-5);
+      border-radius: var(--nbg-r-full);
+      background: var(--nbg-color-accent);
+    }
+    .nbg-topnav__links a:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
+
+    /* ── Right-side action cluster ───────────────────────────────────────
+     * Single 32px row. All children snap to the same height for visual
+     * rhythm. Search + auth + theme. */
+    .nbg-topnav__actions {
+      display: none;
+      align-items: center;
+      gap: var(--nbg-sp-2);
+      margin-left: auto;
+      height: 32px;
+    }
+    @media (min-width: 64rem) {
+      .nbg-topnav__actions { display: inline-flex; }
+    }
+
+    /* ── Pagefind search trigger — compact ────────────────────────────
+     * Selector targets the <button data-open-modal> rendered by
+     * @astrojs/starlight/components/Search.astro. Reset Starlight's
+     * sprawling 22rem-wide pill into a tight icon + ⌘K chip. */
+    .nbg-topnav__search :global(site-search) {
+      display: inline-flex;
+      align-items: center;
+    }
+    .nbg-topnav__search :global(button[data-open-modal]) {
+      height: 32px;
+      width: auto;
+      max-width: none;
+      min-width: 9.5rem;
+      padding-inline: var(--nbg-sp-2-5) var(--nbg-sp-2);
+      gap: var(--nbg-sp-2);
+      border: 1px solid var(--nbg-color-border-subtle);
+      border-radius: var(--nbg-r-md);
+      background: var(--nbg-color-bg-surface);
+      color: var(--nbg-color-fg-muted);
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-sm);
+      font-weight: var(--nbg-fw-normal);
+      transition:
+        border-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        color        var(--nbg-dur-fast) var(--nbg-ease-out),
+        background-color var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-topnav__search :global(button[data-open-modal]:hover) {
+      border-color: var(--nbg-color-border-default);
+      color: var(--nbg-color-fg-primary);
+      background: var(--nbg-color-bg-surface-hover);
+    }
+    .nbg-topnav__search :global(button[data-open-modal] svg) {
+      width: 14px;
+      height: 14px;
+      --sl-icon-size: 14px;
+    }
+    .nbg-topnav__search :global(button[data-open-modal] > kbd) {
+      margin-left: auto;
+      padding: 2px 6px;
+      gap: 1px;
+      background: var(--nbg-color-bg-canvas);
+      border: 1px solid var(--nbg-color-border-subtle);
+      border-radius: var(--nbg-r-sm);
+      font-family: var(--nbg-type-mono);
+      font-size: 11px;
+      color: var(--nbg-color-fg-muted);
+      line-height: 1;
+    }
+    .nbg-topnav__search :global(button[data-open-modal] > kbd kbd) {
+      all: unset;
+      font-family: inherit;
+      color: inherit;
+    }
+
+    /* ── Theme toggle — icon-only ─────────────────────────────────────
+     * Starlight's ThemeSelect renders <starlight-theme-select> wrapping
+     * <label><Icon/><select/><Icon/></label>. We restyle the label as a
+     * 32px square icon button, hide the <select>'s displayed text via
+     * width clipping + transparent color (options inside the dropdown
+     * keep their own readable color from starlight.core CSS). */
+    .nbg-topnav__theme :global(starlight-theme-select) {
+      display: inline-flex;
+      align-items: center;
+    }
+    .nbg-topnav__theme :global(starlight-theme-select > label) {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      gap: 0;
+      padding: 0;
+      border: 1px solid var(--nbg-color-border-subtle);
+      border-radius: var(--nbg-r-md);
+      background: var(--nbg-color-bg-surface);
+      color: var(--nbg-color-fg-secondary);
+      cursor: pointer;
+      transition:
+        border-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        color        var(--nbg-dur-fast) var(--nbg-ease-out),
+        background-color var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-topnav__theme :global(starlight-theme-select > label:hover) {
+      border-color: var(--nbg-color-border-default);
+      color: var(--nbg-color-fg-primary);
+      background: var(--nbg-color-bg-surface-hover);
+    }
+    .nbg-topnav__theme :global(starlight-theme-select select) {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      color: transparent;
+      background: transparent;
+      cursor: pointer;
+    }
+    /* Hide the trailing caret — icon-only buttons don't need one. */
+    .nbg-topnav__theme :global(starlight-theme-select > label .caret) {
+      display: none;
+    }
+    .nbg-topnav__theme :global(starlight-theme-select > label .label-icon) {
+      position: static;
+      transform: none;
+      width: 16px;
+      height: 16px;
+      --sl-icon-size: 16px;
+    }
+
+    /* ── Mobile hamburger ─────────────────────────────────────────────── */
+    .nbg-topnav__toggle {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid var(--nbg-color-border-subtle);
+      border-radius: var(--nbg-r-md);
+      background: var(--nbg-color-bg-surface);
+      color: var(--nbg-color-fg-primary);
+      cursor: pointer;
+      transition:
+        background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        border-color     var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-topnav__toggle:hover {
+      background: var(--nbg-color-bg-surface-hover);
+      border-color: var(--nbg-color-border-default);
+    }
+    .nbg-topnav__toggle:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
+    @media (min-width: 64rem) {
+      .nbg-topnav__toggle { display: none; }
+    }
+
+    .nbg-topnav__drawer {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 100%;
+      border-top: 1px solid var(--nbg-color-border-subtle);
+      background: var(--nbg-color-bg-canvas);
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition:
+        max-height var(--nbg-dur-base) var(--nbg-ease-out),
+        opacity    var(--nbg-dur-base) var(--nbg-ease-out);
+    }
+    .nbg-topnav__drawer[data-open='true'] {
+      max-height: 70vh;
+      opacity: 1;
+    }
+    .nbg-topnav__drawer ul {
+      margin: 0;
+      padding: var(--nbg-sp-2) var(--nbg-sp-4);
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: var(--nbg-sp-1);
+    }
+    .nbg-topnav__drawer a {
+      display: block;
+      padding: var(--nbg-sp-3) var(--nbg-sp-3);
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-md);
+      font-weight: var(--nbg-fw-medium);
+      color: var(--nbg-color-fg-primary);
+      text-decoration: none;
+      border-radius: var(--nbg-r-md);
+    }
+    .nbg-topnav__drawer a:hover {
+      background: var(--nbg-color-bg-surface-hover);
+    }
+    .nbg-topnav__drawer a[data-current='true'] {
+      color: var(--nbg-color-accent-fg);
+      background: var(--nbg-color-accent-bg);
+      font-weight: var(--nbg-fw-semibold);
+    }
+  }
+</style>

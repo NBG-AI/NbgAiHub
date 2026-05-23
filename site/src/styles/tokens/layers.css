@@ -1,0 +1,19 @@
+/* site/src/styles/tokens/layers.css
+ *
+ * Cascade-layer declaration. MUST be the first file imported via tokens/index.css
+ * so the layer order is established before any @layer { ... } rule fires elsewhere.
+ *
+ * Related: project-design.md §S.13.2.1 (Layer order).
+ *
+ * Layer purpose, in cascade order (later wins on ties):
+ *   reset                 — Reserved for future reset.css. Empty for now.
+ *   tokens                — primitives.css + semantic.css + aliases.css
+ *   starlight.base        — Starlight base reset + element styles (Starlight-authored).
+ *   starlight.core        — Starlight core component CSS (Starlight-authored). Pagefind ui.css imports into this layer.
+ *   starlight.components  — Starlight per-component CSS (asides, code blocks, TOC).
+ *   nbg.primitives        — Each primitive's scoped <style> block.
+ *   nbg.components        — Redesigned components + components.css.
+ *   nbg.utilities         — .audience-hidden, .visually-hidden, .motion-reveal state classes.
+ */
+
+@layer reset, tokens, starlight.base, starlight.core, starlight.components, nbg.primitives, nbg.components, nbg.utilities;

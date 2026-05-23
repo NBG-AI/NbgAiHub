@@ -1,7 +1,14 @@
 ---
 // ConfidenceChip.astro — Renders the editor_confidence value on news cards.
-// Low = orange (editors should review carefully); medium/high are muted.
-// See user instructions: surface editor_confidence visibly to reviewers.
+// See project-design.md §S.13.5.9.
+//
+// @deprecated — use <Badge tone={confidence}> from primitives directly.
+// Kept in place during the Wave-2 redesign because consumers across pages
+// import this component by name. Internally renders <Badge tone={confidence}>,
+// so the legacy flat confidence colors are gone and the new tokenized
+// semantic confidence tokens drive the visual. Wave 3 will delete this file.
+
+import Badge from './primitives/Badge.astro';
 
 interface Props {
   confidence: 'high' | 'medium' | 'low';
@@ -10,6 +17,4 @@ interface Props {
 const { confidence } = Astro.props;
 ---
 
-<span class={`confidence-chip confidence-chip--${confidence}`}
-  >confidence: {confidence}</span
->
+<Badge tone={confidence}>confidence: {confidence}</Badge>

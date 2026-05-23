@@ -1,41 +1,100 @@
 ---
 // SkillCard.astro — Card layout for a skill entry.
-// See project-design.md §S.3.5.
+// See project-design.md §S.3.5 + §S.13.5.7.
+//
+// Public API preserved verbatim: `entry: CollectionEntry<'skills'>`. Optional
+// `variant` prop ('feature' | 'content') added for editorial layouts that
+// want to mark a lead card; default 'content' keeps prior call-sites working.
+// Internally composes <Card> + <Cluster> + <Stack> + <Badge> + <Chip> +
+// <PinButton>. Flat colors gone, tokens drive everything.
 
 import type { CollectionEntry } from 'astro:content';
+import Card from './primitives/Card.astro';
+import Stack from './primitives/Stack.astro';
+import Cluster from './primitives/Cluster.astro';
+import Chip from './primitives/Chip.astro';
 import AudienceBadge from './AudienceBadge.astro';
 import PinButton from './PinButton.astro';
 
 interface Props {
   entry: CollectionEntry<'skills'>;
+  variant?: 'feature' | 'content';
 }
 
-const { entry } = Astro.props;
+const { entry, variant = 'content' } = Astro.props;
 const { data } = entry;
+const isFeature = variant === 'feature';
 ---
 
 <article
   class="skill-card"
   data-audience={data.audience}
   data-topics={data.topics.join(',')}
+  data-variant={variant}
 >
-  <h3>
-    {data.external_link ? (
-      <a href={data.external_link}>{data.title} ↗</a>
-    ) : (
-      data.title
-    )}
-  </h3>
-  <PinButton type="skill" slug={entry.id} />
-  <div class="news-card__meta">
-    <AudienceBadge audience={data.audience} />
-  </div>
-  {data.topics.length > 0 && (
-    <div class="skill-card__topics">
-      {data.topics.map((topic) => (
-        <span class="topic-chip">{topic}</span>
-      ))}
-    </div>
-  )}
-  <p class="skill-card__summary">{data.ai_summary}</p>
+  <Card variant={variant}>
+    <Stack gap="3">
+      <Cluster gap="2" justify="between" align="start">
+        <h3 class="skill-card__title" data-feature={String(isFeature)}>
+          {data.external_link ? (
+            <a class="skill-card__title-link" href={data.external_link}>
+              {data.title} <span aria-hidden="true">↗</span>
+            </a>
+          ) : (
+            data.title
+          )}
+        </h3>
+        <PinButton type="skill" slug={entry.id} />
+      </Cluster>
+
+      <Cluster gap="2">
+        <AudienceBadge audience={data.audience} />
+      </Cluster>
+
+      {data.topics.length > 0 && (
+        <Cluster gap="2">
+          {data.topics.map((topic) => (
+            <Chip>{topic}</Chip>
+          ))}
+        </Cluster>
+      )}
+
+      <p class="skill-card__summary">{data.ai_summary}</p>
+    </Stack>
+  </Card>
 </article>
+
+<style>
+  @layer nbg.components {
+    .skill-card {
+      min-width: 0;
+    }
+    .skill-card__title {
+      margin: 0;
+      font-family: var(--nbg-type-display);
+      font-size: var(--nbg-fs-xl);
+      font-weight: var(--nbg-fw-semibold);
+      letter-spacing: var(--nbg-ls-tight);
+      line-height: var(--nbg-lh-headline);
+      color: var(--nbg-color-fg-primary);
+    }
+    .skill-card__title[data-feature='true'] {
+      font-size: var(--nbg-fs-2xl);
+    }
+    .skill-card__title-link {
+      color: inherit;
+      text-decoration: none;
+    }
+    .skill-card__title-link:hover {
+      color: var(--nbg-color-link-hover);
+      text-decoration: underline;
+      text-underline-offset: 0.18em;
+    }
+    .skill-card__summary {
+      margin: 0;
+      color: var(--nbg-color-fg-secondary);
+      font-size: var(--nbg-fs-md);
+      line-height: var(--nbg-lh-relaxed);
+    }
+  }
+</style>

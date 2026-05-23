@@ -1,0 +1,283 @@
+/* site/src/styles/content-prose.css
+ *
+ * P4.J — Content-detail prose theme override for Starlight's MDX-rendered
+ * pages (e.g. /news/[slug]/). The chrome (sidebar, top bar, TOC, search modal)
+ * is restyled separately in content-chrome.css; this file only retargets
+ * Starlight's `.sl-markdown-content` prose selectors with new tokens.
+ *
+ * Related: docs/design/project-design.md §S.13.11.1.
+ * Backs: AC16 (body font, link color, code background), AC19 (asides),
+ *        AC21 (contrast — tokens already verified).
+ *
+ * Layer: @layer nbg.components — wins over Starlight's components but loses
+ * to nbg.utilities so future overrides remain composable.
+ */
+
+@layer nbg.components {
+  /* ─── Headings ─────────────────────────────────────────────────────── */
+
+  .sl-markdown-content h1,
+  .sl-markdown-content h2,
+  .sl-markdown-content h3,
+  .sl-markdown-content h4,
+  .sl-markdown-content h5,
+  .sl-markdown-content h6 {
+    font-family: var(--nbg-type-display);
+    color: var(--nbg-color-fg-primary);
+    letter-spacing: var(--nbg-ls-tight);
+    line-height: var(--nbg-lh-headline);
+    font-variation-settings: 'opsz' var(--nbg-opsz-display);
+    text-wrap: balance;
+  }
+
+  .sl-markdown-content h1 {
+    font-size: var(--nbg-fs-display-md);
+    font-weight: var(--nbg-fw-bold);
+    line-height: var(--nbg-lh-display);
+    margin-block: var(--nbg-sp-8) var(--nbg-sp-4);
+  }
+  .sl-markdown-content h2 {
+    font-size: var(--nbg-fs-2xl);
+    font-weight: var(--nbg-fw-bold);
+    margin-block: var(--nbg-sp-8) var(--nbg-sp-3);
+  }
+  .sl-markdown-content h3 {
+    font-size: var(--nbg-fs-xl);
+    font-weight: var(--nbg-fw-semibold);
+    margin-block: var(--nbg-sp-6) var(--nbg-sp-2);
+  }
+  .sl-markdown-content h4 {
+    font-size: var(--nbg-fs-lg);
+    font-weight: var(--nbg-fw-semibold);
+    margin-block: var(--nbg-sp-5) var(--nbg-sp-2);
+  }
+  .sl-markdown-content h5,
+  .sl-markdown-content h6 {
+    font-size: var(--nbg-fs-md);
+    font-weight: var(--nbg-fw-semibold);
+    margin-block: var(--nbg-sp-4) var(--nbg-sp-2);
+  }
+
+  /* ─── Body copy ─────────────────────────────────────────────────────── */
+
+  .sl-markdown-content p {
+    font-family: var(--nbg-type-body);
+    font-size: var(--nbg-fs-md);
+    line-height: var(--nbg-lh-relaxed);
+    color: var(--nbg-color-fg-primary);
+    margin-block: var(--nbg-sp-3);
+  }
+
+  .sl-markdown-content ul,
+  .sl-markdown-content ol {
+    font-family: var(--nbg-type-body);
+    color: var(--nbg-color-fg-primary);
+    margin-block: var(--nbg-sp-3);
+    padding-left: var(--nbg-sp-6);
+  }
+  .sl-markdown-content li {
+    line-height: var(--nbg-lh-base);
+    margin-block: var(--nbg-sp-1);
+  }
+  .sl-markdown-content li > p {
+    margin-block: var(--nbg-sp-1);
+  }
+
+  /* ─── Links ─────────────────────────────────────────────────────────── */
+
+  .sl-markdown-content a {
+    color: var(--nbg-color-link);
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 1px;
+    transition: color var(--nbg-dur-fast) var(--nbg-ease-out);
+  }
+  .sl-markdown-content a:hover {
+    color: var(--nbg-color-link-hover);
+    text-decoration-thickness: 2px;
+  }
+  .sl-markdown-content a:visited {
+    color: var(--nbg-color-link-visited);
+  }
+  .sl-markdown-content a:focus-visible {
+    outline: none;
+    box-shadow: var(--nbg-sh-focus-ring);
+    border-radius: var(--nbg-r-xs);
+  }
+
+  /* ─── Blockquotes ───────────────────────────────────────────────────── */
+
+  .sl-markdown-content blockquote {
+    margin-block: var(--nbg-sp-5);
+    padding: var(--nbg-sp-3) var(--nbg-sp-5);
+    border-left: 3px solid var(--nbg-color-accent);
+    background: var(--nbg-color-bg-surface);
+    color: var(--nbg-color-fg-secondary);
+    border-radius: 0 var(--nbg-r-md) var(--nbg-r-md) 0;
+    font-style: italic;
+  }
+  .sl-markdown-content blockquote p {
+    margin-block: var(--nbg-sp-2);
+    color: inherit;
+  }
+
+  /* ─── Code (inline) ─────────────────────────────────────────────────── */
+
+  .sl-markdown-content code {
+    font-family: var(--nbg-type-mono);
+    font-size: 0.9em;
+    background: var(--nbg-color-bg-surface);
+    color: var(--nbg-color-accent-fg);
+    padding: var(--nbg-sp-0-5) var(--nbg-sp-1);
+    border-radius: var(--nbg-r-sm);
+    border: 1px solid var(--nbg-color-border-subtle);
+  }
+
+  /* ─── Code (block) ──────────────────────────────────────────────────── */
+
+  .sl-markdown-content pre {
+    background: var(--nbg-color-bg-elevated);
+    border: 1px solid var(--nbg-color-border-default);
+    border-radius: var(--nbg-r-md);
+    padding: var(--nbg-sp-4);
+    margin-block: var(--nbg-sp-4);
+    overflow-x: auto;
+    font-family: var(--nbg-type-mono);
+    font-size: var(--nbg-fs-sm);
+    line-height: var(--nbg-lh-base);
+  }
+  .sl-markdown-content pre code {
+    background: transparent;
+    color: var(--nbg-color-fg-primary);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    font-size: inherit;
+  }
+
+  /* ─── Tables ────────────────────────────────────────────────────────── */
+
+  .sl-markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-block: var(--nbg-sp-5);
+    font-family: var(--nbg-type-body);
+    font-size: var(--nbg-fs-sm);
+    background: var(--nbg-color-bg-surface);
+    border: 1px solid var(--nbg-color-border-default);
+    border-radius: var(--nbg-r-md);
+    overflow: hidden;
+  }
+  .sl-markdown-content th,
+  .sl-markdown-content td {
+    padding: var(--nbg-sp-2) var(--nbg-sp-3);
+    border-bottom: 1px solid var(--nbg-color-border-subtle);
+    text-align: left;
+    color: var(--nbg-color-fg-primary);
+  }
+  .sl-markdown-content thead th {
+    background: var(--nbg-color-bg-page);
+    font-weight: var(--nbg-fw-semibold);
+    color: var(--nbg-color-fg-secondary);
+    border-bottom-color: var(--nbg-color-border-default);
+  }
+  .sl-markdown-content tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .sl-markdown-content tbody tr:hover {
+    background: var(--nbg-color-bg-surface-hover);
+  }
+
+  /* ─── Horizontal rule ───────────────────────────────────────────────── */
+
+  .sl-markdown-content hr {
+    margin-block: var(--nbg-sp-8);
+    border: 0;
+    border-top: 1px solid var(--nbg-color-border-subtle);
+  }
+
+  /* ─── kbd ───────────────────────────────────────────────────────────── */
+
+  .sl-markdown-content kbd {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--nbg-sp-0-5) var(--nbg-sp-1-5);
+    font-family: var(--nbg-type-mono);
+    font-size: var(--nbg-fs-2xs);
+    background: var(--nbg-color-bg-page);
+    color: var(--nbg-color-fg-secondary);
+    border: 1px solid var(--nbg-color-border-default);
+    border-bottom-width: 2px;
+    border-radius: var(--nbg-r-sm);
+    line-height: 1.2;
+  }
+
+  /* ─── details / summary ─────────────────────────────────────────────── */
+
+  .sl-markdown-content details {
+    margin-block: var(--nbg-sp-4);
+    padding: var(--nbg-sp-3) var(--nbg-sp-4);
+    background: var(--nbg-color-bg-surface);
+    border: 1px solid var(--nbg-color-border-subtle);
+    border-radius: var(--nbg-r-md);
+  }
+  .sl-markdown-content details > summary {
+    cursor: pointer;
+    font-weight: var(--nbg-fw-semibold);
+    color: var(--nbg-color-fg-primary);
+    list-style: none;
+  }
+  .sl-markdown-content details > summary::-webkit-details-marker {
+    display: none;
+  }
+  .sl-markdown-content details > summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: var(--nbg-sp-2);
+    transition: transform var(--nbg-dur-fast) var(--nbg-ease-out);
+    color: var(--nbg-color-accent);
+  }
+  .sl-markdown-content details[open] > summary::before {
+    transform: rotate(90deg);
+  }
+
+  /* ─── Starlight asides (callouts) — AC19 ────────────────────────────── */
+
+  .starlight-aside {
+    margin-block: var(--nbg-sp-5);
+    padding: var(--nbg-sp-3) var(--nbg-sp-4);
+    border-radius: var(--nbg-r-md);
+    border-left: 3px solid currentColor;
+    font-family: var(--nbg-type-body);
+    font-size: var(--nbg-fs-md);
+    line-height: var(--nbg-lh-relaxed);
+  }
+  .starlight-aside .starlight-aside__title {
+    font-family: var(--nbg-type-mono);
+    font-size: var(--nbg-fs-xs);
+    font-weight: var(--nbg-fw-semibold);
+    letter-spacing: var(--nbg-ls-wide);
+    text-transform: uppercase;
+    margin-bottom: var(--nbg-sp-1);
+  }
+  .starlight-aside p,
+  .starlight-aside li {
+    color: inherit;
+  }
+  .starlight-aside--note {
+    background: var(--nbg-color-status-info-bg);
+    color: var(--nbg-color-status-info-fg);
+  }
+  .starlight-aside--tip {
+    background: var(--nbg-color-status-success-bg);
+    color: var(--nbg-color-status-success-fg);
+  }
+  .starlight-aside--caution {
+    background: var(--nbg-color-status-warning-bg);
+    color: var(--nbg-color-status-warning-fg);
+  }
+  .starlight-aside--danger {
+    background: var(--nbg-color-status-danger-bg);
+    color: var(--nbg-color-status-danger-fg);
+  }
+}

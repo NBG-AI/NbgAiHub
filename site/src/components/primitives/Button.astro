@@ -1,0 +1,167 @@
+---
+/**
+ * Button.astro — Accessible button or anchor with three variants and three sizes.
+ *
+ * Purpose: The single button primitive. Renders <button> by default;
+ * renders <a> when `href` is provided. PinButton.astro's restyle (P4.I)
+ * reuses this primitive's CSS contract while keeping its own script-driven
+ * data-* attributes bit-for-bit.
+ *
+ * Related: project-design.md §S.13.2.4 + §S.13.5.8.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ * A11y: real <button> / <a> elements; aria-pressed/aria-label forwarded.
+ */
+type Variant = 'primary' | 'secondary' | 'ghost';
+type Size = 'sm' | 'md' | 'lg';
+type Tag = 'button' | 'a';
+
+interface Props {
+  variant?: Variant;
+  size?: Size;
+  as?: Tag;
+  href?: string;
+  type?: 'button' | 'submit' | 'reset';
+  target?: '_blank' | '_self';
+  rel?: string;
+  disabled?: boolean;
+  'aria-label'?: string;
+  'aria-pressed'?: boolean | 'true' | 'false';
+  id?: string;
+  name?: string;
+  value?: string;
+}
+
+const {
+  variant = 'primary',
+  size = 'md',
+  as,
+  href,
+  type,
+  target,
+  rel,
+  disabled,
+  id,
+  name,
+  value,
+  'aria-label': ariaLabel,
+  'aria-pressed': ariaPressed,
+} = Astro.props;
+
+const Tag: Tag = (as ?? (href ? 'a' : 'button')) as Tag;
+const isButton = Tag === 'button';
+
+// Per global no-fallback rule — anchors require href.
+if (Tag === 'a' && !href) {
+  throw new Error('Button as="a" requires an href prop.');
+}
+
+const buttonAttrs = isButton
+  ? { type: type ?? 'button', disabled }
+  : {};
+const anchorAttrs = !isButton
+  ? { href, target, rel }
+  : {};
+---
+<Tag
+  class="nbg-button"
+  data-variant={variant}
+  data-size={size}
+  id={id}
+  name={name}
+  value={value}
+  aria-label={ariaLabel}
+  aria-pressed={ariaPressed !== undefined ? (String(ariaPressed) as 'true' | 'false') : undefined}
+  {...buttonAttrs}
+  {...anchorAttrs}
+>
+  <slot />
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-button {
+      --nbg-button-bg-primary:       var(--nbg-color-accent-strong);
+      --nbg-button-bg-primary-hover: var(--nbg-color-accent-hover);
+      --nbg-button-fg-primary:       var(--nbg-color-fg-on-accent);
+      --nbg-button-bg-secondary:     transparent;
+      --nbg-button-fg-secondary:     var(--nbg-color-fg-primary);
+      --nbg-button-border-secondary: var(--nbg-color-border-default);
+      --nbg-button-bg-ghost:         transparent;
+      --nbg-button-fg-ghost:         var(--nbg-color-fg-secondary);
+      --nbg-button-fg-ghost-hover:   var(--nbg-color-fg-primary);
+      --nbg-button-radius:           var(--nbg-r-md);
+
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--nbg-sp-2);
+      border: 1px solid transparent;
+      border-radius: var(--nbg-button-radius);
+      font-family: var(--nbg-type-body);
+      font-weight: var(--nbg-fw-semibold);
+      letter-spacing: var(--nbg-ls-normal);
+      line-height: 1;
+      text-decoration: none;
+      cursor: pointer;
+      user-select: none;
+      transition:
+        background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        color            var(--nbg-dur-fast) var(--nbg-ease-out),
+        border-color     var(--nbg-dur-fast) var(--nbg-ease-out),
+        box-shadow       var(--nbg-dur-fast) var(--nbg-ease-out),
+        transform        var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+
+    /* Sizes */
+    .nbg-button[data-size='sm'] { padding: var(--nbg-sp-1-5) var(--nbg-sp-3); font-size: var(--nbg-fs-sm); }
+    .nbg-button[data-size='md'] { padding: var(--nbg-sp-2)   var(--nbg-sp-4); font-size: var(--nbg-fs-md); }
+    .nbg-button[data-size='lg'] { padding: var(--nbg-sp-3)   var(--nbg-sp-6); font-size: var(--nbg-fs-lg); }
+
+    /* Variants */
+    .nbg-button[data-variant='primary'] {
+      background: var(--nbg-button-bg-primary);
+      color: var(--nbg-button-fg-primary);
+      border-color: var(--nbg-button-bg-primary);
+    }
+    .nbg-button[data-variant='primary']:hover:not(:disabled) {
+      background: var(--nbg-button-bg-primary-hover);
+      border-color: var(--nbg-button-bg-primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .nbg-button[data-variant='secondary'] {
+      background: var(--nbg-button-bg-secondary);
+      color: var(--nbg-button-fg-secondary);
+      border-color: var(--nbg-button-border-secondary);
+    }
+    .nbg-button[data-variant='secondary']:hover:not(:disabled) {
+      background: var(--nbg-color-bg-surface-hover);
+      border-color: var(--nbg-color-border-strong);
+    }
+
+    .nbg-button[data-variant='ghost'] {
+      background: var(--nbg-button-bg-ghost);
+      color: var(--nbg-button-fg-ghost);
+      border-color: transparent;
+    }
+    .nbg-button[data-variant='ghost']:hover:not(:disabled) {
+      background: var(--nbg-color-bg-surface-hover);
+      color: var(--nbg-button-fg-ghost-hover);
+    }
+
+    /* Focus visibility */
+    .nbg-button:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
+
+    /* Disabled */
+    .nbg-button:disabled,
+    .nbg-button[disabled],
+    .nbg-button[aria-disabled='true'] {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+  }
+</style>

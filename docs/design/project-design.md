@@ -4111,3 +4111,1826 @@ Plan-step → design-anchor mapping. A Coder picks a plan step, reads the anchor
 ---
 
 *End of Hub plugin section.*
+
+---
+
+## §S.13 — UI Redesign: Linear/Vercel/Stripe-leaning Design System
+
+> **Plan reference:** `docs/design/plan-004-ui-redesign.md` is authoritative for *what gets done in what order* across phases P4.A through P4.L. This section is authoritative for *interfaces, contracts, data models (token shape, component prop signatures), file/module structure, error-handling strategy, motion/a11y/dark-mode strategy, and architecture-level decisions*. Phase 6 coders read both side-by-side: plan = wave/file ownership; design = contracts that make the wave executable without further design judgement.
+>
+> **Locked context:** the user has committed to **Option 1 hybrid** — keep Starlight, build a portable design-token layer, use `template: splash` + one `MarketingShell.astro` for all 11 marketing surfaces, deep-theme the content-detail page via `--sl-color-*` token re-mapping. The escalation gate to Option 2 (replace Starlight) sits **after** Phase 6 evaluation. The design hedges for that gate: ~73% of the work survives an Option 2 rewrite verbatim. Only `MarketingShell.astro` (~80 LOC) + `tokens/aliases.css` (the `--sl-*` block) + `SocialIconsOverride.astro` (already isolated) get rewritten.
+
+### §S.13.0 — Plan-level concerns surfaced to orchestrator
+
+The plan (plan-004-ui-redesign.md) is structurally sound. The design surfaces **two** items for orchestrator/user attention before Phase 6 dispatches. Neither is a re-sequence; both are clarifications that prevent silent ambiguity from forcing a Phase-6 coder to invent answers.
+
+1. **Day-1 step segmentation is a content-vs-layout boundary call.** AC6 wants six `<section id="step-N">` blocks with sticky desktop indicator. The plan (P4.G) leaves the *how* to the Designer. **Design decision:** Phase 6 hand-codes the six section wrappers in `day-1.astro` and renders `journeys/day-1.md`'s body in-place via the collection's `render()` slot, **without** programmatically parsing the markdown. The six section boundaries are derived from the markdown's `## Step N` headings (which already exist in `journeys/day-1.md`). The redesign supplies wrappers, not new content — the visible step copy is unchanged. This avoids a fragile build-time markdown-parsing detour and keeps content edits cleanly out of scope.
+2. **`MarketingShellExtended.astro` is dropped.** Plan P4.D listed it as an OPTIONAL variant for the Day-1 `progressIndicator` slot. Design decision: one shell, not two. Day-1 renders the `StepIndicator` primitive inline in its default slot, positioned-sticky via CSS — no shell variant needed. Reduces the Phase-6 surface by one component.
+
+Both items are documented under their respective §S.13.x sections below. Neither blocks Phase 6 dispatch.
+
+### §S.13.1 — Scope & references
+
+This section designs the technical contracts behind the NbgAiHub UI redesign: the design-token layer (three tiers as CSS custom properties), the typography system (Astro Fonts API + Inter Variable + JetBrains Mono Variable), the primitive component library (14 portable `.astro` files), the `MarketingShell.astro` Starlight isolation boundary, the per-surface compositional sketches for the 11 marketing pages, the Starlight content-detail theme override, the motion strategy (CSS + IntersectionObserver + native `@view-transition`), the accessibility contract, the dark/light scoping mechanics, and the migration/removal list.
+
+**Inputs** (read in this order, anchored verbatim):
+
+- `docs/refined-requests/ui-redesign.md` — 39 ACs, 18 assumptions, 14-item Definition of Done.
+- `docs/design/plan-004-ui-redesign.md` — 12 phases (P4.A–P4.L), file lists, AC coverage, parallelization DAG.
+- `docs/reference/investigation-ui-redesign.md` — 10-axis execution recommendations.
+- `docs/research/astro-fonts-api-experimental-stability.md` — concrete `astro.config.mjs` fonts block, Starlight integration notes.
+- `docs/research/pagefind-ui-variant-in-starlight-0-39.md` — concrete `--sl-color-*` alias map, theme-scope rules.
+- `docs/reference/codebase-scan-ui-redesign.md` — current 10-component / 11-page / 8-lib / 7-test inventory.
+- `docs/design/project-design.md` §S.1–§S.12 (site architecture) and §P.1–§P.13 (personalization), for style and contract anchors. The new section §S.13 inherits all conventions from §S.6 (Astro Starlight site), §S.7 (sidebar), §S.11 (personalization integration with sidebar) and adds none that conflict.
+
+**Constraint inheritance from prior sections:**
+
+- The 8 `lib/` modules under `site/src/lib/` (§S.3.x equivalents in plan-002 / §P.3.x in personalization) are **CONTRACT**. The redesign reads them; it never modifies them. AC23 + A17.
+- The 11-entry sidebar in `astro.config.mjs` (§S.7) is **frozen**. The redesign restyles entries visually; it does not change labels/links/order. AC32.
+- The pre-build script `site/scripts/build-pin-index.ts` (§P.x) is **untouched**. AC18.
+- The 127-test floor (§S.12-equivalent) is **the floor, not a ceiling**. Updates that preserve coverage intent are allowed; deletions are not. AC30.
+
+### §S.13.2 — Design tokens: the full three-tier contract
+
+The token layer is the cornerstone of the redesign. Three tiers compose a single coherent vocabulary that every primitive, page, and Starlight chrome element resolves against. The tiers run primitives → semantic → component. The `--sl-color-*` alias block (cross-system) sits in the semantic-equivalent tier and binds new tokens onto Starlight's surface so Pagefind + sidebar + TOC + callouts retint automatically.
+
+#### §S.13.2.1 — Layer order
+
+The cascade is declared **once** at the top of `site/src/styles/tokens.css`:
+
+```css
+@layer reset, tokens, starlight.base, starlight.core, starlight.components, nbg.primitives, nbg.components, nbg.utilities;
+```
+
+Layer purpose, in cascade order (later wins on ties):
+
+| Layer | Owner | What lives here |
+|---|---|---|
+| `reset` | empty for now | Reserved for a future `reset.css`. Today contains nothing. |
+| `tokens` | `tokens/primitives.css` + `tokens/semantic.css` + `tokens/aliases.css` | The three-tier token declarations. Every `--nbg-*` and `--sl-color-*` lives here. |
+| `starlight.base` | Starlight | Starlight's base reset + element styles. We do not author into this layer. |
+| `starlight.core` | Starlight | Starlight's core component CSS (sidebar, header, search modal, prose chrome). Imported by Starlight; we do not author into this. |
+| `starlight.components` | Starlight | Starlight's per-component CSS (asides, code blocks, link-cards, TOC). Imported by Starlight. |
+| `nbg.primitives` | `site/src/components/primitives/*.astro` scoped styles | Each primitive's own scoped `<style>` block — wins over `starlight.*` tiers for any selector they share. |
+| `nbg.components` | `site/src/styles/components.css` + the 10 existing components' scoped `<style>` blocks | The redesigned versions of HomeHero, NewsPanel, SkillCard, PinButton, SignInModal, etc. Wins over primitives where overlapping selectors exist (rare). |
+| `nbg.utilities` | `tokens/utilities.css` (or appended to `components.css`) | `.audience-hidden`, `.visually-hidden`, `.motion-reveal` state classes. Highest specificity-free precedence. |
+
+The Pagefind research doc is explicit: Starlight ships its Pagefind CSS at `@layer starlight.core`. Our `nbg.components` layer follows starlight.* layers, so any direct override we write to Pagefind's `.pagefind-ui__*` selectors will win without `!important` — but the recommended pattern (per Pagefind research §"Recommended approach in our redesign") is to override the upstream `--sl-color-*` tokens and let Starlight's own aliasing into `--pagefind-ui-*` cascade. We follow that pattern. The `nbg.components` layer exists for cases where token aliasing is insufficient (rare).
+
+#### §S.13.2.2 — Primitive tier — raw values
+
+File: `site/src/styles/tokens/primitives.css`. Scoped `:root` (theme-neutral; primitive values do not change between dark and light — only semantic and component tiers map differently).
+
+**Color primitives** — three ramps. Every ramp has 11 steps (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950) for compositional flexibility. Hue families:
+
+| Ramp | Family | Use |
+|---|---|---|
+| `--nbg-c-slate-{50..950}` | Cool gray, ~220° H | Surfaces, borders, body type. The dominant ramp. |
+| `--nbg-c-violet-{50..950}` | Accent, ~265° H | Brand accent — buttons, links, focus rings, lead-card outlines. |
+| `--nbg-c-amber-{50..950}` | Confidence-medium / warning, ~38° H | Confidence chips (`medium`), audience-advanced tint, warning callouts. |
+| `--nbg-c-emerald-{50..950}` | Audience-beginner / success, ~155° H | Audience-beginner, success callouts, `:tip` aside. |
+| `--nbg-c-rose-{50..950}` | Danger / confidence-low, ~350° H | Danger callouts, validation errors. Confidence-low borrows. |
+| `--nbg-c-sky-{50..950}` | Info / audience-both, ~210° H | Audience-both tint, info callouts. |
+
+Each ramp follows OKLCH-tuned lightness steps so dark-mode and light-mode swap step-numbers symmetrically (50↔950, 100↔900, …). Concrete values (HSL/OKLCH chosen for accessibility; Designer may shift hue within ±5° during implementation if specific contrast pairs fail AA):
+
+```css
+:root {
+  /* Slate (the workhorse) — neutral cool gray */
+  --nbg-c-slate-50:  hsl(220 25% 98%);
+  --nbg-c-slate-100: hsl(220 22% 95%);
+  --nbg-c-slate-200: hsl(220 20% 88%);
+  --nbg-c-slate-300: hsl(220 18% 75%);
+  --nbg-c-slate-400: hsl(220 15% 58%);
+  --nbg-c-slate-500: hsl(220 12% 45%);
+  --nbg-c-slate-600: hsl(220 14% 32%);
+  --nbg-c-slate-700: hsl(220 16% 22%);
+  --nbg-c-slate-800: hsl(220 18% 14%);
+  --nbg-c-slate-900: hsl(220 22% 9%);
+  --nbg-c-slate-950: hsl(220 25% 5%);
+
+  /* Violet (accent) — Linear/Vercel-leaning */
+  --nbg-c-violet-50:  hsl(265 100% 97%);
+  --nbg-c-violet-100: hsl(265 95%  92%);
+  --nbg-c-violet-200: hsl(265 92%  85%);
+  --nbg-c-violet-300: hsl(265 90%  75%);
+  --nbg-c-violet-400: hsl(265 88%  68%);
+  --nbg-c-violet-500: hsl(265 85%  60%);   /* the accent */
+  --nbg-c-violet-600: hsl(265 78%  50%);
+  --nbg-c-violet-700: hsl(265 70%  40%);
+  --nbg-c-violet-800: hsl(265 65%  30%);
+  --nbg-c-violet-900: hsl(265 60%  22%);
+  --nbg-c-violet-950: hsl(265 55%  14%);
+
+  /* Emerald (audience-beginner, success) */
+  --nbg-c-emerald-50:  hsl(155 70% 96%);
+  --nbg-c-emerald-100: hsl(155 65% 88%);
+  --nbg-c-emerald-200: hsl(155 60% 78%);
+  --nbg-c-emerald-300: hsl(155 55% 65%);
+  --nbg-c-emerald-400: hsl(155 50% 52%);
+  --nbg-c-emerald-500: hsl(155 60% 42%);
+  --nbg-c-emerald-600: hsl(155 65% 33%);
+  --nbg-c-emerald-700: hsl(155 60% 25%);
+  --nbg-c-emerald-800: hsl(155 55% 18%);
+  --nbg-c-emerald-900: hsl(155 50% 12%);
+  --nbg-c-emerald-950: hsl(155 45% 7%);
+
+  /* Amber (audience-advanced, confidence-medium, warning) */
+  --nbg-c-amber-50:  hsl(38 95% 96%);
+  --nbg-c-amber-100: hsl(38 92% 88%);
+  --nbg-c-amber-200: hsl(38 90% 78%);
+  --nbg-c-amber-300: hsl(38 88% 68%);
+  --nbg-c-amber-400: hsl(38 85% 58%);
+  --nbg-c-amber-500: hsl(38 88% 50%);
+  --nbg-c-amber-600: hsl(34 85% 42%);
+  --nbg-c-amber-700: hsl(30 80% 32%);
+  --nbg-c-amber-800: hsl(28 70% 22%);
+  --nbg-c-amber-900: hsl(26 60% 15%);
+  --nbg-c-amber-950: hsl(24 50% 9%);
+
+  /* Rose (danger, validation-error, confidence-low) */
+  --nbg-c-rose-50:  hsl(350 90% 96%);
+  --nbg-c-rose-100: hsl(350 88% 90%);
+  --nbg-c-rose-200: hsl(350 85% 80%);
+  --nbg-c-rose-300: hsl(350 82% 70%);
+  --nbg-c-rose-400: hsl(350 78% 60%);
+  --nbg-c-rose-500: hsl(350 75% 52%);
+  --nbg-c-rose-600: hsl(350 70% 42%);
+  --nbg-c-rose-700: hsl(350 65% 32%);
+  --nbg-c-rose-800: hsl(350 60% 22%);
+  --nbg-c-rose-900: hsl(350 55% 15%);
+  --nbg-c-rose-950: hsl(350 50% 9%);
+
+  /* Sky (info, audience-both) */
+  --nbg-c-sky-50:  hsl(210 90% 96%);
+  --nbg-c-sky-100: hsl(210 88% 88%);
+  --nbg-c-sky-200: hsl(210 85% 78%);
+  --nbg-c-sky-300: hsl(210 82% 68%);
+  --nbg-c-sky-400: hsl(210 78% 58%);
+  --nbg-c-sky-500: hsl(210 75% 50%);
+  --nbg-c-sky-600: hsl(210 70% 42%);
+  --nbg-c-sky-700: hsl(210 65% 32%);
+  --nbg-c-sky-800: hsl(210 60% 22%);
+  --nbg-c-sky-900: hsl(210 55% 14%);
+  --nbg-c-sky-950: hsl(210 50% 8%);
+}
+```
+
+That's 66 color primitives. Combined with type/space/radius/shadow/motion below, the file lands at ~120 primitive tokens — comfortably past AC1's 60-token floor.
+
+**Type primitives** — family + scale + weights + line-heights + letter-spacings.
+
+```css
+:root {
+  /* Family aliases. Astro Fonts API emits --nbg-font-body and --nbg-font-mono;
+     we keep --nbg-ff-* as the canonical primitive names and point them at the
+     fonts-API outputs. Display reuses body family at higher opsz — single font file. */
+  --nbg-ff-body:    var(--nbg-font-body);          /* Inter Variable, fallback stack via fonts API */
+  --nbg-ff-mono:    var(--nbg-font-mono);          /* JetBrains Mono Variable */
+  --nbg-ff-display: var(--nbg-font-body);          /* Same family, larger opsz via variation-settings */
+
+  /* Size scale — 10 steps, modular ~1.2 ratio, with two outsized display steps for hero headlines */
+  --nbg-fs-2xs:        0.6875rem; /* 11px — kbd, eyebrow micro */
+  --nbg-fs-xs:         0.75rem;   /* 12px — eyebrow, chip, badge */
+  --nbg-fs-sm:         0.875rem;  /* 14px — secondary body, captions */
+  --nbg-fs-md:         1rem;      /* 16px — body default */
+  --nbg-fs-lg:         1.125rem;  /* 18px — lede small */
+  --nbg-fs-xl:         1.375rem;  /* 22px — h3 / lede large */
+  --nbg-fs-2xl:        1.75rem;   /* 28px — h2 */
+  --nbg-fs-display-sm: 2.25rem;   /* 36px — section eyebrow display */
+  --nbg-fs-display-md: 3rem;      /* 48px — h1 marketing */
+  --nbg-fs-display-lg: 4rem;      /* 64px — hero h1 minimum (AC5) */
+  --nbg-fs-display-xl: 5rem;      /* 80px — hero h1 desktop wide */
+  --nbg-fs-display-2xl: 6.5rem;   /* 104px — reserved for if Designer wants oversized hero */
+
+  /* Weights — Inter Variable axis 100..900 */
+  --nbg-fw-thin:       200;
+  --nbg-fw-light:      300;
+  --nbg-fw-regular:    400;
+  --nbg-fw-medium:     500;
+  --nbg-fw-semibold:   600;
+  --nbg-fw-bold:       700;
+  --nbg-fw-extrabold:  800;
+
+  /* Line-heights — tight for display, comfortable for body */
+  --nbg-lh-display:    1.05;     /* hero h1 */
+  --nbg-lh-headline:   1.15;     /* h2/h3 */
+  --nbg-lh-tight:      1.3;      /* lede */
+  --nbg-lh-snug:       1.45;     /* secondary body */
+  --nbg-lh-base:       1.6;      /* body — exceeds R6.4 floor of 1.55 */
+  --nbg-lh-relaxed:    1.75;     /* long-form prose */
+
+  /* Letter-spacing — tighten display, open mono/eyebrow slightly */
+  --nbg-ls-tight:      -0.02em;  /* display headlines */
+  --nbg-ls-snug:       -0.01em;  /* h2/h3 */
+  --nbg-ls-normal:     0;        /* body */
+  --nbg-ls-loose:      0.02em;   /* eyebrow */
+  --nbg-ls-wide:       0.08em;   /* uppercase eyebrow, kbd */
+
+  /* Optical-size axis — Inter exposes `opsz`; display engages display-optimized glyph forms */
+  --nbg-opsz-body:     14;       /* body default — Inter's text-optimized */
+  --nbg-opsz-lede:     20;
+  --nbg-opsz-display:  32;       /* h1/h2 marketing — engages display alts */
+
+  /* Font-feature-settings — enabled globally on body via tokens below */
+  --nbg-ff-features-body:     "'ss01' on, 'cv11' on, 'cv05' on";  /* Inter stylistic alts (single-storey a, alt-1) */
+  --nbg-ff-features-mono:     "'zero' on, 'liga' off";             /* slashed zero, no ligatures in code */
+  --nbg-ff-features-tabular:  "'tnum' on, 'cv11' on";              /* tabular figures for data rows */
+}
+```
+
+**Space primitives** — 4px-base modular scale, 17 steps (`0` through `32`). Tokens cover 0px–8rem.
+
+```css
+:root {
+  --nbg-sp-0:   0;
+  --nbg-sp-px:  1px;
+  --nbg-sp-0-5: 0.125rem;  /* 2px */
+  --nbg-sp-1:   0.25rem;   /* 4px — base unit */
+  --nbg-sp-1-5: 0.375rem;  /* 6px */
+  --nbg-sp-2:   0.5rem;    /* 8px */
+  --nbg-sp-3:   0.75rem;   /* 12px */
+  --nbg-sp-4:   1rem;      /* 16px */
+  --nbg-sp-5:   1.25rem;   /* 20px */
+  --nbg-sp-6:   1.5rem;    /* 24px */
+  --nbg-sp-8:   2rem;      /* 32px */
+  --nbg-sp-10:  2.5rem;    /* 40px */
+  --nbg-sp-12:  3rem;      /* 48px */
+  --nbg-sp-16:  4rem;      /* 64px */
+  --nbg-sp-20:  5rem;      /* 80px */
+  --nbg-sp-24:  6rem;      /* 96px */
+  --nbg-sp-32:  8rem;      /* 128px */
+}
+```
+
+17 space primitives — well past AC1's 10-step floor. The `0-5` / `1-5` half-steps exist for kbd-internal padding and tight badge geometry.
+
+**Radius primitives:**
+
+```css
+:root {
+  --nbg-r-xs:   2px;
+  --nbg-r-sm:   4px;
+  --nbg-r-md:   8px;     /* card default */
+  --nbg-r-lg:   12px;
+  --nbg-r-xl:   16px;
+  --nbg-r-2xl:  24px;
+  --nbg-r-pill: 9999px;
+  --nbg-r-full: 50%;
+}
+```
+
+8 radius primitives — past AC1's 4-step floor.
+
+**Shadow primitives** — five elevation steps plus accent glow plus focus. Dark-mode uses richer black with longer y-offsets; light-mode uses softer black with shorter offsets. The primitives below are the dark defaults; semantic-tier rebinds them under `[data-theme='light']`.
+
+```css
+:root {
+  --nbg-sh-xs: 0 1px 2px hsl(220 30% 0% / 0.4);
+  --nbg-sh-sm: 0 2px 4px hsl(220 30% 0% / 0.5),
+               0 1px 2px hsl(220 30% 0% / 0.4);
+  --nbg-sh-md: 0 4px 12px hsl(220 30% 0% / 0.5),
+               0 2px 4px hsl(220 30% 0% / 0.4);
+  --nbg-sh-lg: 0 12px 32px hsl(220 30% 0% / 0.55),
+               0 4px 12px hsl(220 30% 0% / 0.4);
+  --nbg-sh-xl: 0 24px 60px hsl(220 30% 0% / 0.6),
+               0 8px 24px hsl(220 30% 0% / 0.4);
+
+  /* Accent glow — soft violet halo for hover/focus, used by Card.variant='feature' + Button.variant='primary' */
+  --nbg-sh-glow-accent: 0 0 0 1px var(--nbg-c-violet-500),
+                        0 0 24px hsl(265 85% 60% / 0.35);
+
+  /* Focus ring — dedicated, never composed; used by every focusable element */
+  --nbg-sh-focus-ring:  0 0 0 2px var(--nbg-c-slate-950),
+                        0 0 0 4px var(--nbg-c-violet-500);
+}
+```
+
+7 shadow primitives — past AC1's 4-step floor (4 elevation + focus).
+
+**Motion primitives:**
+
+```css
+:root {
+  --nbg-dur-instant:        0.01ms;   /* used by reduced-motion media query overrides */
+  --nbg-dur-fast:           120ms;    /* hover transforms, chip presses */
+  --nbg-dur-base:           200ms;    /* button hover, card lift */
+  --nbg-dur-slow:           400ms;    /* modal enter/exit, focused card outline */
+  --nbg-dur-scroll-reveal:  700ms;    /* MotionReveal default */
+
+  --nbg-ease-out:           cubic-bezier(0.22, 1, 0.36, 1);     /* default for entering elements */
+  --nbg-ease-in-out:        cubic-bezier(0.65, 0, 0.35, 1);     /* default for symmetric transitions */
+  --nbg-ease-bounce-soft:   cubic-bezier(0.34, 1.56, 0.64, 1);  /* card lift, chip selection */
+  --nbg-ease-emphasized:    cubic-bezier(0.2, 0, 0, 1);         /* hero entrance */
+}
+```
+
+5 duration + 4 easing primitives — past AC1's 3+4 floor.
+
+**Z-index primitives:**
+
+```css
+:root {
+  --nbg-z-base:    0;
+  --nbg-z-sticky:  10;
+  --nbg-z-fixed:   20;
+  --nbg-z-overlay: 100;
+  --nbg-z-modal:   200;
+  --nbg-z-toast:   300;
+}
+```
+
+6 z-index tokens — past AC1's 5-step floor.
+
+**Breakpoint custom-media tokens** (Stage-2 CSS feature; safe under Astro's Vite build because we only read them via `var()` in container-query expressions, not in real `@media` rules — Designer can drop them to plain values if Vite/PostCSS complains during P4.A):
+
+```css
+:root {
+  --nbg-bp-sm: 40rem;   /* 640px — mobile/tablet boundary */
+  --nbg-bp-md: 64rem;   /* 1024px — tablet/desktop boundary */
+  --nbg-bp-lg: 80rem;   /* 1280px — wide-desktop boundary */
+  --nbg-bp-xl: 96rem;   /* 1536px — ultra-wide */
+}
+```
+
+**Primitive tier total:** ~135 tokens. Floor under AC1 (which asks for 60+) cleared at the primitive tier alone.
+
+#### §S.13.2.3 — Semantic tier — meaning, not value
+
+File: `site/src/styles/tokens/semantic.css`. Scoped under **both** `:root, :root[data-theme='dark']` (dark defaults) and `:root[data-theme='light']` (light overrides). Every semantic token is theme-dependent.
+
+The semantic tier names what a primitive *means* in context. Components read semantic tokens; they do not read primitives directly (with the rare exception of one-off accent shifts). This indirection is what makes the Option-2 escalation cheap: replacing Starlight means rewriting `aliases.css` (the cross-system tier) and leaving primitives + semantic + component layers intact.
+
+**Surface tokens** — six steps from canvas to highest elevation:
+
+| Token | Dark value | Light value | Used by |
+|---|---|---|---|
+| `--nbg-color-bg-canvas` | `var(--nbg-c-slate-950)` | `var(--nbg-c-slate-50)` | `<html>`, `<body>` |
+| `--nbg-color-bg-page` | `var(--nbg-c-slate-900)` | `var(--nbg-c-slate-100)` | `<main>` outer |
+| `--nbg-color-bg-surface` | `var(--nbg-c-slate-800)` | `var(--nbg-c-slate-50)` | Cards, panels, popovers |
+| `--nbg-color-bg-surface-hover` | `var(--nbg-c-slate-700)` | `var(--nbg-c-slate-100)` | Hover state of surfaces |
+| `--nbg-color-bg-elevated` | `var(--nbg-c-slate-700)` | `#ffffff` | Modal background, Pagefind dropdown |
+| `--nbg-color-bg-overlay` | `hsl(220 25% 3% / 0.75)` | `hsl(220 25% 30% / 0.45)` | Modal scrim, sticky-header backdrop |
+
+Six surface steps — past AC1's 6-step floor.
+
+**Foreground tokens** — four steps:
+
+| Token | Dark | Light | Used by |
+|---|---|---|---|
+| `--nbg-color-fg-primary` | `var(--nbg-c-slate-50)` | `var(--nbg-c-slate-950)` | Body, headlines |
+| `--nbg-color-fg-secondary` | `var(--nbg-c-slate-200)` | `var(--nbg-c-slate-700)` | Secondary copy, metadata |
+| `--nbg-color-fg-muted` | `var(--nbg-c-slate-400)` | `var(--nbg-c-slate-500)` | Captions, placeholders, timestamps |
+| `--nbg-color-fg-on-accent` | `var(--nbg-c-slate-50)` | `#ffffff` | Text on accent backgrounds — verified AA against accent-bg |
+
+**Border tokens** — three steps:
+
+| Token | Dark | Light |
+|---|---|---|
+| `--nbg-color-border-subtle` | `var(--nbg-c-slate-800)` | `var(--nbg-c-slate-200)` |
+| `--nbg-color-border-default` | `var(--nbg-c-slate-700)` | `var(--nbg-c-slate-300)` |
+| `--nbg-color-border-strong` | `var(--nbg-c-slate-500)` | `var(--nbg-c-slate-500)` |
+
+**Accent tokens:**
+
+| Token | Dark | Light | Use |
+|---|---|---|---|
+| `--nbg-color-accent` | `var(--nbg-c-violet-400)` | `var(--nbg-c-violet-600)` | Brand accent — buttons, links |
+| `--nbg-color-accent-hover` | `var(--nbg-c-violet-300)` | `var(--nbg-c-violet-700)` | Hover for accent |
+| `--nbg-color-accent-bg` | `hsl(265 85% 60% / 0.12)` | `hsl(265 85% 60% / 0.08)` | Tinted accent background (chip-selected, focused card) |
+| `--nbg-color-accent-fg` | `var(--nbg-c-violet-300)` | `var(--nbg-c-violet-700)` | Text on accent-bg |
+| `--nbg-color-accent-strong` | `var(--nbg-c-violet-500)` | `var(--nbg-c-violet-500)` | Solid accent surface (primary button) |
+| `--nbg-color-accent-glow` | `var(--nbg-sh-glow-accent)` | `0 0 0 1px var(--nbg-c-violet-500), 0 0 16px hsl(265 85% 60% / 0.18)` | Hover glow |
+
+**Link tokens** — link state never falls back to "blue":
+
+| Token | Dark | Light |
+|---|---|---|
+| `--nbg-color-link` | `var(--nbg-c-violet-300)` | `var(--nbg-c-violet-700)` |
+| `--nbg-color-link-hover` | `var(--nbg-c-violet-200)` | `var(--nbg-c-violet-900)` |
+| `--nbg-color-link-visited` | `var(--nbg-c-violet-400)` | `var(--nbg-c-violet-800)` |
+
+**Focus ring token** — single source of truth; referenced verbatim by every focusable element:
+
+| Token | Dark | Light |
+|---|---|---|
+| `--nbg-color-focus-ring` | `var(--nbg-c-violet-400)` | `var(--nbg-c-violet-600)` |
+
+The actual ring shadow lives in `--nbg-sh-focus-ring` from primitives (2px transparent + 2px focus-ring color); semantic only owns the color of the ring.
+
+**Audience semantic tokens** — three pairs (bg + fg), each verified AA contrast in both modes. Mirror the legacy `#0a7 / #e60 / #08c` intent in tokenized form. Audience semantics drive `AudienceBadge.astro` and any chip that filters by audience.
+
+| Token | Dark bg | Dark fg | Light bg | Light fg |
+|---|---|---|---|---|
+| `--nbg-color-audience-beginner-bg` / `-fg` | `hsl(155 60% 18%)` | `var(--nbg-c-emerald-200)` | `var(--nbg-c-emerald-100)` | `var(--nbg-c-emerald-800)` |
+| `--nbg-color-audience-advanced-bg` / `-fg` | `hsl(28 70% 18%)` | `var(--nbg-c-amber-200)` | `var(--nbg-c-amber-100)` | `var(--nbg-c-amber-800)` |
+| `--nbg-color-audience-both-bg` / `-fg` | `hsl(210 60% 20%)` | `var(--nbg-c-sky-200)` | `var(--nbg-c-sky-100)` | `var(--nbg-c-sky-800)` |
+
+**Confidence semantic tokens** — three pairs:
+
+| Token | Dark bg | Dark fg | Light bg | Light fg |
+|---|---|---|---|---|
+| `--nbg-color-confidence-high-bg` / `-fg` | `hsl(155 60% 18%)` | `var(--nbg-c-emerald-200)` | `var(--nbg-c-emerald-50)` | `var(--nbg-c-emerald-700)` |
+| `--nbg-color-confidence-medium-bg` / `-fg` | `hsl(28 70% 18%)` | `var(--nbg-c-amber-200)` | `var(--nbg-c-amber-50)` | `var(--nbg-c-amber-700)` |
+| `--nbg-color-confidence-low-bg` / `-fg` | `hsl(350 55% 22%)` | `var(--nbg-c-rose-200)` | `var(--nbg-c-rose-50)` | `var(--nbg-c-rose-700)` |
+
+**Status semantic tokens** — for callouts and form validation:
+
+| Token | Dark | Light |
+|---|---|---|
+| `--nbg-color-status-success-bg` / `-fg` | `hsl(155 60% 12%)` / `var(--nbg-c-emerald-300)` | `var(--nbg-c-emerald-50)` / `var(--nbg-c-emerald-700)` |
+| `--nbg-color-status-warning-bg` / `-fg` | `hsl(38 70% 12%)` / `var(--nbg-c-amber-300)` | `var(--nbg-c-amber-50)` / `var(--nbg-c-amber-700)` |
+| `--nbg-color-status-danger-bg` / `-fg` | `hsl(350 55% 14%)` / `var(--nbg-c-rose-300)` | `var(--nbg-c-rose-50)` / `var(--nbg-c-rose-700)` |
+| `--nbg-color-status-info-bg` / `-fg` | `hsl(210 55% 14%)` / `var(--nbg-c-sky-300)` | `var(--nbg-c-sky-50)` / `var(--nbg-c-sky-700)` |
+
+**Type semantic tokens** — three named uses for the three font families:
+
+```css
+--nbg-type-body:    var(--nbg-ff-body);     /* Inter */
+--nbg-type-mono:    var(--nbg-ff-mono);     /* JetBrains Mono */
+--nbg-type-display: var(--nbg-ff-display);  /* Inter at higher opsz */
+```
+
+**Semantic tier total:** ~38 tokens. With primitives, the file count of `--` declarations across `tokens/primitives.css` + `tokens/semantic.css` lands at ~175 — far past AC1.
+
+#### §S.13.2.4 — Component tier — bound by individual components
+
+Component tokens are scoped to individual primitives. They live **inside** each primitive's scoped `<style>` block (not in a global file), but the tier-3 contract names them here so the design is reviewable in one place. Naming convention: `--nbg-{component-name}-{property}`.
+
+**Card.astro** — generic card primitive (consumed by SkillCard, NewsPanel cards, my-pins panels, glossary terms):
+
+```css
+--nbg-card-bg:          var(--nbg-color-bg-surface);
+--nbg-card-bg-hover:    var(--nbg-color-bg-surface-hover);
+--nbg-card-fg:          var(--nbg-color-fg-primary);
+--nbg-card-border:      var(--nbg-color-border-subtle);
+--nbg-card-border-hover: var(--nbg-color-border-default);
+--nbg-card-radius:      var(--nbg-r-lg);
+--nbg-card-padding:     var(--nbg-sp-6);
+--nbg-card-shadow:      var(--nbg-sh-sm);
+--nbg-card-shadow-hover: var(--nbg-sh-md);
+--nbg-card-feature-outline: var(--nbg-color-accent);
+--nbg-card-feature-shadow:  var(--nbg-sh-lg);
+```
+
+**Button.astro:**
+
+```css
+--nbg-button-bg-primary:        var(--nbg-color-accent-strong);
+--nbg-button-bg-primary-hover:  var(--nbg-color-accent-hover);
+--nbg-button-fg-primary:        var(--nbg-color-fg-on-accent);
+--nbg-button-bg-secondary:      transparent;
+--nbg-button-fg-secondary:      var(--nbg-color-fg-primary);
+--nbg-button-border-secondary:  var(--nbg-color-border-default);
+--nbg-button-bg-ghost:          transparent;
+--nbg-button-fg-ghost:          var(--nbg-color-fg-secondary);
+--nbg-button-fg-ghost-hover:    var(--nbg-color-fg-primary);
+--nbg-button-radius:            var(--nbg-r-md);
+--nbg-button-padding-sm:        var(--nbg-sp-1-5) var(--nbg-sp-3);
+--nbg-button-padding-md:        var(--nbg-sp-2) var(--nbg-sp-4);
+--nbg-button-padding-lg:        var(--nbg-sp-3) var(--nbg-sp-6);
+--nbg-button-fs-sm:             var(--nbg-fs-sm);
+--nbg-button-fs-md:             var(--nbg-fs-md);
+--nbg-button-fs-lg:             var(--nbg-fs-lg);
+```
+
+**Badge.astro:**
+
+```css
+--nbg-badge-radius:    var(--nbg-r-pill);
+--nbg-badge-padding:   var(--nbg-sp-0-5) var(--nbg-sp-2);
+--nbg-badge-fs:        var(--nbg-fs-xs);
+--nbg-badge-fw:        var(--nbg-fw-medium);
+--nbg-badge-ls:        var(--nbg-ls-loose);
+/* tone-specific bg/fg pulled from semantic audience/confidence/status tokens via prop */
+```
+
+**Chip.astro:**
+
+```css
+--nbg-chip-bg:           var(--nbg-color-bg-surface);
+--nbg-chip-bg-hover:     var(--nbg-color-bg-surface-hover);
+--nbg-chip-bg-selected:  var(--nbg-color-accent-bg);
+--nbg-chip-fg:           var(--nbg-color-fg-secondary);
+--nbg-chip-fg-selected:  var(--nbg-color-accent-fg);
+--nbg-chip-border:       var(--nbg-color-border-subtle);
+--nbg-chip-border-selected: var(--nbg-color-accent);
+--nbg-chip-radius:       var(--nbg-r-pill);
+--nbg-chip-padding:      var(--nbg-sp-1) var(--nbg-sp-3);
+--nbg-chip-fs:           var(--nbg-fs-xs);
+```
+
+**Input (text/search/textarea, consumed by AudienceFilter, glossary filter, submit-skill form):**
+
+```css
+--nbg-input-bg:              var(--nbg-color-bg-page);
+--nbg-input-fg:              var(--nbg-color-fg-primary);
+--nbg-input-border-default:  var(--nbg-color-border-default);
+--nbg-input-border-focus:    var(--nbg-color-accent);
+--nbg-input-border-error:    var(--nbg-color-status-danger-fg);
+--nbg-input-radius:          var(--nbg-r-md);
+--nbg-input-padding:         var(--nbg-sp-2) var(--nbg-sp-3);
+--nbg-input-fs:              var(--nbg-fs-md);
+```
+
+**Kbd.astro:**
+
+```css
+--nbg-kbd-bg:       var(--nbg-color-bg-page);
+--nbg-kbd-fg:       var(--nbg-color-fg-secondary);
+--nbg-kbd-border:   var(--nbg-color-border-default);
+--nbg-kbd-radius:   var(--nbg-r-sm);
+--nbg-kbd-padding:  var(--nbg-sp-px) var(--nbg-sp-1-5);
+--nbg-kbd-fs:       var(--nbg-fs-2xs);
+--nbg-kbd-family:   var(--nbg-ff-mono);
+```
+
+**Component tier estimate:** ~70 tokens across all primitives. Most never leak outside their owning `<style>` block — they exist to make a primitive's internal rules readable and overridable from a consumer if needed.
+
+**Total token surface:** ~245 declarations (135 primitive + 38 semantic + ~70 component). The `grep -c '^\s*--' site/src/styles/tokens/*.css` AC1-floor of 60 is exceeded by 3×.
+
+#### §S.13.2.5 — Starlight alias block (cross-system tier)
+
+File: `site/src/styles/tokens/aliases.css`. This is the **one file that binds the redesign to Starlight**. In an Option-2 escalation, this file is deleted.
+
+The map below is sourced from the Pagefind research doc lines 99–138 plus the additional `--sl-font*` aliases for the Astro Fonts API.
+
+```css
+@layer tokens {
+  :root,
+  :root[data-theme='dark'] {
+    /* --- Color aliases --- */
+    /* Modal/surface backgrounds */
+    --sl-color-black:            var(--nbg-color-bg-elevated);    /* modal bg */
+    --sl-color-gray-6:           var(--nbg-color-bg-page);        /* search-button bg, accordion header */
+    --sl-color-gray-5:           var(--nbg-color-border-default); /* borders, dividers */
+    --sl-color-gray-4:           var(--nbg-c-slate-500);           /* tree-diagram icon */
+    --sl-color-gray-3:           var(--nbg-c-slate-400);           /* page icon */
+    --sl-color-gray-2:           var(--nbg-color-fg-muted);       /* result-excerpt, mark */
+    --sl-color-gray-1:           var(--nbg-c-slate-200);          /* placeholder, button text */
+
+    /* Foreground roles */
+    --sl-color-white:            var(--nbg-color-fg-primary);     /* result-link text */
+    --sl-color-text:             var(--nbg-color-fg-primary);     /* pagefind primary */
+    --sl-color-text-accent:      var(--nbg-color-accent);         /* close button, clear ::before */
+    --sl-color-text-invert:      var(--nbg-color-bg-canvas);      /* filter checkbox checkmark */
+
+    /* Accent roles */
+    --sl-color-accent:           var(--nbg-color-accent);
+    --sl-color-accent-high:      var(--nbg-color-accent-hover);
+    --sl-color-accent-low:       var(--nbg-color-accent-bg);
+
+    /* Backdrop + shadow */
+    --sl-color-backdrop-overlay: var(--nbg-color-bg-overlay);
+    --sl-shadow-lg:              var(--nbg-sh-xl);                /* dialog shadow */
+
+    /* --- Font aliases --- */
+    --sl-font:                   var(--nbg-type-body);
+    --sl-font-mono:              var(--nbg-type-mono);
+  }
+
+  :root[data-theme='light'] {
+    /* Same alias surface, semantic tokens already rebind under [data-theme='light'] */
+    --sl-color-black:            var(--nbg-color-bg-elevated);
+    --sl-color-gray-6:           var(--nbg-color-bg-page);
+    --sl-color-gray-5:           var(--nbg-color-border-default);
+    --sl-color-gray-4:           var(--nbg-c-slate-400);
+    --sl-color-gray-3:           var(--nbg-c-slate-500);
+    --sl-color-gray-2:           var(--nbg-color-fg-muted);
+    --sl-color-gray-1:           var(--nbg-c-slate-700);
+
+    --sl-color-white:            var(--nbg-color-fg-primary);
+    --sl-color-text:             var(--nbg-color-fg-primary);
+    --sl-color-text-accent:      var(--nbg-color-accent);
+    --sl-color-text-invert:      #ffffff;
+
+    --sl-color-accent:           var(--nbg-color-accent);
+    --sl-color-accent-high:      var(--nbg-color-accent-hover);
+    --sl-color-accent-low:       var(--nbg-color-accent-bg);
+
+    --sl-color-backdrop-overlay: var(--nbg-color-bg-overlay);
+    --sl-shadow-lg:              var(--nbg-sh-lg);
+
+    --sl-font:                   var(--nbg-type-body);
+    --sl-font-mono:              var(--nbg-type-mono);
+  }
+}
+```
+
+That's 16 `--sl-color-*` + 1 `--sl-shadow-*` + 2 `--sl-font*` = 19 aliases per theme scope × 2 scopes = 38 lines of cross-system binding. Pagefind retints; sidebar retints; TOC retints; callouts retint. No `--pagefind-ui-*` overrides required (per Pagefind research doc §"Key insight — Starlight already does the work").
+
+#### §S.13.2.6 — Reduced-motion overrides
+
+File: `site/src/styles/reduced-motion.css`. Loaded last after `tokens.css`. Collapses every motion-duration token to `--nbg-dur-instant` so any rule using `transition-duration: var(--nbg-dur-base)` (or fast, slow, scroll-reveal) becomes instant.
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --nbg-dur-fast:          var(--nbg-dur-instant);
+    --nbg-dur-base:          var(--nbg-dur-instant);
+    --nbg-dur-slow:          var(--nbg-dur-instant);
+    --nbg-dur-scroll-reveal: var(--nbg-dur-instant);
+  }
+}
+```
+
+That single block satisfies AC22's cascade-level requirement. The IntersectionObserver script (§S.13.7) also early-returns under reduced-motion, so reveals don't even register — defense in depth.
+
+### §S.13.3 — Typography system
+
+Inter Variable (body + display via opsz axis) + JetBrains Mono Variable. Both self-hosted by Astro Fonts API. The exact `astro.config.mjs` block is in the Astro Fonts research doc §"Recommended astro.config.mjs". Adopted verbatim with `cssVariable: '--nbg-font-body'` and `cssVariable: '--nbg-font-mono'`.
+
+#### §S.13.3.1 — Full type-scale table
+
+| Token | Size (rem) | Line-height | Letter-spacing | Weight | `opsz` axis | Use |
+|---|---|---|---|---|---|---|
+| `--nbg-fs-2xs` (0.6875rem / 11px) | 0.6875 | `--nbg-lh-snug` | `--nbg-ls-wide` (0.08em) | `--nbg-fw-medium` (500) | `--nbg-opsz-body` (14) | `<Kbd>`, eyebrow micro, badge micro |
+| `--nbg-fs-xs` (0.75rem / 12px) | 0.75 | `--nbg-lh-snug` | `--nbg-ls-loose` (0.02em) | `--nbg-fw-medium` | `--nbg-opsz-body` | `<Eyebrow>`, `<Chip>`, `<Badge>`, metadata |
+| `--nbg-fs-sm` (0.875rem / 14px) | 0.875 | `--nbg-lh-base` | `--nbg-ls-normal` | `--nbg-fw-regular` | `--nbg-opsz-body` | Secondary body, captions, table cells |
+| `--nbg-fs-md` (1rem / 16px) | 1 | `--nbg-lh-base` (1.6) | `--nbg-ls-normal` | `--nbg-fw-regular` | `--nbg-opsz-body` | Body default. Inherits to all `<p>` |
+| `--nbg-fs-lg` (1.125rem / 18px) | 1.125 | `--nbg-lh-tight` (1.3) | `--nbg-ls-normal` | `--nbg-fw-regular` | `--nbg-opsz-lede` (20) | `<Lede>` (paragraph lede) small |
+| `--nbg-fs-xl` (1.375rem / 22px) | 1.375 | `--nbg-lh-headline` (1.15) | `--nbg-ls-snug` | `--nbg-fw-semibold` | `--nbg-opsz-lede` | h3, `<Lede>` large |
+| `--nbg-fs-2xl` (1.75rem / 28px) | 1.75 | `--nbg-lh-headline` | `--nbg-ls-snug` | `--nbg-fw-semibold` | `--nbg-opsz-lede` | h2 section title |
+| `--nbg-fs-display-sm` (2.25rem / 36px) | 2.25 | `--nbg-lh-display` (1.05) | `--nbg-ls-tight` | `--nbg-fw-bold` | `--nbg-opsz-display` (32) | `<Display size="sm">` — secondary marketing |
+| `--nbg-fs-display-md` (3rem / 48px) | 3 | `--nbg-lh-display` | `--nbg-ls-tight` | `--nbg-fw-bold` | `--nbg-opsz-display` | h1 on most marketing pages |
+| `--nbg-fs-display-lg` (4rem / 64px) | 4 | `--nbg-lh-display` | `--nbg-ls-tight` | `--nbg-fw-extrabold` | `--nbg-opsz-display` | Homepage h1 minimum (AC5 floor) |
+| `--nbg-fs-display-xl` (5rem / 80px) | 5 | `--nbg-lh-display` | `--nbg-ls-tight` | `--nbg-fw-extrabold` | `--nbg-opsz-display` | Homepage h1 desktop wide |
+| `--nbg-fs-display-2xl` (6.5rem / 104px) | 6.5 | `--nbg-lh-display` | -0.03em | `--nbg-fw-extrabold` | `--nbg-opsz-display` | Reserved — only if Designer wants oversized hero. Not used by default. |
+
+**Font-feature-settings, global application:**
+
+```css
+html, body {
+  font-family: var(--nbg-type-body);
+  font-size: var(--nbg-fs-md);
+  line-height: var(--nbg-lh-base);
+  font-feature-settings: 'ss01' on, 'cv11' on, 'cv05' on;
+}
+
+code, pre, kbd, samp {
+  font-family: var(--nbg-type-mono);
+  font-feature-settings: 'zero' on, 'liga' off;
+}
+
+[data-tabular] {
+  font-feature-settings: 'tnum' on, 'cv11' on;
+}
+
+.display,
+h1.display,
+[data-display] {
+  font-family: var(--nbg-type-display);
+  font-variation-settings: 'opsz' var(--nbg-opsz-display), 'wght' 720;
+  letter-spacing: var(--nbg-ls-tight);
+  line-height: var(--nbg-lh-display);
+}
+```
+
+`'ss01'` is Inter's single-storey `a` stylistic set; `'cv11'` is the alt-1 form (slashed open `1` without footers); `'cv05'` is the lower-case `l` with serif. The combination reads more "Linear-like" — refined, less generic. The mono override turns ligatures **off** (we want code that looks like code, not arrow-arrow ligatures masquerading as `>=`).
+
+**Fallback strategy** — handled automatically by Astro Fonts API. The `optimizedFallbacks: true` flag in `astro.config.mjs` causes Astro to compute `size-adjust` + `ascent-override` metrics on the local fallback (Arial for body, Menlo for mono) so the swap is visually undetectable. We do not write `@font-face` boilerplate ourselves. If the Fontsource provider misbehaves, the documented fallback (Astro Fonts research §"Fallback path") is to switch to `@fontsource-variable/inter` + `@fontsource-variable/jetbrains-mono` direct NPM imports. Phase 6 does not pre-pay this; it's a contingency.
+
+#### §S.13.3.2 — Heading semantics
+
+Headings on marketing surfaces are produced by `<Display>` primitive. On content-detail pages (`/news/[slug]/`), heading semantics come from MDX (`#`, `##`, `###`) and are themed via `content-override.css` selectors (§S.13.11).
+
+| Element | Primitive / source | Token | Marketing example |
+|---|---|---|---|
+| Hero h1 (homepage) | `<Display level={1} size="xl">` | `--nbg-fs-display-xl` (80px) | Homepage hero |
+| Marketing h1 | `<Display level={1} size="lg">` | `--nbg-fs-display-lg` (64px) | All other marketing surfaces |
+| Section h2 | `<Display level={2} size="sm">` or plain `<h2>` | `--nbg-fs-display-sm` (36px) / `--nbg-fs-2xl` (28px) | Per-section heads on pillar landings |
+| h3 | plain `<h3>` | `--nbg-fs-xl` (22px) | Card titles |
+| Content h1 (slug page) | MDX `#` | `--nbg-fs-display-md` (48px) via content-override.css | News detail |
+
+### §S.13.4 — Spacing, layout, responsive
+
+#### §S.13.4.1 — Layout primitives — prop signatures
+
+**`<Container>`** — width-capped wrapper with horizontal padding. Always block-level. Always horizontally centers when narrower than viewport.
+
+```ts
+interface ContainerProps {
+  width?: 'narrow' | 'default' | 'wide' | 'full';
+  // narrow  = 56rem  (prose, single-column reading)
+  // default = 72rem  (most marketing surfaces)
+  // wide    = 88rem  (homepage, skills grid)
+  // full    = 100%   (hero full-bleed)
+  as?: 'div' | 'section' | 'article' | 'main';
+  // default 'div'
+}
+```
+
+DOM: `<{as} class="nbg-container" data-width={width}>{slot}</{as}>`. CSS resolves max-width per `data-width`.
+
+**`<Section>`** — full-bleed vertical-rhythm container. Sits between page-level wrappers; supplies vertical padding. Optional tone for tinted backgrounds.
+
+```ts
+interface SectionProps {
+  spacing?: 'snug' | 'default' | 'spacious' | 'epic';
+  // snug      = padding-block: var(--nbg-sp-8)   (32px)
+  // default   = padding-block: var(--nbg-sp-12)  (48px)
+  // spacious  = padding-block: var(--nbg-sp-16)  (64px)
+  // epic      = padding-block: var(--nbg-sp-24)  (96px)  — heroes
+  tone?: 'default' | 'subtle' | 'inverse';
+  // default = canvas
+  // subtle  = page (one shade lighter / darker)
+  // inverse = elevated (panel)
+  as?: 'section' | 'div' | 'article' | 'aside';
+  surfaceId?: string;  // optional data-surface hook
+}
+```
+
+DOM: `<{as} class="nbg-section" data-spacing={spacing} data-tone={tone} data-surface={surfaceId ?? undefined}>{slot}</{as}>`.
+
+**`<Stack>`** — vertical flex with consistent gap.
+
+```ts
+interface StackProps {
+  gap?: '0' | '1' | '2' | '3' | '4' | '5' | '6' | '8' | '10' | '12' | '16' | '20' | '24';
+  // strings map 1:1 to --nbg-sp-{n} tokens
+  align?: 'start' | 'center' | 'end' | 'stretch';
+  as?: 'div' | 'ul' | 'ol' | 'nav';
+}
+```
+
+DOM: `<{as} class="nbg-stack" data-gap={gap} data-align={align}>{slot}</{as}>`. CSS: `display: flex; flex-direction: column; gap: var(--nbg-sp-{gap})`.
+
+**`<Cluster>`** — wrapping horizontal flex.
+
+```ts
+interface ClusterProps {
+  gap?: '0' | '1' | '2' | '3' | '4' | '5' | '6' | '8';
+  align?: 'start' | 'center' | 'end' | 'baseline' | 'stretch';
+  justify?: 'start' | 'center' | 'end' | 'between' | 'around';
+  wrap?: boolean;  // default true
+  as?: 'div' | 'ul';
+}
+```
+
+**`<Grid>`** — CSS grid with auto-fit semantics OR fixed column count.
+
+```ts
+interface GridProps {
+  columns?: 'auto-fit' | number;
+  // 'auto-fit' uses minmax(min, 1fr); number sets explicit count
+  min?: string;
+  // minimum cell width when columns='auto-fit' — required in that mode
+  // e.g. '20rem'. Plan-002 used '18rem'; redesign abandons uniform '18rem' grids
+  // but Grid primitive itself supports auto-fit when a marketing surface wants it.
+  gap?: '0' | '1' | '2' | '3' | '4' | '5' | '6' | '8' | '10';
+  as?: 'div' | 'ul';
+}
+```
+
+DOM: `<{as} class="nbg-grid" data-columns={columns} data-min={min} data-gap={gap}>{slot}</{as}>`.
+
+**`<Split>`** — two-column asymmetric split for hero layouts.
+
+```ts
+interface SplitProps {
+  ratio?: '1/2' | '1/3' | '2/3' | '3/5' | '2/5';
+  // start fraction:end fraction. Defaults to '3/5' (60% / 40%).
+  gap?: '0' | '4' | '6' | '8' | '12' | '16';
+  stack?: 'sm' | 'md' | 'lg';
+  // breakpoint below which the split collapses to a stack
+  // sm = below --nbg-bp-sm (640px)
+  // md = below --nbg-bp-md (1024px)
+  // lg = below --nbg-bp-lg (1280px)
+  as?: 'div' | 'section';
+}
+```
+
+DOM: `<{as} class="nbg-split" data-ratio={ratio} data-gap={gap} data-stack={stack}><div class="nbg-split__start">{start slot}</div><div class="nbg-split__end">{end slot}</div></{as}>`. Slots are named `start` and `end`.
+
+#### §S.13.4.2 — Breakpoint contract
+
+```css
+/* Token aliases for use in @media rules */
+/* Note: declared as primitives in §S.13.2.2; restated here for design clarity */
+--nbg-bp-sm: 40rem;   /* 640px  — mobile/tablet boundary */
+--nbg-bp-md: 64rem;   /* 1024px — tablet/desktop boundary */
+--nbg-bp-lg: 80rem;   /* 1280px — wide-desktop boundary */
+--nbg-bp-xl: 96rem;   /* 1536px — ultra-wide */
+```
+
+Real `@media` queries inline the values because no browser supports `@media (min-width: var(--nbg-bp-md))` yet (custom-media is Stage 2 CSS). The token names exist for documentation and for container-query expressions that DO accept `var()`. Designer enforces consistency via lint or PR review; the primitives' scoped styles only use the four canonical pixel values above.
+
+#### §S.13.4.3 — Container queries
+
+`<Section>`, `<Grid>`, `<Card>` declare `container-type: inline-size; container-name: nbg-section / nbg-grid / nbg-card`. Primitive internals may use `@container (min-width: 30rem) { ... }` to adapt regardless of viewport — useful when the same card sits in a 1-col mobile layout vs a 2-col asymmetric grid on tablet.
+
+### §S.13.5 — Primitive components (14 components)
+
+Each primitive lives at `site/src/components/primitives/<Name>.astro`. All primitives obey:
+
+- **Pure visual**. No `lib/` imports.
+- **Portable**. No `@astrojs/starlight/*` imports. Verifiable: `grep -r '@astrojs/starlight' site/src/components/primitives/` returns 0 matches.
+- **Token-driven**. Every color/space/radius/shadow/duration referenced via `var(--nbg-*)`.
+- **A11y-clean defaults**. Real HTML elements; ARIA only when required; focus-visible always.
+- **Header comment**. Each file starts with `<!-- … -->` block citing purpose, related §S.13 subsection, and the AC numbers it backs.
+
+The 14 primitives in P4.C dependency order (alphabetical within each tier):
+
+#### §S.13.5.1 — `Container.astro`
+
+- **Path**: `site/src/components/primitives/Container.astro`.
+- **Purpose**: Width-capped horizontal wrapper. Centers content; applies side padding.
+- **Props**: as defined in §S.13.4.1. `width: 'narrow' | 'default' | 'wide' | 'full'` (default 'default'), `as: 'div' | 'section' | 'article' | 'main'` (default 'div').
+- **Slots**: default.
+- **DOM**: `<{as} class="nbg-container" data-width={width}><slot /></{as}>`.
+- **Tokens consumed**: `--nbg-sp-4`, `--nbg-sp-6` (side padding).
+- **A11y**: no ARIA; semantic element via `as` prop.
+- **Portability check**: `grep '@astrojs/starlight' site/src/components/primitives/Container.astro` → 0 matches.
+
+#### §S.13.5.2 — `Section.astro`
+
+- **Path**: `site/src/components/primitives/Section.astro`.
+- **Purpose**: Full-bleed vertical-rhythm region with optional tinted background. Establishes `container-type: inline-size; container-name: nbg-section`.
+- **Props**: `spacing: 'snug' | 'default' | 'spacious' | 'epic'` (default 'default'), `tone: 'default' | 'subtle' | 'inverse'` (default 'default'), `as: 'section' | 'div' | 'article' | 'aside'` (default 'section'), `surfaceId?: string`.
+- **Slots**: default.
+- **DOM**: `<{as} class="nbg-section" data-spacing={spacing} data-tone={tone} {...(surfaceId ? { 'data-surface': surfaceId } : {})}><slot /></{as}>`.
+- **Tokens**: `--nbg-sp-8/12/16/24`, `--nbg-color-bg-canvas/page/elevated`.
+- **A11y**: none required.
+
+#### §S.13.5.3 — `Stack.astro`
+
+- **Path**: `site/src/components/primitives/Stack.astro`.
+- **Purpose**: Vertical flex column with uniform gap.
+- **Props**: `gap` (token name, default '4'), `align` (default 'stretch'), `as` (default 'div').
+- **Slots**: default.
+- **DOM**: `<{as} class="nbg-stack" data-gap={gap} data-align={align}><slot /></{as}>`.
+- **Tokens**: `--nbg-sp-{gap}`.
+- **A11y**: if `as='ul' | 'ol' | 'nav'`, callers responsible for inner `<li>` semantics.
+
+#### §S.13.5.4 — `Cluster.astro`
+
+- **Path**: `site/src/components/primitives/Cluster.astro`.
+- **Purpose**: Horizontal wrapping flex (chip rows, CTA rows, button clusters).
+- **Props**: `gap`, `align`, `justify`, `wrap` (default true), `as` (default 'div').
+- **DOM**: `<{as} class="nbg-cluster" data-gap={gap} data-align={align} data-justify={justify} data-wrap={String(wrap)}><slot /></{as}>`.
+
+#### §S.13.5.5 — `Grid.astro`
+
+- **Path**: `site/src/components/primitives/Grid.astro`.
+- **Purpose**: CSS grid wrapper. Two modes: explicit column count or `auto-fit` with `minmax(min, 1fr)`.
+- **Props**: `columns: 'auto-fit' | number` (default 'auto-fit'), `min?: string` (required when columns='auto-fit'), `gap` (default '4'), `as` (default 'div').
+- **Validation**: if `columns === 'auto-fit'` and `min` is undefined, the Astro frontmatter throws — `throw new Error('Grid columns="auto-fit" requires a min prop')`. Per global CLAUDE.md no-fallback rule.
+- **DOM**: `<{as} class="nbg-grid" data-columns={String(columns)} data-min={min ?? null} data-gap={gap}><slot /></{as}>`.
+- **Caution**: Phase 6 coders must NOT use `min="18rem"` on `/skills/`, `/news/`, or `/tips/` — those surfaces' acceptance criteria forbid uniform `auto-fit minmax(18rem, 1fr)` grids. `min` values like `'22rem'` for non-pillar grids and explicit `columns={N}` for pillar grids are the documented usages.
+
+#### §S.13.5.6 — `Split.astro`
+
+- **Path**: `site/src/components/primitives/Split.astro`.
+- **Purpose**: Two-column asymmetric split. Named slots `start` and `end`.
+- **Props**: `ratio` (default '3/5'), `gap` (default '8'), `stack` (default 'md'), `as` (default 'section').
+- **Slots**: `start`, `end`. Default slot ignored (Designer may warn at runtime if accidentally used).
+- **DOM**: `<{as} class="nbg-split" data-ratio={ratio} data-gap={gap} data-stack={stack}><div class="nbg-split__start"><slot name="start" /></div><div class="nbg-split__end"><slot name="end" /></div></{as}>`.
+
+#### §S.13.5.7 — `Card.astro`
+
+- **Path**: `site/src/components/primitives/Card.astro`.
+- **Purpose**: The generic card primitive. Four variants control visual weight. Used by SkillCard, NewsPanel/NewsList cards, my-pins panels, glossary terms, contribute CTA cards.
+- **Props**:
+
+```ts
+interface CardProps {
+  variant?: 'feature' | 'content' | 'link' | 'stat';
+  // feature = lead card — outlined w/ accent + larger shadow + accent glow on hover
+  // content = standard card — bg surface, subtle border, sm shadow
+  // link    = clickable card — content + cursor pointer + accent border on hover; renders as <a> if href
+  // stat    = numeric callout — bg subtle, large numeric content via slot
+  as?: 'article' | 'div' | 'a' | 'li';
+  // default 'article' unless href is provided → 'a'
+  href?: string;
+  // when set, card renders as <a> with role=undefined (the link semantics suffice)
+  target?: '_blank' | '_self';
+  rel?: string;
+}
+```
+
+- **Slots**: default; named `header` / `footer` / `media` (optional).
+- **DOM**:
+  ```html
+  <{as} class="nbg-card" data-variant={variant} {...(href ? { href, target, rel } : {})}>
+    <slot name="media" />
+    <header class="nbg-card__header"><slot name="header" /></header>
+    <div class="nbg-card__body"><slot /></div>
+    <footer class="nbg-card__footer"><slot name="footer" /></footer>
+  </{as}>
+  ```
+  Header/footer wrappers only render when their slots have content (use Astro's `Astro.slots.has('header')`).
+- **Tokens**: full `--nbg-card-*` component-tier set from §S.13.2.4.
+- **A11y**: if `variant='link'` or `href` provided, the card itself is the link (single `<a>` wraps content); no role="article" inside an anchor. If multiple links live inside a content card, the card stays `<article>` and inner `<a>`s carry their own semantics.
+
+#### §S.13.5.8 — `Button.astro`
+
+- **Path**: `site/src/components/primitives/Button.astro`.
+- **Purpose**: Accessible button or anchor with three variants and three sizes.
+- **Props**:
+
+```ts
+interface ButtonProps {
+  variant?: 'primary' | 'secondary' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
+  as?: 'button' | 'a';
+  // when href is provided, as defaults to 'a'
+  href?: string;
+  type?: 'button' | 'submit' | 'reset';  // when as='button'; defaults to 'button'
+  target?: '_blank' | '_self';
+  rel?: string;
+  disabled?: boolean;
+  'aria-label'?: string;
+  'aria-pressed'?: boolean;
+  // forwarded raw to the underlying element — PinButton uses aria-pressed
+}
+```
+
+- **DOM**: `<{as} class="nbg-button" data-variant={variant} data-size={size} disabled={disabled} ...><slot /></{as}>`.
+- **Tokens**: full `--nbg-button-*` set.
+- **A11y**: button gets implicit role; anchor gets explicit `role` only if href is omitted (which would be an error — Astro frontmatter throws in that case per global no-fallback rule).
+- **Critical contract for PinButton restyle**: PinButton.astro's outer element MAY remain a `<button>` directly with the same `data-pin-type`/`data-pin-slug`/`aria-pressed`/`aria-label` attributes — its script reads those attributes. Designer's call at P4.I whether to compose `<Button>` internally or just use Button's `<style>` system inline; the contract is "Button primitive's CSS tokens drive PinButton's visual; PinButton's script-driven attributes are preserved bit-for-bit." See §S.13.12.
+
+#### §S.13.5.9 — `Badge.astro`
+
+- **Path**: `site/src/components/primitives/Badge.astro`.
+- **Purpose**: Pill-shaped colored label. Drives `AudienceBadge` and `ConfidenceChip` internally.
+- **Props**:
+
+```ts
+interface BadgeProps {
+  tone?:
+    | 'neutral'
+    | 'beginner' | 'advanced' | 'both'           // audience tones
+    | 'high' | 'medium' | 'low'                  // confidence tones
+    | 'success' | 'warning' | 'danger' | 'info'; // status tones
+  // default 'neutral'
+  as?: 'span' | 'div';
+  // default 'span' — inline by default
+}
+```
+
+- **DOM**: `<{as} class="nbg-badge" data-tone={tone}><slot /></{as}>`.
+- **Tokens**: switches `background-color` and `color` via `data-tone` attribute, consuming semantic tokens (`--nbg-color-audience-{beginner|advanced|both}-{bg|fg}`, `--nbg-color-confidence-{high|medium|low}-{bg|fg}`, `--nbg-color-status-{success|warning|danger|info}-{bg|fg}`). Neutral uses `--nbg-color-bg-surface` / `--nbg-color-fg-secondary`.
+- **A11y**: inline by default; no role. If used as a status indicator (e.g., in form validation), the consumer wraps with `role="status"` externally.
+
+#### §S.13.5.10 — `Chip.astro`
+
+- **Path**: `site/src/components/primitives/Chip.astro`.
+- **Purpose**: Tag chip. Replaces legacy `.topic-chip`. Supports selectable filter chips.
+- **Props**:
+
+```ts
+interface ChipProps {
+  selected?: boolean;        // default false
+  interactive?: boolean;     // default false — when true, renders as <button>
+  href?: string;             // when set + !interactive, renders as <a>
+  as?: 'span' | 'a' | 'button';  // auto-resolved if not provided
+}
+```
+
+- **DOM**:
+  - `selected=false, interactive=false, href=undefined` → `<span class="nbg-chip" data-selected="false">{slot}</span>`.
+  - `interactive=true` → `<button type="button" class="nbg-chip" data-selected={String(selected)} aria-pressed={String(selected)}>{slot}</button>`.
+  - `href` set → `<a class="nbg-chip" data-selected="false" href={href}>{slot}</a>`.
+- **Tokens**: `--nbg-chip-*` component-tier set.
+- **A11y**: when interactive, `aria-pressed` reflects selected. Real `<button>` element — keyboard-accessible by default.
+
+#### §S.13.5.11 — `Kbd.astro`
+
+- **Path**: `site/src/components/primitives/Kbd.astro`.
+- **Purpose**: Keyboard shortcut display. Renders `<kbd>` with mono font and 1px border.
+- **Props**: none. Slot only.
+- **DOM**: `<kbd class="nbg-kbd"><slot /></kbd>`.
+- **Tokens**: `--nbg-kbd-*` component-tier set.
+- **Use case**: Inside `<Cluster>` for a chord (e.g., `<Cluster gap="1"><Kbd>Cmd</Kbd><Kbd>K</Kbd></Cluster>`). The visual gap mirrors the Search.astro current `<kbd>+<kbd>` pattern.
+
+#### §S.13.5.12 — `Eyebrow.astro`
+
+- **Path**: `site/src/components/primitives/Eyebrow.astro`.
+- **Purpose**: Pre-heading label — small, mono, uppercase, tracked-out. Sits above a `<Display>` or `<h2>`.
+- **Props**: `as?: 'p' | 'span' | 'div'` (default 'p'), `tone?: 'default' | 'accent'` (default 'default').
+- **DOM**: `<{as} class="nbg-eyebrow" data-tone={tone}><slot /></{as}>`.
+- **Tokens**: `--nbg-fs-xs`, `--nbg-ff-mono`, `--nbg-fw-medium`, `--nbg-ls-wide`, `--nbg-color-fg-muted` (default) or `--nbg-color-accent` (accent tone).
+- **CSS**: `text-transform: uppercase`.
+
+#### §S.13.5.13 — `Lede.astro`
+
+- **Path**: `site/src/components/primitives/Lede.astro`.
+- **Purpose**: Oversized intro paragraph that sits below a hero h1. Sets reading tone.
+- **Props**: `as?: 'p' | 'div'` (default 'p'), `size?: 'sm' | 'lg'` (default 'sm').
+- **DOM**: `<{as} class="nbg-lede" data-size={size}><slot /></{as}>`.
+- **Tokens**: `--nbg-fs-lg` (sm) or `--nbg-fs-xl` (lg), `--nbg-fw-regular`, `--nbg-lh-tight`, `--nbg-color-fg-secondary`.
+
+#### §S.13.5.14 — `Display.astro`
+
+- **Path**: `site/src/components/primitives/Display.astro`.
+- **Purpose**: Oversized display heading. Polymorphic via `level` prop. Engages `opsz` axis.
+- **Props**:
+
+```ts
+interface DisplayProps {
+  level: 1 | 2 | 3 | 4;   // required — maps to <h1>..<h4>
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+  // default depends on level: level=1 → 'lg', level=2 → 'md', level=3 → 'sm', level=4 → 'sm'
+  weight?: 'medium' | 'semibold' | 'bold' | 'extrabold';
+  // default 'extrabold' for size 'xl' / '2xl', 'bold' otherwise
+}
+```
+
+- **DOM**: `<h{level} class="nbg-display" data-size={size} data-weight={weight} data-display><slot /></h{level}>`.
+- **Tokens**: `--nbg-fs-display-{size}`, `--nbg-fw-{weight}`, `--nbg-ff-display`, `--nbg-ls-tight`, `--nbg-lh-display`. Sets `font-variation-settings: 'opsz' var(--nbg-opsz-display), 'wght' var(--nbg-fw-{weight} from above);` to engage Inter's display optical-size glyph forms.
+- **A11y**: heading semantics from `<h{level}>`.
+
+#### §S.13.5.15 — `MotionReveal.astro`
+
+- **Path**: `site/src/components/primitives/MotionReveal.astro`.
+- **Purpose**: Wrapper that marks its child with `data-reveal="true"`. The IntersectionObserver in `motion.ts` (§S.13.7) reads this and toggles `.is-revealed` when the element crosses the threshold.
+- **Props**:
+
+```ts
+interface MotionRevealProps {
+  delay?: number;     // ms — staggered reveal sequences
+  as?: 'div' | 'section' | 'article' | 'li';   // default 'div'
+}
+```
+
+- **DOM**: `<{as} class="nbg-motion-reveal" data-reveal="true" {...(delay ? { 'data-reveal-delay': String(delay) } : {})}><slot /></{as}>`.
+- **CSS**: initial `opacity: 0; transform: translateY(16px); transition: opacity var(--nbg-dur-scroll-reveal) var(--nbg-ease-out), transform var(--nbg-dur-scroll-reveal) var(--nbg-ease-out);`. With `[data-reveal-delay]` applied via `transition-delay: calc(var(--reveal-delay-val, 0) * 1ms);` and JS sets `--reveal-delay-val` from the attribute.
+- **Reveal trigger**: `.nbg-motion-reveal.is-revealed { opacity: 1; transform: translateY(0); }`.
+- **Reduced motion**: under `@media (prefers-reduced-motion: reduce)`, initial state already collapses to `opacity: 1; transform: none;` via:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .nbg-motion-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+```
+
+Defense in depth alongside the script's early-return.
+
+#### §S.13.5.16 — Bonus primitive — `StepIndicator.astro`
+
+Plan P4.C lists 14 primitives. The investigator's list says 13. The deviation is `StepIndicator` — added to support AC6 (Day-1 step layout). Lives at `site/src/components/primitives/StepIndicator.astro`.
+
+- **Path**: `site/src/components/primitives/StepIndicator.astro`.
+- **Purpose**: Vertical list of step labels with a current-step highlight. Sticky on desktop; transforms into a horizontal accordion-like compact bar on mobile.
+- **Props**:
+
+```ts
+interface StepIndicatorProps {
+  steps: Array<{ id: string; label: string }>;
+  current?: string;   // id of the currently-active step (controlled by IntersectionObserver)
+  sticky?: boolean;   // default true
+  ariaLabel?: string; // default 'Steps'
+}
+```
+
+- **DOM**: `<nav class="nbg-step-indicator" data-sticky={String(sticky)} aria-label={ariaLabel}><ol>{steps.map(step => <li data-step-id={step.id} data-current={step.id === current ? 'true' : 'false'}><a href={`#${step.id}`}>{step.label}</a></li>)}</ol></nav>`.
+- **Behavior**: a small inline `<script>` (~20 lines, inlined within `StepIndicator.astro`) sets up an IntersectionObserver on `section[id^='step-']` elements within the same page; updates `[data-current]` on the nav lis to track scroll position. Reduced-motion: observer still runs (it's an attribute toggle, not animation); but no smooth-scroll on link click.
+- **A11y**: `<nav aria-label>` provides landmark; inner `<ol>` provides sequence; current step indicated with `aria-current="true"` mirroring `[data-current]`.
+- **Mobile responsiveness**: at viewports below `--nbg-bp-md`, the indicator transforms to horizontal scrollable strip via `flex-direction: row; overflow-x: auto;`. No accordion (per design discussion §S.13.0 item 1 — accordion adds complexity that the AC6 wording doesn't actually require; the horizontal compact bar is "collapsible/accordion or vertical-progress affordance" per AC6).
+
+**Final primitive count: 15** (14 from plan + StepIndicator). Plan's mention of 14 in the file list already includes StepIndicator; the investigator's "13" was pre-AC6 analysis. No deviation needs to be flagged.
+
+### §S.13.6 — `MarketingShell.astro` contract
+
+A Starlight isolation boundary — one of four. The four files that import from `@astrojs/starlight/*` are: this file, `tokens/aliases.css`, `SocialIconsOverride.astro`, and `SplashAwareHeader.astro` (see §S.13.6.1 for the header). **MarketingShell stays around ~95 LOC** after the 2026-05-19 unified-header refactor moved the nbg-topnav markup out into SplashAwareHeader.
+
+- **Path**: `site/src/components/MarketingShell.astro`.
+- **Props**:
+
+```ts
+interface MarketingShellProps {
+  title: string;
+  description?: string;
+  surfaceId?: string;      // 'home' | 'skills' | 'news' | 'tips' | 'glossary' | 'reference'
+                           //  | 'contribute' | 'day-1' | 'week-1' | 'my-pins' | 'submit-skill'
+  width?: 'default' | 'wide' | 'full';
+  // controls outer <Container> width — defaults to 'wide' for most surfaces
+  hero?: 'auto' | 'none';
+  // when 'auto', renders the named `hero` slot inside a `<Section spacing="epic" tone="default">`
+  // when 'none', renders nothing for hero; consumer composes their own
+  // default 'auto' if `hero` slot is provided, 'none' otherwise — Astro decides at render time via Astro.slots.has('hero')
+  theme?: 'default' | 'inverse';
+  // 'inverse' flips the canvas brightness for full-bleed sections
+}
+```
+
+- **Slots**: `default` (page body), `hero` (optional), `footer` (optional — rendered inside a `<Section spacing="default" tone="subtle">`).
+- **DOM**:
+
+```astro
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import Container from './primitives/Container.astro';
+import Section from './primitives/Section.astro';
+const { title, description, surfaceId, width = 'wide', theme = 'default' } = Astro.props;
+const hasHero = Astro.slots.has('hero');
+const hasFooter = Astro.slots.has('footer');
+---
+<StarlightPage frontmatter={{ template: 'splash', title, description }}>
+  <main class="nbg-marketing" data-marketing="true" data-surface={surfaceId} data-theme-mode={theme}>
+    {hasHero && (
+      <Section spacing="epic" tone="default" as="header">
+        <Container width={width}>
+          <slot name="hero" />
+        </Container>
+      </Section>
+    )}
+    <Container width={width}>
+      <slot />
+    </Container>
+    {hasFooter && (
+      <Section spacing="default" tone="subtle" as="footer">
+        <Container width={width}>
+          <slot name="footer" />
+        </Container>
+      </Section>
+    )}
+  </main>
+</StarlightPage>
+```
+
+- **What it renders**: a `<StarlightPage>` outer with `template: 'splash'` (drops sidebar + TOC), wrapping a `<main data-marketing>` region scoped to the redesign's CSS. Header chrome (brand + section links + Pagefind search + AuthControls + ThemeSelect + mobile drawer + SignInModal mount) is **not** part of this file — it lives in `SplashAwareHeader.astro` and renders into the Starlight header slot (see §S.13.6.1). Page bodies live inside this `<main>`; no Starlight chrome inside it.
+- **Why this file is one of the Option-2 escape hatches**: an Option-2 escalation deletes the `<StarlightPage>` outer and replaces with a custom layout (`<html><head>…</head><body>…</body></html>`). The header content already exists in `SplashAwareHeader.astro` (unified-nav branch), so the migration is mostly: lift that branch out of SplashAwareHeader, drop the StarlightPage wrapper here, drop `tokens/aliases.css`, retire `SocialIconsOverride.astro`. Every primitive and every marketing page below remains unchanged.
+- **DOM-structure decision** (per design §S.13.0 item 2): MarketingShell takes the page body through `<slot />`, not via prescriptive props. There is no `<MarketingShell.Hero />` subcomponent — Astro doesn't support compound components naturally. Hero composition lives in the named `hero` slot. Day-1 journey renders `StepIndicator` inline in its default slot (positioned sticky via the indicator's own CSS), not as a shell variant.
+
+### §S.13.6.1 — `SplashAwareHeader.astro` contract (unified header)
+
+The header override that fixes the "two stacked nav bars" pattern from the pre-2026-05-19 layout. Wired in `astro.config.mjs` via `components: { Header: './src/components/SplashAwareHeader.astro' }`.
+
+- **Path**: `site/src/components/SplashAwareHeader.astro`.
+- **What it does**: branches on `Astro.locals.starlightRoute.entry.data.template === 'splash'`.
+  - **Splash branch** → renders ONE unified `<nav class="nbg-topnav">` containing: brand (NbgAiHub) · primary section links (Start Here / Skills / Tips / News / Glossary / Reference / My Pins / Contribute) · Pagefind `<Search />` trigger · `<AuthControls />` (Sign in XOR signed-in chip) · `<ThemeSelect />` · mobile hamburger + drawer · `<SignInModal />` mount.
+  - **Non-splash branch** → renders the default Starlight Header markup verbatim (a copy of `@astrojs/starlight/components/Header.astro` for 0.39.x). `SocialIcons` resolves to `SocialIconsOverride.astro`, which on non-splash pages renders `<AuthControls />` + `<SignInModal />`.
+- **Why the override**: a single, coherent header on every marketing surface. Before the refactor, MarketingShell rendered its own nbg-topnav INSIDE Starlight's content slot, producing two stacked navs and (because of the auth-state CSS bug — see §S.13.6.2) a Sign in + user chip pair visible at the same time. The override consolidates everything into the existing Starlight header position.
+- **Decision reversal**: §S.13.14.3 (and DECISIONS.md 2026-05-14) previously rejected a Header override "as fragile against Starlight upgrades." Reversed here on 2026-05-19. The override is narrow — one conditional, one DOM tree, no behavioral wrappers around Starlight components — and reuses Starlight's own `Search` and `ThemeSelect` via `virtual:starlight/components/*` imports. The fragility surface is small enough that the unified-nav benefit outweighs it.
+- **Type wiring**: the `virtual:starlight/components/*` modules are not in Starlight's exported types. The project ships a local `site/src/env.d.ts` that re-declares the five modules SplashAwareHeader uses (`Search`, `ThemeSelect`, `SocialIcons`, `SiteTitle`, `LanguageSelect`) so `astro check` passes. If a future Starlight version renames or adds a virtual component, this file needs updating.
+- **Option-2 implication**: this file is on the rewrite list alongside MarketingShell, `tokens/aliases.css`, and `SocialIconsOverride.astro`. The unified-nav branch *is* the post-Starlight header — Option-2 migration is mostly "delete the non-splash branch + swap the virtual imports for project-owned equivalents".
+
+### §S.13.6.2 — Auth-state mutual exclusion CSS contract
+
+The Sign in button (`.nbg-auth__signin`) and signed-in chip (`.nbg-auth__chip`) live in the same DOM at render time. Client-side JS toggles `element.hidden` based on `auth.readToken()`. Two paired CSS selectors enforce that `[hidden]` actually hides the inactive variant:
+
+```css
+.nbg-auth__signin[hidden],
+.nbg-auth__chip[hidden] {
+  display: none !important;
+}
+```
+
+Without these, the author rules `.nbg-auth__signin { display: inline-flex }` and `.nbg-auth__chip { display: inline-flex }` (same specificity as `[hidden]`, source-order later in author CSS) override the UA's `[hidden] { display: none }` default, and BOTH variants render simultaneously. The bug surfaced on 2026-05-19: a signed-in user saw "Sign in" + "@chomovazuzana | Sign out" together. Build-output test guards the rule's presence in compiled CSS.
+
+### §S.13.7 — Motion contract
+
+#### §S.13.7.1 — IntersectionObserver utility
+
+- **Path**: `site/src/scripts/motion.ts`.
+- **Module shape** (exact contract for P4.K):
+
+```ts
+// site/src/scripts/motion.ts
+
+const REVEAL_SELECTOR = '[data-reveal="true"]';
+const REVEALED_CLASS  = 'is-revealed';
+const ROOT_MARGIN     = '0px 0px -20% 0px';   // fire when element is 20% above bottom of viewport
+const THRESHOLD       = 0.5;                  // 50% of the element must be visible
+
+function init(): void {
+  if (typeof window === 'undefined') return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // Skip observer entirely; CSS already renders final state under reduced-motion.
+    return;
+  }
+
+  const targets = document.querySelectorAll(REVEAL_SELECTOR);
+  if (targets.length === 0) return;
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          const target = entry.target as HTMLElement;
+          const delay = target.dataset.revealDelay;
+          if (delay) {
+            target.style.setProperty('--reveal-delay-val', delay);
+          }
+          target.classList.add(REVEALED_CLASS);
+          observer.unobserve(target);  // first-trigger only
+        }
+      }
+    },
+    { rootMargin: ROOT_MARGIN, threshold: THRESHOLD },
+  );
+
+  for (const target of targets) {
+    observer.observe(target);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+```
+
+Loaded via a single `<script src="/src/scripts/motion.ts" type="module">` tag inside `MarketingShell.astro`'s top-level (so it runs once per page navigation; with native `@view-transition` the script re-evaluates on cross-document nav per browser's reset semantics).
+
+#### §S.13.7.2 — CSS contract
+
+```css
+@layer nbg.primitives {
+  .nbg-motion-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity var(--nbg-dur-scroll-reveal) var(--nbg-ease-out),
+      transform var(--nbg-dur-scroll-reveal) var(--nbg-ease-out);
+    transition-delay: calc(var(--reveal-delay-val, 0) * 1ms);
+  }
+
+  .nbg-motion-reveal.is-revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nbg-motion-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+```
+
+Defense-in-depth: cascade collapses durations to instant (§S.13.2.6), CSS overrides initial state under reduced-motion, and the JS skips observer registration under reduced-motion.
+
+#### §S.13.7.3 — View Transitions
+
+- **Path**: `site/src/styles/view-transitions.css`.
+- **Contents**:
+
+```css
+@view-transition {
+  navigation: auto;
+}
+
+/* Optional — Designer may tune at P4.K. Default is a fade. */
+::view-transition-old(root) {
+  animation: fade-out var(--nbg-dur-base) var(--nbg-ease-out);
+}
+
+::view-transition-new(root) {
+  animation: fade-in var(--nbg-dur-base) var(--nbg-ease-out);
+}
+
+@keyframes fade-out { from { opacity: 1 } to { opacity: 0 } }
+@keyframes fade-in  { from { opacity: 0 } to { opacity: 1 } }
+```
+
+- **Browser support**: Chrome 111+, Safari 18+, Firefox 144+ (Sept 2025). The project's evergreen-floor (A16) is well past all three. Falls back to a normal navigation in unsupported browsers — no broken UX.
+- **No `view-transition-name` per-element morphing**. Cross-document view transitions don't support `transition:persist` from Astro's ClientRouter; only the root crossfade plays. This is by design — if Phase 6 evaluation flags the auth-chip flicker as a blocker, escalating to Astro's `<ClientRouter />` (investigation Axis 8 Option 8C) is the next step. Don't pre-pay that complexity.
+
+### §S.13.8 — Dark/Light mode contract
+
+#### §S.13.8.1 — Theme toggle is owned by Starlight
+
+The Starlight header includes a theme toggle. The redesign **does not add a new toggle**. The toggle's behavior (read/write `localStorage` key per Starlight's ThemeProvider; set `data-theme` attribute on `<html>`) is unchanged. AC33 is satisfied without code.
+
+#### §S.13.8.2 — Token resolution under theme
+
+Every semantic and component token has values under both:
+
+- `:root, :root[data-theme='dark']` — defaults (also catches the no-attribute case before Starlight's inline script runs).
+- `:root[data-theme='light']` — light overrides.
+
+Primitives (color ramps, type primitives, space, radius, shadow, motion, z-index) are theme-neutral. They don't change between dark and light. Only the semantic layer rebinds them.
+
+Failure mode the design rules out: defining tokens only under `:root` (without theme scope) locks the page to dark even when the user toggles. Pagefind research §"Dark/light mode behaviour" cites this verbatim. The contract above prevents it.
+
+#### §S.13.8.3 — Override hierarchy
+
+When the same token is defined at multiple tiers:
+
+1. **Primitives win when overridden in semantic** — `--nbg-color-bg-canvas: var(--nbg-c-slate-950)` in semantic uses the primitive but binds it under a theme scope; the binding wins.
+2. **Components win when they declare their own component token** — `--nbg-card-bg: var(--nbg-color-bg-surface)` is the default, but a consumer can set `--nbg-card-bg: var(--nbg-c-slate-900)` directly on `[data-variant='feature']` if Designer wants.
+3. **Inline style wins everything** — exits the token system; reserved for emergencies (Phase 6 should never reach for it).
+
+#### §S.13.8.4 — Pagefind retint
+
+The 16-line `--sl-color-*` alias block in `tokens/aliases.css` (§S.13.2.5) is the entire Pagefind theming surface. The modal retints automatically on theme toggle via Starlight's existing `--pagefind-ui-*` aliasing of `--sl-color-*`. AC31 is met without any `--pagefind-ui-*` overrides.
+
+### §S.13.9 — Accessibility contract
+
+Mandatory for every primitive and marketing surface. Verified in P4.L via axe-core + Playwright + manual keyboard walks.
+
+| Concern | Rule | Token / mechanism |
+|---|---|---|
+| Focus visibility | Every focusable element shows a 2px ring of `--nbg-color-focus-ring` with 2px offset on `:focus-visible`. Never `outline: none` without an equivalent replacement. | `box-shadow: var(--nbg-sh-focus-ring)` (which composes 2px transparent + 2px focus color). |
+| Color contrast | Body text ≥ 4.5:1 (WCAG AA) on its surface in both modes. Display headlines ≥ 3:1 (AA large). AA AAA where palette permits — verified at P4.L via axe-core. | Semantic token pairs chosen for AA — see §S.13.2.3 audience/confidence/status pair definitions. |
+| Keyboard navigation | Tab order matches visual order. No positive `tabindex` introduced. Skip link preserved (Starlight provides). | Native HTML element semantics; primitives don't use `tabindex` except `0` when promoting a non-interactive element to focusable (rare; documented per use). |
+| Reduced motion | Every motion-using rule honors `prefers-reduced-motion: reduce`. Three-layer defense: tokens (§S.13.2.6), per-component CSS (§S.13.5.15, §S.13.7.2), and JS observer early-return (§S.13.7.1). | `@media (prefers-reduced-motion: reduce)` + `window.matchMedia(...).matches` checks. |
+| Semantic HTML | Buttons are `<button>`; links are `<a>`. Real inputs for AudienceFilter (AC35). Real `<dialog>` for SignInModal. Real `<form>` for submit-skill. | Primitive defaults; consumer override only for documented reasons. |
+| ARIA preservation | All pre-existing ARIA attributes on PinButton, SignInModal, AudienceFilter, SocialIconsOverride, my-pins.astro, submit-skill.astro stay bit-for-bit (AC23). | P4.I review compares pre/post-restyle diffs of these files; no `aria-*` removed. |
+| Form labels | Every `<input>` has an associated `<label>` (via `for` or wrapping). Validation errors use `role="alert"` and reference inputs via `aria-describedby`. | Existing submit-skill ARIA preserved; new fieldset labels follow same pattern. |
+| Card-as-link semantics | When `<Card variant='link' href=...>`, the card itself is the `<a>`; inner `<a>`s are forbidden (multi-link cards stay `<article>`). | Documented in `Card.astro` JSDoc; Astro frontmatter warning if both `href` prop and nested `<a>` slot content (best-effort dev-only warning). |
+| StepIndicator | `<nav aria-label>` provides landmark. Current step has `aria-current="true"`. Anchor links jump to step IDs. | §S.13.5.16. |
+| Glossary filter input | `<input type="search" aria-label="Filter glossary">` per AC11. Filter doesn't break keyboard nav of the remaining visible entries. | §S.13.10 `/glossary/` surface. |
+| SignInModal restyle | `role="dialog"` + `aria-modal="true"` + `aria-labelledby` preserved. Focus trap script unchanged. | AC23 + AC34 — visual restyle only. |
+| Touch target ≥ 44×44 | All interactive primitives (Button, Chip when interactive, PinButton, AudienceFilter checkbox label) have a min hit area of 44×44 CSS pixels on mobile. | Achieved via `min-height` + padding on small variants; touch-target padding in `<input>` labels for AudienceFilter. |
+| Skip link | Starlight provides a "Skip to content" link; we do not add a second. | Untouched. |
+
+### §S.13.10 — Per-surface design — the 11 marketing pages
+
+Each surface gets a brief compositional sketch. Phase 6 coders use these as the layout north-star; precise pixel placement is the implementer's call within the contract.
+
+#### §S.13.10.1 — Homepage `/`
+
+- **File**: `site/src/content/docs/index.mdx` (stays MDX so it can import components; frontmatter keeps `template: splash`).
+- **Composition**: `MarketingShell` with `hero` slot. Hero is a `<Split ratio="3/5" stack="md">`:
+  - **start slot** — `<Stack gap="6">`:
+    - `<Eyebrow tone="accent">NbgAiHub</Eyebrow>`
+    - `<Display level={1} size="xl">What I wish I knew a year ago.</Display>` (computes ≥ 80px desktop → exceeds AC5's 64px floor)
+    - `<Lede size="lg">A curated Claude Code knowledge hub for bank colleagues. Skills, tips, news, and onboarding paths — opinionated, plainspoken, no AI-slop hedging.</Lede>`
+    - `<Cluster gap="3" align="center">` containing two `<Button>`s (primary → Day 1, secondary → Skills) and a `<Kbd>` keyboard-shortcut hint chord (`Cmd K` to search).
+  - **end slot** — `<HomeStats>` component (build-time `getCollection()` counts; styled as a `<dl>` with display-sized numerals). Lives at `site/src/components/HomeStats.astro` (created in P4.E).
+- After the hero `<Section>`, the page body contains:
+  - `<Section spacing="spacious">` — "Latest news" with restyled `<NewsPanel limit={3}>` showing motion-revealed cards.
+  - `<Section spacing="spacious" tone="subtle">` — "Where to start" teaser grid linking to Day 1, Skills, Tips, Glossary (4 `<Card variant="link">` items).
+  - `<Section spacing="spacious">` — "Submit your own" CTA card (`<Card variant="feature">`).
+- **Motion**: `<MotionReveal>` wraps the news panel and the "Where to start" grid. View Transitions handle cross-page fades on click.
+- **HomeStats DOM**:
+
+```astro
+<dl class="home-stats" data-tabular>
+  <div><dt>skills</dt><dd>{stats.skills}</dd></div>
+  <div><dt>tips</dt><dd>{stats.tips}</dd></div>
+  <div><dt>news</dt><dd>{stats.news}</dd></div>
+  <div><dt>glossary</dt><dd>{stats.glossary}</dd></div>
+</dl>
+```
+
+#### §S.13.10.2 — `/start-here/day-1/`
+
+- **File**: `site/src/pages/start-here/day-1.astro`.
+- **Composition**: `MarketingShell` with `hero` slot showing `<Eyebrow>Start here</Eyebrow>` + `<Display level={1} size="md">Day 1 — what I wish I knew</Display>` + `<Lede>`. Below the hero, a two-column layout via `<Split ratio="1/3" stack="md">`:
+  - **start slot** — `<StepIndicator>` sticky (desktop only via `position: sticky`).
+  - **end slot** — six `<section id="step-N">` blocks (1..6), each wrapped in `<MotionReveal delay={N * 100}>`. Each section header is `<Display level={2} size="sm">` rendering the markdown step's `## Step N` heading. The step body renders the corresponding markdown content via Astro's `<Content />` rendered from the day-1.md entry's `render()` output, **but** scoped per step. The implementation pattern (per §S.13.0 item 1):
+    - Either: split the markdown source by `## ` headings at render time within the Astro frontmatter (cheap, no content edits).
+    - Or: hand-code the 6 section wrappers with `<Content />` rendering only the relevant slice (uses Astro's markdown `<Content />` slot mechanism — Designer chooses at P4.G between these two; both are layout-only, no content changes).
+  - Between steps 3 and 4, a "What I wish I knew" pull-quote (a `<Section tone="subtle">` with mono-styled large text).
+- **Motion**: each step `MotionReveal`s in sequence.
+
+#### §S.13.10.3 — `/start-here/week-1/`
+
+- **File**: `site/src/pages/start-here/week-1.astro`.
+- **Composition**: `MarketingShell` with hero `<Eyebrow>Coming soon</Eyebrow>` + `<Display level={1} size="md">Week 1 is being written.</Display>` + `<Lede>`. Page body: `<Stack gap="8">` containing:
+  - A short opinionated copy block — "Here's what to do while we finish writing it" (project tone, plain-spoken).
+  - A `<Grid columns={3} gap="6">` of three `<Card variant="link">` items deep-linking to `/start-here/day-1/`, `/skills/`, `/tips/`. Each card has its own `<Eyebrow>`, title, and one-line description.
+- **No centered "Coming soon" + button** — AC7 satisfied by an editorial composition with deep links.
+
+#### §S.13.10.4 — `/skills/`
+
+- **File**: `site/src/pages/skills.astro`.
+- **Composition**: `MarketingShell` with hero `<Eyebrow>9 skills</Eyebrow>` + `<Display>` + `<Lede>` + `<AudienceFilter>` (restyled per §S.13.12).
+- **Layout** — editorial:
+  - **Lead skill** — the featured-lead card uses `<Card variant="feature">` and spans full container width. Title at `--nbg-fs-display-sm`, badge row, topic chips, "Install" CTA. The lead is the freshest skill (sort by frontmatter date desc; first item).
+  - **Remaining 8 skills** — `<Grid columns={2} gap="6">` with two alternating card sizes: a wider `<Card variant="content">` and a narrower `<Card variant="content" data-density="compact">`. The alternation creates visual rhythm without going to a magazine-masonry library.
+- **AudienceFilter** still applies — restyled visually (segmented-control-looking) but underlying `<input type="checkbox">` real (AC35 + A6).
+- All 9 skills render.
+
+#### §S.13.10.5 — `/news/`
+
+- **File**: `site/src/pages/news/index.astro`.
+- **Composition**: `MarketingShell` with hero `<Eyebrow>Updates</Eyebrow>` + `<Display>News</Display>` + `<Lede>` + `<AudienceFilter>`.
+- **Layout**:
+  - **Lead news item** — `<Card variant="feature">` full-width with display-sized title, source name in mono `<Eyebrow>`, confidence chip + audience badge, longer summary.
+  - **Remaining items** — `<Stack gap="6">` of `<Card variant="content" data-density="compact">`; each card is a magazine-style row with: title (h3), one-line `Lede`, mono source + date, `<ConfidenceChip>` + `<AudienceBadge>`, `<PinButton>` aligned right.
+- **AudienceFilter** + **ConfidenceChip** both functional.
+- **PinButton** appearance restyled per P4.I; logic + ARIA preserved (AC23).
+
+#### §S.13.10.6 — `/tips/`
+
+- **File**: `site/src/pages/tips.astro`.
+- **Composition**: `MarketingShell` with hero + `<AudienceFilter>`.
+- **Layout** — grouped by thematic cluster (the existing 12 tips group naturally into prompting, survival, context, compliance):
+  - Four `<Section spacing="default">` blocks, one per cluster.
+  - Each section starts with `<Eyebrow>{cluster}</Eyebrow>` + `<Display level={2} size="sm">{cluster title}</Display>` + `<Lede>`.
+  - Inside: `<Stack gap="4">` of `<Card variant="content">` for tips in that cluster, OR a single oversized "pull quote" tip (1 per cluster) rendered as `<blockquote>` styled via tokens.
+- Not a uniform grid; not a clone of skills.
+
+#### §S.13.10.7 — `/glossary/`
+
+- **File**: `site/src/pages/glossary.astro`.
+- **Composition**: `MarketingShell` with hero. Below hero:
+  - `<Cluster gap="3">` of an `<input type="search" data-glossary-filter aria-label="Filter glossary">` and an A-Z anchor strip (`<Cluster>` of `<Chip href={#a}>A</Chip>…<Chip href={#z}>Z</Chip>`). Letters with no entries are dimmed (use `[data-empty]`).
+- **Layout**: `<Stack gap="6">` of `<article data-term data-term-label={entry.data.term.toLowerCase()} id={entry.slug}>` items. Each term entry renders as a `<Card variant="content">` with:
+  - `<Eyebrow tone="accent">{first letter}</Eyebrow>`
+  - `<h2>{term}</h2>`
+  - Definition body
+  - `<PinButton>` aligned right.
+- **Filter script**: `site/src/scripts/glossary-filter.ts` (~30 lines, vanilla JS). On input change, iterates `[data-term]`, sets `[hidden]` if `data-term-label` doesn't contain the search query (case-insensitive). Reduces in-page anchor letter strip's active states accordingly. Respects `prefers-reduced-motion`.
+- All 15 entries render initially; filter narrows.
+
+#### §S.13.10.8 — `/reference/`
+
+- **File**: `site/src/pages/reference.astro`.
+- **Composition**: `MarketingShell` with hero + body. Current content is sparse; the design is to render the existing copy with the new typographic system + an editorial placeholder for sections that will fill out later. Specifically:
+  - `<Section>` with a `<Display level={2}>` for each future reference category ("Commands", "Skills index", "Plugin reference").
+  - For categories without content yet: a `<Card variant="link">` saying "Where this goes — and what you'll find here" in project tone. Links to the underlying source of truth (e.g., the plugin's `commands/` folder on GitHub).
+- AC12 satisfied — no naked default Starlight chrome.
+
+#### §S.13.10.9 — `/contribute/`
+
+- **File**: `site/src/pages/contribute.astro`.
+- **Composition**: `MarketingShell` with hero. Body:
+  - `<Split ratio="1/2" stack="md">`:
+    - **start slot** — "Submit a skill" path (`<Card variant="feature">` with `<Eyebrow>The fast path</Eyebrow>`, lede, `<Button variant="primary">` linking to `/submit-skill/`).
+    - **end slot** — "Open a PR" path (`<Card variant="content">` describing the GitHub PR flow with a `<Kbd>` mock of `gh pr create`).
+- AC13: existing copy preserved/rewritten in project tone; Submit-Skill CTA visually integrated.
+
+#### §S.13.10.10 — `/my-pins/`
+
+- **File**: `site/src/pages/my-pins.astro`.
+- **Composition**: `MarketingShell` with hero `<Eyebrow>Personal</Eyebrow>` + `<Display>My Pins</Display>` + `<Lede>`. Body renders three visually distinct states via existing client script:
+  - **Loading** — `<Section tone="subtle">` with a tokenized skeleton row (no spinner; opacity-pulsing placeholders).
+  - **Anonymous** — `<Card variant="feature">` with copy "Sign in with a personal access token. Pins live in your own unlisted gist — we never touch them." + `<Button variant="primary">` that triggers `nbgaihub:open-signin-modal`. Privacy callout rendered as `<Section tone="subtle">` with a `<Display level={3}>What this means` + body.
+  - **Signed-in** — five `<Section spacing="default">` blocks, one per pin type (skills, tips, news, journey-step, glossary). Each section is `<Stack gap="4">` of `<Card variant="content">` rows, or a tokenized empty-state if no pins for that type.
+- **All data-attributes and event hooks preserved**. The `<script>` block (auth.ts + pin-store.ts wiring) is unchanged.
+- Sign-in modal opens via `nbgaihub:open-signin-modal` event (existing contract, preserved AC34).
+
+#### §S.13.10.11 — `/submit-skill/`
+
+- **File**: `site/src/pages/submit-skill.astro`.
+- **Composition**: `MarketingShell` with hero + body. Body is the form, restructured into numbered fieldsets:
+  - `<fieldset>` 1 — Identity: title, slug (auto-derived, editable), origin.
+  - `<fieldset>` 2 — Audience & category: audience badge group, category select, status.
+  - `<fieldset>` 3 — Skills metadata: minimum claude version, last verified, links.
+  - `<fieldset>` 4 — Content body (markdown textarea).
+  - `<fieldset>` 5 — Maintainer + tags.
+- Each fieldset gets `<Eyebrow>Step {N}</Eyebrow>` + `<Display level={2} size="sm">{fieldset title}</Display>` + descriptive `<Lede>`. The 17 validation rules from `submission.ts` surface as inline checkmarks (✓ in `--nbg-color-status-success-fg` when satisfied, `–` in muted when pending, `✗` in `--nbg-color-status-danger-fg` when violated). Errors use existing `role="alert"` + `aria-describedby` (AC23 — bit-for-bit preserved).
+- Slug-collision indicator: a `<Badge tone="warning">` adjacent to the slug input when `checkSlugCollision()` returns true.
+- Submit affordance: `<Button variant="primary" size="lg">Open in GitHub editor</Button>` at the form bottom. Logic untouched.
+
+### §S.13.11 — Content-detail theme override
+
+For `/news/[slug]/`. Starlight chrome stays — sidebar, top bar with theme toggle + search + sign-in chip, in-page TOC, prev/next. Visual reskin via `tokens/aliases.css` (already done) + `content-override.css` (new, owned by P4.J).
+
+#### §S.13.11.1 — `content-override.css` contract
+
+- **Path**: `site/src/styles/content-override.css`.
+- **Layer**: `@layer nbg.components` (so it wins over Starlight's components but never accidentally overrides primitives).
+- **Selectors targeted** — exhaustive list:
+
+| Selector | Property changes | Token |
+|---|---|---|
+| `.sl-markdown-content h1` | font, size, line-height, letter-spacing, weight, optical-size | `--nbg-ff-display`, `--nbg-fs-display-md`, `--nbg-lh-display`, `--nbg-ls-tight`, `--nbg-fw-bold`, opsz 32 |
+| `.sl-markdown-content h2` | same with `--nbg-fs-2xl` | semantic h2 |
+| `.sl-markdown-content h3` | same with `--nbg-fs-xl` | h3 |
+| `.sl-markdown-content h4` | `--nbg-fs-lg`, semibold | h4 |
+| `.sl-markdown-content p` | `font-family`, `font-size`, `line-height`, `color` | `--nbg-ff-body`, `--nbg-fs-md`, `--nbg-lh-relaxed`, `--nbg-color-fg-primary` |
+| `.sl-markdown-content li` | inherits + tighter line-height (1.55) | `--nbg-lh-base` |
+| `.sl-markdown-content blockquote` | left-border accent + tinted bg + italic | `--nbg-color-accent`, `--nbg-color-bg-surface`, padding |
+| `.sl-markdown-content a` | color, underline-offset, hover | `--nbg-color-link`, `--nbg-color-link-hover` |
+| `.sl-markdown-content code` (inline) | bg, fg, font, padding, radius | `--nbg-c-slate-800` (dark) / `--nbg-c-slate-100` (light), `--nbg-color-accent`, `--nbg-ff-mono`, `--nbg-sp-0-5 --nbg-sp-1`, `--nbg-r-sm` |
+| `.sl-markdown-content pre code` (block) | bg, padding, radius, scrollbar | `--nbg-color-bg-elevated`, `--nbg-sp-4`, `--nbg-r-md` |
+| `.sl-markdown-content table` | border-collapse, header bg, cell padding | `--nbg-color-bg-surface`, `--nbg-color-border-default`, `--nbg-sp-2` |
+| `.starlight-aside` | base padding, radius, border-left tinted to status | shared base across aside variants |
+| `.starlight-aside--note` | info colors | `--nbg-color-status-info-bg/-fg` |
+| `.starlight-aside--tip` | success colors | `--nbg-color-status-success-bg/-fg` |
+| `.starlight-aside--caution` | warning colors | `--nbg-color-status-warning-bg/-fg` |
+| `.starlight-aside--danger` | danger colors | `--nbg-color-status-danger-bg/-fg` |
+| `starlight-toc nav` | font, color, spacing | `--nbg-ff-body`, `--nbg-fs-sm`, `--nbg-color-fg-secondary`, `--nbg-sp-2` |
+| `starlight-toc nav [aria-current="true"]` | accent color, left-bar indicator | `--nbg-color-accent`, `2px solid` |
+| `.sidebar-content a, .sl-link-card` | typography + hover/active treatments | tokens |
+| `.sidebar-content a[aria-current="page"]` | non-pill active state — left-bar `2px solid var(--nbg-color-accent)` plus bg tint via `--nbg-color-accent-bg` | (AC17 — replaces Starlight's default pill) |
+| `.sidebar-content .group-label` | mono eyebrow style for sidebar group labels | `--nbg-ff-mono`, `--nbg-fs-xs`, `--nbg-ls-wide` |
+
+#### §S.13.11.2 — Pagefind modal
+
+Already retinted via the `--sl-color-*` alias block (§S.13.2.5). No additional selectors targeted. The modal looks like the new design simply because Starlight's existing internal aliasing now points at the new tokens. AC31 met.
+
+### §S.13.12 — Migration / removal contract
+
+For each pre-existing file/asset, the redesign decides keep / delete / rewrite-in-place. Plan-004 §3–§4 lists which phase performs each change.
+
+| Item | Decision | Owning phase | Rationale |
+|---|---|---|---|
+| `site/src/styles/custom.css` | **Delete** | P4.A | Content absorbed into `tokens/*.css` + per-component scoped styles + `components.css`. `.audience-hidden` rule preserved verbatim in `components.css` (or a new `tokens/utilities.css` — Designer's call at P4.A). |
+| `site/src/components/HomeHero.astro` | **Delete** | P4.E | Centered-single-column pattern is exactly what AC5 forbids. Homepage hero is composed directly in `index.mdx` using primitives + `HomeStats`. Designer at P4.E may keep `HomeHero.astro` as a thin composed wrapper if Phase 6 prefers separation of concerns; if kept, it must NOT be a centered single-column with two CTAs. Default: delete. |
+| `site/src/components/AudienceBadge.astro` | **Rewrite in place** | P4.I | Internally renders `<Badge tone={audience}>...</Badge>`. Keeps name + import path. Same prop signature (`{ audience: 'beginner' | 'advanced' | 'both' }`). The component remains a thin semantic wrapper — Designer chose not to alias-rename because consumers across pages + cards consistently use `AudienceBadge` as a noun. |
+| `site/src/components/ConfidenceChip.astro` | **Rewrite in place** | P4.I | Internally renders `<Badge tone={confidence}>...</Badge>` with `confidence: 'high' | 'medium' | 'low'` mapping to `Badge`'s `'high' | 'medium' | 'low'` tones. Same name + import path. |
+| `site/src/components/NewsPanel.astro` | **Rewrite in place** | P4.I | Composes primitives. `getRecentNews()` call unchanged. The legacy `.news-card-grid` class is gone; replaced by `<Stack>` + `<Card variant="feature">` (lead) + `<Card variant="content">` (rest). |
+| `site/src/components/NewsList.astro` | **Rewrite in place** | P4.I | Mirrors NewsPanel layout pattern. Same `getRecentNews()` call. |
+| `site/src/components/SkillCard.astro` | **Rewrite in place** | P4.I | Composes `<Card variant>` per featured/lead vs content. Same `entry: CollectionEntry<'skills'>` prop. |
+| `site/src/components/AudienceFilter.astro` | **Visual restyle in place** | P4.I | `<input type="checkbox">` × 3 stays real (AC35 + A6). `<script>` block preserved verbatim. Only the wrapping `<form>` and label styling change — visually reads as a segmented control. |
+| `site/src/components/PinButton.astro` | **Visual restyle in place** | P4.I | All ARIA, data-attributes, and `<script>` preserved bit-for-bit (AC23). Styles internally compose Button's CSS-token consumer pattern. |
+| `site/src/components/SignInModal.astro` | **Visual restyle in place** | P4.I | All ARIA, `data-nbg-signin-*`, focus-trap `<script>` preserved bit-for-bit. Token-driven bg/border/shadows. |
+| `site/src/components/SocialIconsOverride.astro` | **Visual restyle in place** | P4.I | Slot override mechanism (`components.SocialIcons` in astro.config.mjs) untouched. Chip styling consumes tokens. |
+| `astro.config.mjs` `customCss` array | **Replace** | P4.A → P4.B → P4.J → P4.K | Initial `customCss: ['./src/styles/custom.css']` replaced with `['./src/styles/tokens.css']`. Subsequent phases append `content-override.css` (P4.J) and `view-transitions.css` (P4.K) and `reduced-motion.css` (P4.A). `components.css` is `@import`ed by `tokens.css` so it doesn't appear in the array. |
+| `astro.config.mjs` `fonts` block | **Add** | P4.B | Astro Fonts API + Fontsource for Inter + JetBrains Mono. Block sourced verbatim from Astro Fonts research doc. |
+| `astro.config.mjs` `sidebar` array | **Untouched** | n/a | Frozen per AC32. |
+| Test files under `site/tests/*.test.ts` | **Read-only unless asserting changed DOM** | P4.I + P4.H verify | Per plan §5 + Investigation §"Test rewriting cost": 104/127 are pure unit tests of `lib/`, immune. The remaining ~23 (PinButton, modal, my-pins integration) target behavior, not DOM structure. Budget: ≤ 5 assertion updates, 0 deletions. AC30 floor of 127 stays. |
+| `site/src/lib/*.ts` | **Untouched** | n/a | CONTRACT per A17. AC23 ARIA preservation includes the events lib modules dispatch. |
+| `site/src/content.config.ts` | **Untouched** | n/a | Out-of-scope per refined spec. |
+| `site/scripts/build-pin-index.ts` | **Untouched** | n/a | A18. |
+| `site/public/_data/*.json` | **Untouched** | n/a | Build-emitted artifacts. |
+| Plan-002 design A6 "100-line cap on custom.css" | **Formally lifted** | n/a | Per refined-request A7. The redesign produces a real design system; the 100-line cap is now satisfied by the act of replacement (custom.css is deleted; the cap doesn't apply to the new token system). |
+| Flat color literals (`#0a7`, `#e60`, `#08c`, `#aa6`, `#666`) | **Eradicated** | P4.I | Replaced with semantic tokens. Verifiable via `grep -E "#0a7|#e60|#08c|#aa6|#666" site/src/components/*.astro` returning 0 matches post-P4.I. |
+| `.news-card-grid`, `.card-grid`, `repeat(auto-fill, minmax(18rem, 1fr))` | **Eradicated on marketing surfaces** | P4.E + P4.F + P4.I | Replaced by editorial layouts (`<Grid columns={N}>`, `<Split>`, `<Stack>`). Allowed in `Grid` primitive abstractly with non-`18rem` min if a future surface wants auto-fit semantics; the three pillar pages must not use it (per refined spec R2.2). |
+
+### §S.13.13 — File map (deliverable shape)
+
+The complete file inventory for Phase 6 dispatch, grouped by category.
+
+**New token files** (P4.A):
+
+```
+site/src/styles/
+├── tokens.css                          (aggregator: declares @layer order; @import primitives, semantic, aliases)
+├── tokens/
+│   ├── primitives.css                  (Tier 1 — raw values)
+│   ├── semantic.css                    (Tier 2 — meaning, both [data-theme] scopes)
+│   └── aliases.css                     (cross-system — --sl-color-* + --sl-font* bindings)
+├── components.css                      (.audience-hidden utility + any Starlight-chrome class overrides absorbed from legacy custom.css)
+├── reduced-motion.css                  (motion-duration token collapse under prefers-reduced-motion: reduce)
+├── content-override.css                (P4.J — Starlight content-region selector overrides for /news/[slug]/)
+└── view-transitions.css                (P4.K — @view-transition + crossfade keyframes)
+```
+
+**New primitive components** (P4.C):
+
+```
+site/src/components/primitives/
+├── Container.astro
+├── Section.astro
+├── Stack.astro
+├── Cluster.astro
+├── Grid.astro
+├── Split.astro
+├── Card.astro
+├── Button.astro
+├── Badge.astro
+├── Chip.astro
+├── Kbd.astro
+├── Eyebrow.astro
+├── Lede.astro
+├── Display.astro
+├── MotionReveal.astro
+└── StepIndicator.astro                 (15 files total)
+```
+
+**New shared components** (P4.D, P4.E):
+
+```
+site/src/components/
+├── MarketingShell.astro                (P4.D — Starlight isolation boundary)
+└── HomeStats.astro                     (P4.E — build-time getCollection() stats element)
+```
+
+**Modified existing components** (P4.I; restyled, behavior preserved):
+
+```
+site/src/components/
+├── AudienceBadge.astro                 (rewritten — composes <Badge>)
+├── ConfidenceChip.astro                (rewritten — composes <Badge>)
+├── NewsPanel.astro                     (composes <Stack> + <Card variant="feature"|"content">)
+├── NewsList.astro                      (composes <Stack> + <Card>)
+├── SkillCard.astro                     (composes <Card variant="feature"|"content">)
+├── AudienceFilter.astro                (visual restyle, real <input> preserved, script preserved)
+├── PinButton.astro                     (visual restyle, all ARIA + data-* + script preserved)
+├── SignInModal.astro                   (visual restyle, dialog ARIA + script preserved)
+└── SocialIconsOverride.astro           (sign-in chip restyle; slot override untouched)
+```
+
+**Modified page files** (P4.E, P4.F, P4.G, P4.H):
+
+```
+site/src/content/docs/
+└── index.mdx                           (P4.E — homepage rewritten with primitives + HomeStats)
+
+site/src/pages/
+├── skills.astro                        (P4.F — MarketingShell + editorial layout)
+├── news/index.astro                    (P4.F)
+├── news/[slug].astro                   (P4.J — minor data-attribute additions only)
+├── tips.astro                          (P4.F)
+├── glossary.astro                      (P4.F — adds search filter + A-Z chip strip)
+├── reference.astro                     (P4.F)
+├── contribute.astro                    (P4.F)
+├── my-pins.astro                       (P4.H — restyled three states)
+├── submit-skill.astro                  (P4.H — fieldset progress)
+└── start-here/
+    ├── day-1.astro                     (P4.G — StepIndicator + 6 section wrappers)
+    └── week-1.astro                    (P4.G — opinionated "coming soon")
+```
+
+**New scripts** (P4.F, P4.K):
+
+```
+site/src/scripts/
+├── glossary-filter.ts                  (P4.F — vanilla JS filter for /glossary)
+└── motion.ts                           (P4.K — IntersectionObserver for [data-reveal])
+```
+
+**Deleted files:**
+
+```
+site/src/styles/custom.css              (P4.A)
+site/src/components/HomeHero.astro      (P4.E — unless Designer keeps as thin composed wrapper)
+```
+
+**Config-edited files (sequenced):**
+
+```
+site/astro.config.mjs
+  └─ P4.A — replace customCss array
+  └─ P4.B — add fonts: [...] block
+  └─ P4.J — append content-override.css to customCss
+  └─ P4.K — append view-transitions.css to customCss
+```
+
+**Untouched (CONTRACT):**
+
+```
+site/src/lib/                           (all 8 modules — A17)
+site/src/content.config.ts              (refined-spec out-of-scope)
+site/scripts/build-pin-index.ts         (A18)
+site/public/_data/*.json                (build-emitted)
+astro.config.mjs sidebar: [...]         (AC32)
+site/tests/*.test.ts                    (≤5 update budget, 0 deletions)
+content folders (news/, skills/, tips/, glossary/, journeys/)
+sibling workspaces (pipeline/, plugin/)
+```
+
+**Documentation files (P4.L):**
+
+```
+docs/design/project-design.md           (this section — §S.13)
+docs/refined-requests/ui-redesign-evidence/
+├── screenshots/                        (34 PNGs: 11 surfaces × 3 breakpoints + 1 light-mode example)
+├── validation-script.md
+└── axe-results.json
+```
+
+### §S.13.14 — Architectural decisions log
+
+Each decision below is locked in by this design. Phase 6 implements against them; if a coder thinks a decision is wrong, they stop and surface it via `Issues - Pending Items.md`, not by silently inventing a different answer.
+
+#### Decision §S.13.14.1 — Three-tier token system (primitive → semantic → component) instead of two
+
+**Decision**: tokens split into three tiers. Primitive raw values. Semantic meanings under `[data-theme]` scopes. Component bindings inside each primitive's scoped style.
+
+**Alternatives considered**: two-tier (primitives → semantic only).
+
+**Rationale**: component-tier tokens let each primitive own its property bindings without polluting the semantic namespace with one-off names like `--nbg-card-bg`. Two-tier forces every component-internal-property either to be named at the semantic tier (pollution) or to reference primitives directly (loses the theme indirection). Three-tier keeps each layer honest: primitives = values, semantic = roles, component = bindings. Per Muz.li design-systems guide (investigation reference 14) — the dominant 2026 production pattern.
+
+#### Decision §S.13.14.2 — `@layer` cascade order
+
+**Decision**: `@layer reset, tokens, starlight.base, starlight.core, starlight.components, nbg.primitives, nbg.components, nbg.utilities;`.
+
+**Rationale**: Starlight imports its CSS into `@layer starlight.*` layers. Our layers must come after to win specificity-free. Splitting `nbg.*` into primitives, components, utilities lets primitive defaults lose to component customizations (rare) and utility classes (`.audience-hidden`) lose to nothing. `reset` is reserved for a future reset.css. `tokens` is theme-neutral. The whole order is documented at the top of `tokens.css` so Phase 6 coders see it on first read.
+
+#### Decision §S.13.14.3 — `MarketingShell.astro` as the single Starlight isolation boundary
+
+**Decision**: one `MarketingShell.astro` wraps every marketing surface. The 11 pages become ~30-line consumers. The shell is the only file outside `tokens/aliases.css` and `SocialIconsOverride.astro` that imports from `@astrojs/starlight/*`.
+
+**Alternatives considered**: per-page custom layouts (Option 2B in investigation), Starlight `components` deep overrides (Option 2C).
+
+**Rationale**: Option-2 escalation cost is minimized by isolating Starlight's surface area at one file. ~73% of the work (primitives + tokens + page composition) survives an Option-2 rewrite verbatim. The investigator (Axis 2D), the plan (R-5), and this design agree.
+
+#### Decision §S.13.14.4 — No new motion library
+
+**Decision**: CSS transitions + ~20-line IntersectionObserver + native `@view-transition`. No `motion`, no `gsap`, no `@motionone/dom`.
+
+**Alternatives considered**: `motion/react` (32 KB), `@motionone/dom` (10 KB), `gsap` (37 KB).
+
+**Rationale**: aesthetic target (Linear/Vercel/Stripe) ships modest motion that doesn't need a runtime library. Refined-request A4 makes this explicit. ~50 LOC of new JS total is enough. If Phase 6 evaluation flags motion as insufficient, escalate; do not pre-pay.
+
+#### Decision §S.13.14.5 — `[data-theme]` attribute scoping (not `@media (prefers-color-scheme)` only)
+
+**Decision**: semantic tokens scoped under `:root, :root[data-theme='dark']` and `:root[data-theme='light']`. Primitives stay under `:root`. No `@media (prefers-color-scheme)` blocks in token files.
+
+**Rationale**: Starlight's theme toggle sets `data-theme` on `<html>`. Matching it makes the toggle work. Pagefind research §"Dark/light mode behaviour" explicitly documents this trap. A12 (light mode is best-effort) means the design target is dark, but both modes must pass contrast.
+
+#### Decision §S.13.14.6 — Font choice: Inter Variable + JetBrains Mono Variable via Astro Fonts API
+
+**Decision**: Inter Variable for body + display (via `opsz` axis), JetBrains Mono Variable for code. Self-hosted via Astro Fonts API + Fontsource provider.
+
+**Alternatives considered**: Geist Sans + Geist Mono (more distinctive but two families); system stacks (no character).
+
+**Rationale**: one variable file covers body + display (Inter's opsz axis engages display-optimized glyphs at higher sizes). Identical bundle cost to two-file Geist. Stable Astro 6.3.5 API per research doc — no experimental flag. Lower-risk on dark-mode body legibility than Geist's heavier glyphs. If first preview reads as too neutral, Designer can swap to Geist in one config change at P4.B.
+
+#### Decision §S.13.14.7 — Pagefind retint via `--sl-color-*` aliases, not `--pagefind-ui-*` overrides
+
+**Decision**: our `tokens/aliases.css` overrides Starlight's `--sl-color-*` tokens. Starlight's own internal aliasing pipes them into `--pagefind-ui-*`. We do not write any `--pagefind-ui-*` lines.
+
+**Rationale**: Pagefind research doc §"Key insight — Starlight already does the work" found Starlight's `Search.astro` already aliases `--sl-color-*` → `--pagefind-ui-*` in `<style is:global>` lines 257–270. Overriding at Starlight's layer is one fewer indirection, picks up Starlight's BEM-selector overrides for free, and survives any future Starlight upgrade that tweaks its own aliasing.
+
+#### Decision §S.13.14.8 — 14 primitives + StepIndicator = 15 total, hand-rolled
+
+**Decision**: 15 primitive `.astro` files. No utility CSS framework. No component library import.
+
+**Alternatives considered**: bejamas/ui, shadcn-style copy-and-own libraries, Tailwind v4 + `@astrojs/starlight-tailwind`.
+
+**Rationale**: portability is binding (AC36–AC37). Hand-rolled primitives travel verbatim through an Option-2 escalation. Tailwind's `@theme` block creates a two-sources-of-truth risk against R11. bejamas/ui couples to Tailwind v4. ~360 LOC of `.astro` is two days of writing for a design system that's exact-fit.
+
+#### Decision §S.13.14.9 — `<Grid columns="auto-fit">` is a primitive but never used with `min="18rem"` on the three pillar pages
+
+**Decision**: the `Grid` primitive supports auto-fit semantics (for surfaces where it genuinely fits — e.g., the homepage "Where to start" 4-card grid). It is explicitly forbidden with `min` value of `18rem` (or near-equivalents) on `/skills/`, `/news/`, `/tips/` per refined spec R2.2 + AC8/AC9/AC10. Phase 6 lint at P4.F verifies via `grep`.
+
+**Rationale**: the redesign brief names uniform `repeat(auto-fill, minmax(18rem, 1fr))` as a specific anti-pattern to eradicate. Primitives are general-purpose; per-surface constraints enforce the brief.
+
+#### Decision §S.13.14.10 — Day-1 step segmentation via hand-coded section wrappers, not markdown re-parsing
+
+**Decision**: `day-1.astro` hand-codes six `<section id="step-N">` wrappers and renders the corresponding markdown chunks via Astro's `<Content />` slot mechanism. No build-time markdown parsing.
+
+**Rationale**: programmatically parsing `journeys/day-1.md` at build time adds fragility (depends on the markdown's heading structure surviving content edits). Hand-coded wrappers around `<Content />` slices is a layout decision, not a content edit — the visible copy remains the markdown's. AC6 requires `#step-N` anchors, not derivation from the source. Cleaner contract for Phase 6.
+
+#### Decision §S.13.14.11 — `AudienceBadge` and `ConfidenceChip` stay as named components, internally composing `<Badge>`
+
+**Decision**: do not alias `AudienceBadge.astro` to a direct `<Badge tone>` call site at every consumer. Keep both component names; internally each renders `<Badge>`.
+
+**Alternatives considered**: delete both, replace usages with `<Badge tone={...}>` at consumers.
+
+**Rationale**: semantic naming. Consumers reading the JSX should see `<AudienceBadge audience={item.data.audience} />` and know what they're rendering. The `<Badge>` primitive exists for the *new* tones (status, neutral). Wrapping at the named-component level keeps the existing import graph stable (10 files import `AudienceBadge`; updating them all to `<Badge tone="beginner">` is busywork that breaks the diff against AC23 ARIA preservation).
+
+#### Decision §S.13.14.12 — Reduced-motion is enforced at three layers (defense in depth)
+
+**Decision**: motion-disabled enforcement at the cascade layer (token collapse via `reduced-motion.css`), at component-level CSS (per-component `@media (prefers-reduced-motion: reduce)` blocks), and at JS (early-return in `motion.ts`).
+
+**Rationale**: AC22 is a hard gate. Any one layer breaking shouldn't break the overall guarantee. Token-level collapse covers every `transition: ... var(--nbg-dur-*)` rule the project will ever write. CSS overrides catch primitives that don't use duration tokens (rare). JS early-return ensures observer state machines don't fire even if CSS missed something.
+
+#### Decision §S.13.14.13 — `prefers-color-scheme` is honored only insofar as Starlight already honors it
+
+**Decision**: we don't add `@media (prefers-color-scheme)` blocks. Starlight's ThemeProvider does the OS-preference detection on first paint and sets `data-theme` accordingly. Our tokens scope under `[data-theme]`, so the system-honoring path goes Starlight → `data-theme` → tokens.
+
+**Rationale**: AC24 (dark default, no flicker) is Starlight's responsibility, not ours. Adding our own `@media` rules would race against Starlight's inline script.
+
+#### Decision §S.13.14.14 — Cross-document view transitions only; no `<ClientRouter />`
+
+**Decision**: `@view-transition { navigation: auto; }` in `view-transitions.css`. No `<ClientRouter />` import in `MarketingShell.astro`.
+
+**Rationale**: investigation Axis 8B is the cheapest aesthetic win. `<ClientRouter />` (Option 8C) forces every client script (PinButton, SignInModal, AudienceFilter, my-pins, submit-skill, SocialIconsOverride) to listen for `astro:page-load` instead of `DOMContentLoaded` — a real refactor across 5+ files with test fragility risk. If Phase 6 evaluation says "auth-chip flicker on navigation is a blocker," escalate to 8C; do not pre-pay.
+
+#### Decision §S.13.14.15 — File deletion is part of the deliverable
+
+**Decision**: `site/src/styles/custom.css` is deleted (P4.A). `site/src/components/HomeHero.astro` is deleted (P4.E, default — Designer may keep as composed wrapper). The redesign produces a real design system; the legacy `custom.css` was an MVP shim and the legacy `HomeHero` is exactly the anti-pattern.
+
+**Rationale**: keeping deprecated files around as "for reference" silently degrades the codebase. Phase 6 coders should see a clean tree on first scan.
+
+### §S.13.15 — AC ↔ §S.13 cross-reference
+
+Every AC1–AC39 from the refined request has at least one §S.13.x section as its design anchor. Where the plan (plan-004) is the primary evidence, that's noted too.
+
+| AC | §S.13 anchor | Plan-004 phase | What the design fixes |
+|---|---|---|---|
+| AC1 | §S.13.2.2–§S.13.2.4 | P4.A | Token surface ≥ 60 (delivers ~245); audience/confidence/status/focus all defined; sizes 8+ (12 steps); weights, spacing 10+ (17), radii 4+ (8), shadow 4+ (5+focus+glow), motion 3 dur + 4 ease, z-index 5+ (6) |
+| AC2 | §S.13.13 (file map) | P4.A | `customCss` references `tokens.css` |
+| AC3 | §S.13.2.3 + §S.13.8 | P4.A | Both `[data-theme='dark']` and `[data-theme='light']` override blocks |
+| AC4 | §S.13.2.2 → §S.13.2.5 ordering | P4.A | `--nbg-*` defined first; `--sl-color-*` aliased to them in `aliases.css` |
+| AC5 | §S.13.10.1 | P4.E | Asymmetric hero via `<Split>`, ≥ 80vh via `Section spacing="epic"`, headline `<Display level={1} size="xl">` computes ≥ 80px → exceeds 64px floor |
+| AC6 | §S.13.5.16 + §S.13.10.2 + §S.13.14.10 | P4.G | StepIndicator + 6 `<section id="step-N">` blocks; sticky desktop; horizontal compact mobile |
+| AC7 | §S.13.10.3 | P4.G | Opinionated "what's coming" with 3 deep-link cards; no centered button stub |
+| AC8 | §S.13.10.4 | P4.F | Featured-lead `<Card variant="feature">` + alternating-density grid; AudienceFilter still works |
+| AC9 | §S.13.10.5 | P4.F | Lead news in feature card; magazine stack of remaining items |
+| AC10 | §S.13.10.6 | P4.F | Grouped-by-cluster sections with pull-quotes; not a uniform grid |
+| AC11 | §S.13.10.7 | P4.F | `<input data-glossary-filter>` + A-Z chip strip + `[data-term]` wrappers |
+| AC12 | §S.13.10.8 | P4.F | New typographic style; no naked Starlight chrome on reference page |
+| AC13 | §S.13.10.9 | P4.F | `<Split>` two-path layout; `<Button variant="primary">` CTA visually integrated |
+| AC14 | §S.13.10.10 | P4.H | Three states distinct; 5 pin-type sections; editorial privacy callout; modal trigger preserved |
+| AC15 | §S.13.10.11 | P4.H | Numbered fieldsets; inline validation via status tokens; slug-collision Badge; logic untouched |
+| AC16 | §S.13.11.1 | P4.J | `content-override.css` targets `.sl-markdown-content {h*,p,a,code,pre,blockquote,table}` with tokens |
+| AC17 | §S.13.11.1 (sidebar selector) | P4.J | Non-pill active state via 2px accent left-bar |
+| AC18 | §S.13.11.1 (TOC selectors) | P4.J | TOC restyled with `--nbg-fs-sm`, `--nbg-color-fg-secondary`, accent current marker |
+| AC19 | §S.13.11.1 (aside selectors) | P4.J | All four aside variants use status semantic tokens |
+| AC20 | §S.13.9 (focus row) | P4.K verifies | `--nbg-color-focus-ring` 2px on every `:focus-visible` via `--nbg-sh-focus-ring` |
+| AC21 | §S.13.2.3 contrast pairs + §S.13.9 | P4.L verifies | Audience/confidence/status pairs chosen for AA both modes; axe-core run in P4.L |
+| AC22 | §S.13.7.2 + §S.13.2.6 + §S.13.7.1 | P4.A + P4.K | Three-layer reduced-motion enforcement |
+| AC23 | §S.13.12 + §S.13.9 | P4.I + P4.H | Restyle-in-place rule preserves all `aria-*`/`role`/`data-*`/script verbatim |
+| AC24 | §S.13.8.1 (Starlight ThemeProvider untouched) | P4.A | Inline `<head>` script that sets `data-theme` is not touched |
+| AC25 | §S.13.2.3 light overrides | P4.A | Light tokens cover every semantic role |
+| AC26 | §S.13.4.2 + §S.13.9 touch-target row | P4.E + P4.F + P4.H | Mobile breakpoint primitives; ≥44px touch targets |
+| AC27 | §S.13.4.1 layout primitives | P4.F | `<Grid columns={N}>` adapts via container queries |
+| AC28 | §S.13.4 + §S.13.10 each surface | P4.E + P4.F + P4.G + P4.H | Each surface chooses its `Container width` deliberately |
+| AC29 | n/a (verification) | P4.L | No new deprecation warnings (plan §11 R-12) |
+| AC30 | §S.13.12 test-floor rule | P4.L | ≤5 updates, 0 deletions; floor stays 127 |
+| AC31 | §S.13.8.4 + §S.13.11.2 | P4.A | Pagefind retints via `--sl-color-*` aliases automatically |
+| AC32 | §S.13.12 (sidebar untouched) | n/a | Sidebar config frozen |
+| AC33 | §S.13.8.1 | n/a | Starlight toggle untouched; `[data-theme]` scoping makes it work |
+| AC34 | §S.13.10.10 + §S.13.12 SignInModal row | P4.H + P4.I | Modal restyle preserves ARIA + script; sign-in chip retained in SocialIconsOverride |
+| AC35 | §S.13.10.4 / §S.13.10.5 / §S.13.12 AudienceFilter row | P4.I | Real checkboxes; localStorage; `.audience-hidden` preserved |
+| AC36 | §S.13.5 portability rule + §S.13.6 isolation | P4.C + P4.D | Primitives grep clean; shell is sole Starlight importer |
+| AC37 | §S.13.14.3 (Option-2 cost analysis) | P4.L smoke | Token file loadable standalone in blank Astro page |
+| AC38 | §S.13.13 evidence folder | P4.L | 34 PNGs captured |
+| AC39 | §S.13.13 + plan §2 P4.L | P4.L | validation-script.md filled in |
+
+Every AC has a backing design anchor. Phase 6 coders can pick up any phase P4.* and execute from this section alone plus the plan.
+
+---
+
+*End of UI Redesign section.*

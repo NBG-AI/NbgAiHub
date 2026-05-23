@@ -1,0 +1,80 @@
+/* site/src/styles/tokens/aliases.css
+ *
+ * Tier 3 (cross-system) — Starlight alias block.
+ * The ONE file that binds the redesign to Starlight. Deleted on Option-2 escalation.
+ *
+ * Related: project-design.md §S.13.2.5 (Starlight alias block).
+ * Source of truth: docs/research/pagefind-ui-variant-in-starlight-0-39.md
+ * Backs AC31 (Pagefind retint) + AC34 (Pagefind tokenized).
+ *
+ * Pattern: Starlight's Search.astro already aliases --sl-color-* into Pagefind's
+ * --pagefind-ui-* and into BEM selectors. By overriding --sl-color-* we retint
+ * Pagefind + sidebar + TOC + callouts automatically. No --pagefind-ui-* code.
+ *
+ * Both theme scopes are required — semantic.css already rebinds the --nbg-*
+ * values under [data-theme='light'], but Starlight's own Search.astro scopes
+ * a few values to :root[data-theme='light'] directly, so we mirror that
+ * convention to keep the cascade unambiguous.
+ */
+
+@layer tokens {
+  :root,
+  :root[data-theme='dark'] {
+    /* ─── Color aliases ─── */
+    /* Modal/surface backgrounds */
+    --sl-color-black:    var(--nbg-color-bg-elevated);     /* modal bg */
+    --sl-color-gray-6:   var(--nbg-color-bg-page);         /* search-button bg, accordion header */
+    --sl-color-gray-5:   var(--nbg-color-border-default);  /* borders, dividers */
+    --sl-color-gray-4:   var(--nbg-c-slate-500);           /* tree-diagram icon */
+    --sl-color-gray-3:   var(--nbg-c-slate-400);           /* page icon */
+    --sl-color-gray-2:   var(--nbg-color-fg-muted);        /* result-excerpt, mark */
+    --sl-color-gray-1:   var(--nbg-c-slate-200);           /* placeholder, button text */
+
+    /* Foreground roles */
+    --sl-color-white:        var(--nbg-color-fg-primary);  /* result-link text */
+    --sl-color-text:         var(--nbg-color-fg-primary);  /* pagefind primary */
+    --sl-color-text-accent:  var(--nbg-color-accent);      /* close button, clear ::before */
+    --sl-color-text-invert:  var(--nbg-color-bg-canvas);   /* filter checkbox checkmark */
+
+    /* Accent roles */
+    --sl-color-accent:      var(--nbg-color-accent);
+    --sl-color-accent-high: var(--nbg-color-accent-hover);
+    --sl-color-accent-low:  var(--nbg-color-accent-bg);
+
+    /* Backdrop + shadow */
+    --sl-color-backdrop-overlay: var(--nbg-color-bg-overlay);
+    --sl-shadow-lg:              var(--nbg-sh-xl);
+
+    /* ─── Font aliases ─── */
+    /* Propagates Astro Fonts API output (P4.B) to all Starlight chrome —
+     * sidebar, search modal, code blocks, headings. */
+    --sl-font:      var(--nbg-type-body);
+    --sl-font-mono: var(--nbg-type-mono);
+  }
+
+  :root[data-theme='light'] {
+    /* Same alias surface; --nbg-* tokens already rebind under [data-theme='light'] */
+    --sl-color-black:    var(--nbg-color-bg-elevated);
+    --sl-color-gray-6:   var(--nbg-color-bg-page);
+    --sl-color-gray-5:   var(--nbg-color-border-default);
+    --sl-color-gray-4:   var(--nbg-c-slate-400);
+    --sl-color-gray-3:   var(--nbg-c-slate-500);
+    --sl-color-gray-2:   var(--nbg-color-fg-muted);
+    --sl-color-gray-1:   var(--nbg-c-slate-700);
+
+    --sl-color-white:        var(--nbg-color-fg-primary);
+    --sl-color-text:         var(--nbg-color-fg-primary);
+    --sl-color-text-accent:  var(--nbg-color-accent);
+    --sl-color-text-invert:  #ffffff;
+
+    --sl-color-accent:      var(--nbg-color-accent);
+    --sl-color-accent-high: var(--nbg-color-accent-hover);
+    --sl-color-accent-low:  var(--nbg-color-accent-bg);
+
+    --sl-color-backdrop-overlay: var(--nbg-color-bg-overlay);
+    --sl-shadow-lg:              var(--nbg-sh-lg);
+
+    --sl-font:      var(--nbg-type-body);
+    --sl-font-mono: var(--nbg-type-mono);
+  }
+}

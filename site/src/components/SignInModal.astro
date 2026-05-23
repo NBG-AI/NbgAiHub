@@ -83,141 +83,180 @@
 </dialog>
 
 <style>
-  .nbg-signin {
-    border: 1px solid var(--sl-color-gray-5);
-    border-radius: 0.6rem;
-    padding: 0;
-    background: var(--sl-color-bg);
-    color: var(--sl-color-text);
-    max-width: 32rem;
-    width: calc(100% - 2rem);
-  }
-  .nbg-signin::backdrop {
-    background: rgba(0, 0, 0, 0.55);
-  }
+  /* P4.I restyle — tokens drive everything; the `<dialog>` chrome, every
+   * data-nbg-signin-* attribute, aria-labelledby, and the script block are
+   * preserved bit-for-bit (AC23 + AC34). DOM selectors (.nbg-signin,
+   * .nbg-signin__form, .nbg-signin__input, etc.) are untouched. */
+  @layer nbg.components {
+    .nbg-signin {
+      border: 1px solid var(--nbg-color-border-default);
+      border-radius: var(--nbg-r-lg);
+      padding: 0;
+      background: var(--nbg-color-bg-elevated);
+      color: var(--nbg-color-fg-primary);
+      max-width: 32rem;
+      width: calc(100% - var(--nbg-sp-8));
+      box-shadow: var(--nbg-sh-xl);
+    }
+    .nbg-signin::backdrop {
+      background: var(--nbg-color-bg-overlay);
+      backdrop-filter: blur(4px);
+    }
 
-  .nbg-signin__form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1.5rem 1.5rem 1.25rem;
-    position: relative;
-  }
+    .nbg-signin__form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--nbg-sp-3);
+      padding: var(--nbg-sp-6) var(--nbg-sp-6) var(--nbg-sp-5);
+      position: relative;
+    }
 
-  .nbg-signin__close {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.6rem;
-    background: transparent;
-    border: 0;
-    color: var(--sl-color-text);
-    font-size: 1.4rem;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0.25rem 0.4rem;
-    border-radius: 0.25rem;
-  }
-  .nbg-signin__close:hover {
-    background: var(--sl-color-gray-6);
-  }
-  .nbg-signin__close:focus-visible {
-    outline: 2px solid var(--sl-color-accent);
-    outline-offset: 2px;
-  }
+    .nbg-signin__close {
+      position: absolute;
+      top: var(--nbg-sp-2);
+      right: var(--nbg-sp-2);
+      background: transparent;
+      border: 0;
+      color: var(--nbg-color-fg-secondary);
+      font-size: 1.4rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: var(--nbg-sp-1) var(--nbg-sp-2);
+      border-radius: var(--nbg-r-sm);
+      transition: background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+                  color            var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-signin__close:hover {
+      background: var(--nbg-color-bg-surface-hover);
+      color: var(--nbg-color-fg-primary);
+    }
+    .nbg-signin__close:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
 
-  .nbg-signin__title {
-    margin: 0;
-    font-size: 1.2rem;
-    line-height: 1.2;
-  }
+    .nbg-signin__title {
+      margin: 0;
+      font-family: var(--nbg-type-display);
+      font-size: var(--nbg-fs-xl);
+      font-weight: var(--nbg-fw-bold);
+      letter-spacing: var(--nbg-ls-tight);
+      line-height: var(--nbg-lh-headline);
+      color: var(--nbg-color-fg-primary);
+    }
 
-  .nbg-signin__explainer {
-    margin: 0;
-    font-size: 0.9rem;
-    line-height: 1.45;
-    opacity: 0.9;
-  }
-  .nbg-signin__explainer code {
-    background: var(--sl-color-gray-6);
-    padding: 0 0.25rem;
-    border-radius: 0.2rem;
-    font-size: 0.85em;
-  }
+    .nbg-signin__explainer {
+      margin: 0;
+      font-size: var(--nbg-fs-sm);
+      line-height: var(--nbg-lh-relaxed);
+      color: var(--nbg-color-fg-secondary);
+    }
+    .nbg-signin__explainer code {
+      background: var(--nbg-color-bg-surface);
+      color: var(--nbg-color-accent-fg);
+      padding: 0 var(--nbg-sp-1);
+      border-radius: var(--nbg-r-xs);
+      font-family: var(--nbg-type-mono);
+      font-size: 0.9em;
+    }
 
-  .nbg-signin__deeplink {
-    align-self: flex-start;
-    color: var(--sl-color-text-accent);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-  }
-  .nbg-signin__deeplink:hover {
-    text-decoration: underline;
-  }
+    .nbg-signin__deeplink {
+      align-self: flex-start;
+      color: var(--nbg-color-link);
+      text-decoration: none;
+      font-weight: var(--nbg-fw-semibold);
+      font-size: var(--nbg-fs-sm);
+    }
+    .nbg-signin__deeplink:hover {
+      color: var(--nbg-color-link-hover);
+      text-decoration: underline;
+      text-underline-offset: 0.18em;
+    }
 
-  .nbg-signin__label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-top: 0.25rem;
-  }
+    .nbg-signin__label {
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-sm);
+      font-weight: var(--nbg-fw-semibold);
+      color: var(--nbg-color-fg-secondary);
+      margin-top: var(--nbg-sp-1);
+    }
 
-  .nbg-signin__input {
-    width: 100%;
-    padding: 0.55rem 0.7rem;
-    border: 1px solid var(--sl-color-gray-5);
-    border-radius: 0.35rem;
-    background: var(--sl-color-bg);
-    color: var(--sl-color-text);
-    font: inherit;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 0.9rem;
-  }
-  .nbg-signin__input:focus-visible {
-    outline: 2px solid var(--sl-color-accent);
-    outline-offset: 1px;
-  }
+    .nbg-signin__input {
+      width: 100%;
+      padding: var(--nbg-sp-2) var(--nbg-sp-3);
+      border: 1px solid var(--nbg-color-border-default);
+      border-radius: var(--nbg-r-md);
+      background: var(--nbg-color-bg-page);
+      color: var(--nbg-color-fg-primary);
+      font-family: var(--nbg-type-mono);
+      font-size: var(--nbg-fs-sm);
+      transition:
+        border-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        box-shadow   var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-signin__input:focus-visible {
+      outline: none;
+      border-color: var(--nbg-color-accent);
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
 
-  .nbg-signin__error {
-    margin: 0;
-    padding: 0.5rem 0.7rem;
-    border-radius: 0.35rem;
-    background: rgba(230, 102, 0, 0.12);
-    color: #e60;
-    font-size: 0.85rem;
-    border: 1px solid rgba(230, 102, 0, 0.4);
-  }
+    .nbg-signin__error {
+      margin: 0;
+      padding: var(--nbg-sp-2) var(--nbg-sp-3);
+      border-radius: var(--nbg-r-md);
+      background: var(--nbg-color-status-danger-bg);
+      color: var(--nbg-color-status-danger-fg);
+      font-size: var(--nbg-fs-sm);
+      border: 1px solid var(--nbg-color-status-danger-fg);
+    }
 
-  .nbg-signin__actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-    margin-top: 0.5rem;
-  }
+    .nbg-signin__actions {
+      display: flex;
+      gap: var(--nbg-sp-2);
+      justify-content: flex-end;
+      margin-top: var(--nbg-sp-2);
+    }
 
-  .nbg-signin__btn {
-    padding: 0.55rem 1rem;
-    border-radius: 0.35rem;
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-    border: 1px solid var(--sl-color-gray-5);
-  }
-  .nbg-signin__btn:focus-visible {
-    outline: 2px solid var(--sl-color-accent);
-    outline-offset: 2px;
-  }
-  .nbg-signin__btn--primary {
-    background: var(--sl-color-accent);
-    color: var(--sl-color-white);
-    border-color: var(--sl-color-accent);
-  }
-  .nbg-signin__btn--primary:disabled {
-    opacity: 0.6;
-    cursor: progress;
-  }
-  .nbg-signin__btn--secondary {
-    background: transparent;
-    color: var(--sl-color-text);
+    .nbg-signin__btn {
+      padding: var(--nbg-sp-2) var(--nbg-sp-4);
+      border-radius: var(--nbg-r-md);
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-sm);
+      font-weight: var(--nbg-fw-semibold);
+      cursor: pointer;
+      border: 1px solid var(--nbg-color-border-default);
+      transition:
+        background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        border-color     var(--nbg-dur-fast) var(--nbg-ease-out),
+        color            var(--nbg-dur-fast) var(--nbg-ease-out),
+        box-shadow       var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-signin__btn:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
+    .nbg-signin__btn--primary {
+      background: var(--nbg-color-accent-strong);
+      color: var(--nbg-color-fg-on-accent);
+      border-color: var(--nbg-color-accent-strong);
+    }
+    .nbg-signin__btn--primary:hover:not(:disabled) {
+      background: var(--nbg-color-accent-hover);
+      border-color: var(--nbg-color-accent-hover);
+    }
+    .nbg-signin__btn--primary:disabled {
+      opacity: 0.6;
+      cursor: progress;
+    }
+    .nbg-signin__btn--secondary {
+      background: transparent;
+      color: var(--nbg-color-fg-secondary);
+    }
+    .nbg-signin__btn--secondary:hover:not(:disabled) {
+      background: var(--nbg-color-bg-surface-hover);
+      color: var(--nbg-color-fg-primary);
+      border-color: var(--nbg-color-border-strong);
+    }
   }
 </style>
 

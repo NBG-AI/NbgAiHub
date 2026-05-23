@@ -1,0 +1,55 @@
+---
+/**
+ * Stack.astro — Vertical flex column with uniform gap.
+ *
+ * Purpose: Stacks children vertically with a single configurable gap.
+ * The default-most layout primitive — used everywhere prose, cards, or
+ * sections are listed.
+ *
+ * Related: project-design.md §S.13.4.1 + §S.13.5.3.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Gap = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '8' | '10' | '12' | '16' | '20' | '24';
+type Align = 'start' | 'center' | 'end' | 'stretch';
+type Tag = 'div' | 'ul' | 'ol' | 'nav' | 'section' | 'article';
+
+interface Props {
+  gap?: Gap;
+  align?: Align;
+  as?: Tag;
+}
+
+const { gap = '4', align = 'stretch', as = 'div' } = Astro.props;
+const Tag = as;
+---
+<Tag class="nbg-stack" data-gap={gap} data-align={align}>
+  <slot />
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-stack {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .nbg-stack[data-align='start']   { align-items: flex-start; }
+    .nbg-stack[data-align='center']  { align-items: center; }
+    .nbg-stack[data-align='end']     { align-items: flex-end; }
+    .nbg-stack[data-align='stretch'] { align-items: stretch; }
+
+    .nbg-stack[data-gap='0']  { gap: var(--nbg-sp-0); }
+    .nbg-stack[data-gap='1']  { gap: var(--nbg-sp-1); }
+    .nbg-stack[data-gap='2']  { gap: var(--nbg-sp-2); }
+    .nbg-stack[data-gap='3']  { gap: var(--nbg-sp-3); }
+    .nbg-stack[data-gap='4']  { gap: var(--nbg-sp-4); }
+    .nbg-stack[data-gap='5']  { gap: var(--nbg-sp-5); }
+    .nbg-stack[data-gap='6']  { gap: var(--nbg-sp-6); }
+    .nbg-stack[data-gap='8']  { gap: var(--nbg-sp-8); }
+    .nbg-stack[data-gap='10'] { gap: var(--nbg-sp-10); }
+    .nbg-stack[data-gap='12'] { gap: var(--nbg-sp-12); }
+    .nbg-stack[data-gap='16'] { gap: var(--nbg-sp-16); }
+    .nbg-stack[data-gap='20'] { gap: var(--nbg-sp-20); }
+    .nbg-stack[data-gap='24'] { gap: var(--nbg-sp-24); }
+  }
+</style>

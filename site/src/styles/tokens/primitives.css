@@ -1,0 +1,259 @@
+/* site/src/styles/tokens/primitives.css
+ *
+ * Tier 1 — Primitive tokens. Raw values. Theme-neutral.
+ * Components and the semantic tier resolve against these.
+ *
+ * Related: project-design.md §S.13.2.2 (Primitive tier — raw values).
+ * Backs AC1 (≥60 tokens; this file alone declares ~135).
+ *
+ * Scoping: declared under :root because primitives never change between dark
+ * and light. Only the semantic tier (semantic.css) rebinds them.
+ */
+
+@layer tokens {
+  :root {
+    /* ─────────────────────────────────────────────────────────────────
+     * Color primitives — six OKLCH-tuned ramps, 11 steps each (50..950).
+     * ───────────────────────────────────────────────────────────────── */
+
+    /* Slate — neutral cool gray (workhorse — surfaces, borders, body type) */
+    --nbg-c-slate-50:  hsl(220 25% 98%);
+    --nbg-c-slate-100: hsl(220 22% 95%);
+    --nbg-c-slate-200: hsl(220 20% 88%);
+    --nbg-c-slate-300: hsl(220 18% 75%);
+    --nbg-c-slate-400: hsl(220 15% 58%);
+    --nbg-c-slate-500: hsl(220 12% 45%);
+    --nbg-c-slate-600: hsl(220 14% 32%);
+    --nbg-c-slate-700: hsl(220 16% 22%);
+    --nbg-c-slate-800: hsl(220 18% 14%);
+    --nbg-c-slate-900: hsl(220 22% 9%);
+    --nbg-c-slate-950: hsl(220 25% 5%);
+
+    /* Violet — brand accent (buttons, links, focus rings) */
+    --nbg-c-violet-50:  hsl(265 100% 97%);
+    --nbg-c-violet-100: hsl(265 95% 92%);
+    --nbg-c-violet-200: hsl(265 92% 85%);
+    --nbg-c-violet-300: hsl(265 90% 75%);
+    --nbg-c-violet-400: hsl(265 88% 68%);
+    --nbg-c-violet-500: hsl(265 85% 60%);
+    --nbg-c-violet-600: hsl(265 78% 50%);
+    --nbg-c-violet-700: hsl(265 70% 40%);
+    --nbg-c-violet-800: hsl(265 65% 30%);
+    --nbg-c-violet-900: hsl(265 60% 22%);
+    --nbg-c-violet-950: hsl(265 55% 14%);
+
+    /* Emerald — audience-beginner / success */
+    --nbg-c-emerald-50:  hsl(155 70% 96%);
+    --nbg-c-emerald-100: hsl(155 65% 88%);
+    --nbg-c-emerald-200: hsl(155 60% 78%);
+    --nbg-c-emerald-300: hsl(155 55% 65%);
+    --nbg-c-emerald-400: hsl(155 50% 52%);
+    --nbg-c-emerald-500: hsl(155 60% 42%);
+    --nbg-c-emerald-600: hsl(155 65% 33%);
+    --nbg-c-emerald-700: hsl(155 60% 25%);
+    --nbg-c-emerald-800: hsl(155 55% 18%);
+    --nbg-c-emerald-900: hsl(155 50% 12%);
+    --nbg-c-emerald-950: hsl(155 45% 7%);
+
+    /* Amber — audience-advanced / confidence-medium / warning */
+    --nbg-c-amber-50:  hsl(38 95% 96%);
+    --nbg-c-amber-100: hsl(38 92% 88%);
+    --nbg-c-amber-200: hsl(38 90% 78%);
+    --nbg-c-amber-300: hsl(38 88% 68%);
+    --nbg-c-amber-400: hsl(38 85% 58%);
+    --nbg-c-amber-500: hsl(38 88% 50%);
+    --nbg-c-amber-600: hsl(34 85% 42%);
+    --nbg-c-amber-700: hsl(30 80% 32%);
+    --nbg-c-amber-800: hsl(28 70% 22%);
+    --nbg-c-amber-900: hsl(26 60% 15%);
+    --nbg-c-amber-950: hsl(24 50% 9%);
+
+    /* Rose — danger / validation-error / confidence-low */
+    --nbg-c-rose-50:  hsl(350 90% 96%);
+    --nbg-c-rose-100: hsl(350 88% 90%);
+    --nbg-c-rose-200: hsl(350 85% 80%);
+    --nbg-c-rose-300: hsl(350 82% 70%);
+    --nbg-c-rose-400: hsl(350 78% 60%);
+    --nbg-c-rose-500: hsl(350 75% 52%);
+    --nbg-c-rose-600: hsl(350 70% 42%);
+    --nbg-c-rose-700: hsl(350 65% 32%);
+    --nbg-c-rose-800: hsl(350 60% 22%);
+    --nbg-c-rose-900: hsl(350 55% 15%);
+    --nbg-c-rose-950: hsl(350 50% 9%);
+
+    /* Sky — info / audience-both */
+    --nbg-c-sky-50:  hsl(210 90% 96%);
+    --nbg-c-sky-100: hsl(210 88% 88%);
+    --nbg-c-sky-200: hsl(210 85% 78%);
+    --nbg-c-sky-300: hsl(210 82% 68%);
+    --nbg-c-sky-400: hsl(210 78% 58%);
+    --nbg-c-sky-500: hsl(210 75% 50%);
+    --nbg-c-sky-600: hsl(210 70% 42%);
+    --nbg-c-sky-700: hsl(210 65% 32%);
+    --nbg-c-sky-800: hsl(210 60% 22%);
+    --nbg-c-sky-900: hsl(210 55% 14%);
+    --nbg-c-sky-950: hsl(210 50% 8%);
+
+    /* ─────────────────────────────────────────────────────────────────
+     * Type primitives — families, sizes, weights, line-heights,
+     * letter-spacings, optical-size axis, feature settings.
+     * ───────────────────────────────────────────────────────────────── */
+
+    /* Family aliases. Astro Fonts API emits --nbg-font-body / --nbg-font-mono
+     * at build time (wired in P4.B). --nbg-ff-* are the canonical primitive
+     * names. Display reuses body family at higher opsz — single font file. */
+    --nbg-ff-body:    var(--nbg-font-body);
+    --nbg-ff-mono:    var(--nbg-font-mono);
+    --nbg-ff-display: var(--nbg-font-body);
+
+    /* Size scale — modular ~1.2 ratio, with display steps for hero headlines */
+    --nbg-fs-2xs:         0.6875rem; /* 11px — kbd, eyebrow micro */
+    --nbg-fs-xs:          0.75rem;   /* 12px — eyebrow, chip, badge */
+    --nbg-fs-sm:          0.875rem;  /* 14px — secondary body, captions */
+    --nbg-fs-md:          1rem;      /* 16px — body default */
+    --nbg-fs-lg:          1.125rem;  /* 18px — lede small */
+    --nbg-fs-xl:          1.375rem;  /* 22px — h3 / lede large */
+    --nbg-fs-2xl:         1.75rem;   /* 28px — h2 */
+    --nbg-fs-display-sm:  2.25rem;   /* 36px — section eyebrow display */
+    --nbg-fs-display-md:  3rem;      /* 48px — h1 marketing */
+    --nbg-fs-display-lg:  4rem;      /* 64px — hero h1 minimum (AC5) */
+    --nbg-fs-display-xl:  5rem;      /* 80px — hero h1 desktop wide */
+    --nbg-fs-display-2xl: 6.5rem;    /* 104px — reserved oversized hero */
+
+    /* Weights — Inter Variable axis 100..900 */
+    --nbg-fw-thin:      200;
+    --nbg-fw-light:     300;
+    --nbg-fw-regular:   400;
+    --nbg-fw-medium:    500;
+    --nbg-fw-semibold:  600;
+    --nbg-fw-bold:      700;
+    --nbg-fw-extrabold: 800;
+
+    /* Line-heights */
+    --nbg-lh-display:  1.05;
+    --nbg-lh-headline: 1.15;
+    --nbg-lh-tight:    1.3;
+    --nbg-lh-snug:     1.45;
+    --nbg-lh-base:     1.6;
+    --nbg-lh-relaxed:  1.75;
+
+    /* Letter-spacing */
+    --nbg-ls-tight:  -0.02em;
+    --nbg-ls-snug:   -0.01em;
+    --nbg-ls-normal: 0;
+    --nbg-ls-loose:  0.02em;
+    --nbg-ls-wide:   0.08em;
+
+    /* Optical-size axis (Inter's `opsz`) */
+    --nbg-opsz-body:    14;
+    --nbg-opsz-lede:    20;
+    --nbg-opsz-display: 32;
+
+    /* Font-feature-settings strings — applied globally where appropriate */
+    --nbg-ff-features-body:    "'ss01' on, 'cv11' on, 'cv05' on";
+    --nbg-ff-features-mono:    "'zero' on, 'liga' off";
+    --nbg-ff-features-tabular: "'tnum' on, 'cv11' on";
+
+    /* ─────────────────────────────────────────────────────────────────
+     * Space primitives — 4px-base modular scale.
+     * ───────────────────────────────────────────────────────────────── */
+    --nbg-sp-0:   0;
+    --nbg-sp-px:  1px;
+    --nbg-sp-0-5: 0.125rem;
+    --nbg-sp-1:   0.25rem;
+    --nbg-sp-1-5: 0.375rem;
+    --nbg-sp-2:   0.5rem;
+    --nbg-sp-2-5: 0.625rem;
+    --nbg-sp-3:   0.75rem;
+    --nbg-sp-4:   1rem;
+    --nbg-sp-5:   1.25rem;
+    --nbg-sp-6:   1.5rem;
+    --nbg-sp-8:   2rem;
+    --nbg-sp-10:  2.5rem;
+    --nbg-sp-12:  3rem;
+    --nbg-sp-16:  4rem;
+    --nbg-sp-20:  5rem;
+    --nbg-sp-24:  6rem;
+    --nbg-sp-32:  8rem;
+
+    /* ─────────────────────────────────────────────────────────────────
+     * Radius primitives
+     * ───────────────────────────────────────────────────────────────── */
+    --nbg-r-xs:   2px;
+    --nbg-r-sm:   4px;
+    --nbg-r-md:   8px;
+    --nbg-r-lg:   12px;
+    --nbg-r-xl:   16px;
+    --nbg-r-2xl:  24px;
+    --nbg-r-pill: 9999px;
+    --nbg-r-full: 50%;
+
+    /* ─────────────────────────────────────────────────────────────────
+     * Shadow primitives — dark defaults; semantic tier rebinds for light.
+     * ───────────────────────────────────────────────────────────────── */
+    --nbg-sh-xs: 0 1px 2px hsl(220 30% 0% / 0.4);
+    --nbg-sh-sm: 0 2px 4px hsl(220 30% 0% / 0.5),
+                 0 1px 2px hsl(220 30% 0% / 0.4);
+    --nbg-sh-md: 0 4px 12px hsl(220 30% 0% / 0.5),
+                 0 2px 4px hsl(220 30% 0% / 0.4);
+    --nbg-sh-lg: 0 12px 32px hsl(220 30% 0% / 0.55),
+                 0 4px 12px hsl(220 30% 0% / 0.4);
+    --nbg-sh-xl: 0 24px 60px hsl(220 30% 0% / 0.6),
+                 0 8px 24px hsl(220 30% 0% / 0.4);
+
+    /* Accent glow — used by Card.variant='feature' + Button.variant='primary' */
+    --nbg-sh-glow-accent: 0 0 0 1px var(--nbg-c-violet-500),
+                          0 0 24px hsl(265 85% 60% / 0.35);
+
+    /* Focus ring — composed: 2px transparent gap + 2px violet ring */
+    --nbg-sh-focus-ring: 0 0 0 2px var(--nbg-c-slate-950),
+                         0 0 0 4px var(--nbg-c-violet-500);
+
+    /* ─────────────────────────────────────────────────────────────────
+     * Motion primitives
+     * ───────────────────────────────────────────────────────────────── */
+    --nbg-dur-instant:       0.01ms;
+    --nbg-dur-fast:          120ms;
+    --nbg-dur-base:          200ms;
+    --nbg-dur-slow:          400ms;
+    --nbg-dur-scroll-reveal: 700ms;
+
+    --nbg-ease-out:         cubic-bezier(0.22, 1, 0.36, 1);
+    --nbg-ease-in-out:      cubic-bezier(0.65, 0, 0.35, 1);
+    --nbg-ease-bounce-soft: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --nbg-ease-emphasized:  cubic-bezier(0.2, 0, 0, 1);
+
+    /* ─────────────────────────────────────────────────────────────────
+     * Z-index primitives
+     * ───────────────────────────────────────────────────────────────── */
+    --nbg-z-base:    0;
+    --nbg-z-sticky:  10;
+    --nbg-z-fixed:   20;
+    --nbg-z-overlay: 100;
+    --nbg-z-popover: 150;
+    --nbg-z-modal:   200;
+    --nbg-z-toast:   300;
+
+    /* ─────────────────────────────────────────────────────────────────
+     * Breakpoint custom-media tokens. Declared for documentation +
+     * container-query expressions (which accept var()). Real @media
+     * queries inline the values because custom-media is Stage 2.
+     * ───────────────────────────────────────────────────────────────── */
+    --nbg-bp-sm: 40rem;   /* 640px  */
+    --nbg-bp-md: 64rem;   /* 1024px */
+    --nbg-bp-lg: 80rem;   /* 1280px */
+    --nbg-bp-xl: 96rem;   /* 1536px */
+  }
+
+  /* Reduced motion — collapse durations to instant.
+   * Per §S.13.2.6. Defense in depth with per-component CSS + the
+   * IntersectionObserver script's early-return. */
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --nbg-dur-fast:          var(--nbg-dur-instant);
+      --nbg-dur-base:          var(--nbg-dur-instant);
+      --nbg-dur-slow:          var(--nbg-dur-instant);
+      --nbg-dur-scroll-reveal: var(--nbg-dur-instant);
+    }
+  }
+}

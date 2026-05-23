@@ -1,0 +1,104 @@
+---
+/**
+ * Badge.astro — Pill-shaped colored label.
+ *
+ * Purpose: The internal driver for AudienceBadge.astro and ConfidenceChip.astro
+ * (Wave 2, P4.I). Selects bg + fg via data-tone consuming semantic audience /
+ * confidence / status token pairs.
+ *
+ * Related: project-design.md §S.13.2.4 + §S.13.5.9.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Tone =
+  | 'neutral'
+  | 'beginner' | 'advanced' | 'both'
+  | 'high' | 'medium' | 'low'
+  | 'success' | 'warning' | 'danger' | 'info';
+type Tag = 'span' | 'div';
+
+interface Props {
+  tone?: Tone;
+  as?: Tag;
+}
+
+const { tone = 'neutral', as = 'span' } = Astro.props;
+const Tag = as;
+---
+<Tag class="nbg-badge" data-tone={tone}>
+  <slot />
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-badge {
+      --nbg-badge-radius:  var(--nbg-r-pill);
+      --nbg-badge-fs:      var(--nbg-fs-xs);
+      --nbg-badge-fw:      var(--nbg-fw-medium);
+      --nbg-badge-ls:      var(--nbg-ls-loose);
+
+      display: inline-flex;
+      align-items: center;
+      gap: var(--nbg-sp-1);
+      padding: var(--nbg-sp-0-5) var(--nbg-sp-2);
+      border-radius: var(--nbg-badge-radius);
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-badge-fs);
+      font-weight: var(--nbg-badge-fw);
+      letter-spacing: var(--nbg-badge-ls);
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
+    /* Neutral (default) */
+    .nbg-badge[data-tone='neutral'] {
+      background: var(--nbg-color-bg-surface);
+      color: var(--nbg-color-fg-secondary);
+    }
+
+    /* Audience tones */
+    .nbg-badge[data-tone='beginner'] {
+      background: var(--nbg-color-audience-beginner-bg);
+      color: var(--nbg-color-audience-beginner-fg);
+    }
+    .nbg-badge[data-tone='advanced'] {
+      background: var(--nbg-color-audience-advanced-bg);
+      color: var(--nbg-color-audience-advanced-fg);
+    }
+    .nbg-badge[data-tone='both'] {
+      background: var(--nbg-color-audience-both-bg);
+      color: var(--nbg-color-audience-both-fg);
+    }
+
+    /* Confidence tones */
+    .nbg-badge[data-tone='high'] {
+      background: var(--nbg-color-confidence-high-bg);
+      color: var(--nbg-color-confidence-high-fg);
+    }
+    .nbg-badge[data-tone='medium'] {
+      background: var(--nbg-color-confidence-medium-bg);
+      color: var(--nbg-color-confidence-medium-fg);
+    }
+    .nbg-badge[data-tone='low'] {
+      background: var(--nbg-color-confidence-low-bg);
+      color: var(--nbg-color-confidence-low-fg);
+    }
+
+    /* Status tones */
+    .nbg-badge[data-tone='success'] {
+      background: var(--nbg-color-status-success-bg);
+      color: var(--nbg-color-status-success-fg);
+    }
+    .nbg-badge[data-tone='warning'] {
+      background: var(--nbg-color-status-warning-bg);
+      color: var(--nbg-color-status-warning-fg);
+    }
+    .nbg-badge[data-tone='danger'] {
+      background: var(--nbg-color-status-danger-bg);
+      color: var(--nbg-color-status-danger-fg);
+    }
+    .nbg-badge[data-tone='info'] {
+      background: var(--nbg-color-status-info-bg);
+      color: var(--nbg-color-status-info-fg);
+    }
+  }
+</style>

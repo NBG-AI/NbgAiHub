@@ -1,0 +1,40 @@
+---
+/**
+ * Eyebrow.astro — Pre-heading label.
+ *
+ * Purpose: Small, mono, uppercase, tracked-out label. Sits above <Display>
+ * or <h2>. Used for "Section" / "Step N" / "What's new" labels.
+ *
+ * Related: project-design.md §S.13.5.12.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Tag = 'p' | 'span' | 'div';
+type Tone = 'default' | 'accent';
+
+interface Props {
+  as?: Tag;
+  tone?: Tone;
+}
+
+const { as = 'p', tone = 'default' } = Astro.props;
+const Tag = as;
+---
+<Tag class="nbg-eyebrow" data-tone={tone}>
+  <slot />
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-eyebrow {
+      margin: 0;
+      font-family: var(--nbg-type-mono);
+      font-size: var(--nbg-fs-xs);
+      font-weight: var(--nbg-fw-medium);
+      letter-spacing: var(--nbg-ls-wide);
+      line-height: 1.4;
+      text-transform: uppercase;
+    }
+    .nbg-eyebrow[data-tone='default'] { color: var(--nbg-color-fg-muted); }
+    .nbg-eyebrow[data-tone='accent']  { color: var(--nbg-color-accent); }
+  }
+</style>

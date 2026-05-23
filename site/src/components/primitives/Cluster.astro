@@ -1,0 +1,68 @@
+---
+/**
+ * Cluster.astro — Wrapping horizontal flex layout.
+ *
+ * Purpose: Horizontal flex row that wraps. Used for chip rows, CTA rows,
+ * key shortcut chords, button clusters.
+ *
+ * Related: project-design.md §S.13.4.1 + §S.13.5.4.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Gap = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '8';
+type Align = 'start' | 'center' | 'end' | 'baseline' | 'stretch';
+type Justify = 'start' | 'center' | 'end' | 'between' | 'around';
+type Tag = 'div' | 'ul' | 'nav' | 'span';
+
+interface Props {
+  gap?: Gap;
+  align?: Align;
+  justify?: Justify;
+  wrap?: boolean;
+  as?: Tag;
+}
+
+const { gap = '2', align = 'center', justify = 'start', wrap = true, as = 'div' } = Astro.props;
+const Tag = as;
+---
+<Tag
+  class="nbg-cluster"
+  data-gap={gap}
+  data-align={align}
+  data-justify={justify}
+  data-wrap={String(wrap)}
+>
+  <slot />
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-cluster {
+      display: flex;
+      flex-direction: row;
+      min-width: 0;
+    }
+    .nbg-cluster[data-wrap='true']  { flex-wrap: wrap; }
+    .nbg-cluster[data-wrap='false'] { flex-wrap: nowrap; }
+
+    .nbg-cluster[data-align='start']    { align-items: flex-start; }
+    .nbg-cluster[data-align='center']   { align-items: center; }
+    .nbg-cluster[data-align='end']      { align-items: flex-end; }
+    .nbg-cluster[data-align='baseline'] { align-items: baseline; }
+    .nbg-cluster[data-align='stretch']  { align-items: stretch; }
+
+    .nbg-cluster[data-justify='start']   { justify-content: flex-start; }
+    .nbg-cluster[data-justify='center']  { justify-content: center; }
+    .nbg-cluster[data-justify='end']     { justify-content: flex-end; }
+    .nbg-cluster[data-justify='between'] { justify-content: space-between; }
+    .nbg-cluster[data-justify='around']  { justify-content: space-around; }
+
+    .nbg-cluster[data-gap='0'] { gap: var(--nbg-sp-0); }
+    .nbg-cluster[data-gap='1'] { gap: var(--nbg-sp-1); }
+    .nbg-cluster[data-gap='2'] { gap: var(--nbg-sp-2); }
+    .nbg-cluster[data-gap='3'] { gap: var(--nbg-sp-3); }
+    .nbg-cluster[data-gap='4'] { gap: var(--nbg-sp-4); }
+    .nbg-cluster[data-gap='5'] { gap: var(--nbg-sp-5); }
+    .nbg-cluster[data-gap='6'] { gap: var(--nbg-sp-6); }
+    .nbg-cluster[data-gap='8'] { gap: var(--nbg-sp-8); }
+  }
+</style>

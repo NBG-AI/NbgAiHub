@@ -1,0 +1,440 @@
+---
+/**
+ * AuthControls.astro
+ *
+ * The Sign in button XOR signed-in avatar-menu pair. Used by:
+ *
+ *   - SplashAwareHeader on splash pages (inside the unified nbg-topnav)
+ *   - SocialIconsOverride on non-splash content-detail pages (inside Starlight's
+ *     default Header slot)
+ *
+ * Visual contract (post-2026-05-19 refinement):
+ *
+ *   Anonymous → a 32px Sign in pill (icon + label).
+ *
+ *   Signed-in → a 32px circular avatar button. Click opens a small dropdown
+ *               menu anchored top-right with the user's @login on top and a
+ *               Sign out menu item below. No always-visible "Sign out" chip
+ *               — that was the loudest, ugliest thing in the previous bar.
+ *
+ * IMPORTANT — the `[hidden]` CSS bug. Author rules set `display: inline-flex`
+ * on `.nbg-auth__signin` and `.nbg-auth__user`, which silently override the
+ * UA's `[hidden] { display: none }` default. The paired rule at the bottom
+ * of the CSS block — `.nbg-auth__signin[hidden], .nbg-auth__user[hidden]
+ * { display: none !important }` — is the explicit fix; do not remove it
+ * without verifying both variants don't end up visible simultaneously.
+ *
+ * SignInModal is mounted alongside (by the parent component) so that the
+ * `nbgaihub:open-signin-modal` event has somewhere to dispatch to.
+ *
+ * Related: project-design.md §S.13.6.1 + §S.13.6.2.
+ */
+---
+
+<div class="nbg-auth" data-nbg-auth-root>
+  <!-- Anonymous state -->
+  <button
+    type="button"
+    class="nbg-auth__signin"
+    data-nbg-auth-signin
+    aria-label="Sign in to pin items"
+  >
+    <svg
+      aria-hidden="true"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+      <polyline points="10 17 15 12 10 7" />
+      <line x1="15" y1="12" x2="3" y2="12" />
+    </svg>
+    <span>Sign in</span>
+  </button>
+
+  <!-- Signed-in state (hidden by default; script flips on read) -->
+  <div class="nbg-auth__user" data-nbg-auth-user hidden>
+    <button
+      type="button"
+      class="nbg-auth__avatar-btn"
+      data-nbg-auth-menu-toggle
+      aria-haspopup="menu"
+      aria-expanded="false"
+      aria-controls="nbg-auth-menu"
+      aria-label="Open account menu"
+    >
+      <img
+        class="nbg-auth__avatar"
+        data-nbg-auth-avatar
+        alt=""
+        width="28"
+        height="28"
+      />
+    </button>
+
+    <div
+      id="nbg-auth-menu"
+      class="nbg-auth__menu"
+      role="menu"
+      data-nbg-auth-menu
+      hidden
+    >
+      <div class="nbg-auth__menu-header" role="presentation">
+        <img
+          class="nbg-auth__menu-avatar"
+          data-nbg-auth-menu-avatar
+          alt=""
+          width="28"
+          height="28"
+        />
+        <div class="nbg-auth__menu-meta">
+          <span class="nbg-auth__menu-label">Signed in as</span>
+          <span class="nbg-auth__menu-login" data-nbg-auth-menu-login></span>
+        </div>
+      </div>
+      <div class="nbg-auth__menu-divider" role="separator"></div>
+      <button
+        type="button"
+        role="menuitem"
+        class="nbg-auth__menu-item"
+        data-nbg-auth-signout
+      >
+        <svg
+          aria-hidden="true"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+        <span>Sign out</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  @layer nbg.components {
+    .nbg-auth {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--nbg-sp-2);
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-sm);
+    }
+
+    /* ── Anonymous: 32px slim sign-in pill ───────────────────────────── */
+    .nbg-auth__signin {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--nbg-sp-1-5);
+      height: 32px;
+      padding-inline: var(--nbg-sp-3);
+      border-radius: var(--nbg-r-md);
+      border: 1px solid var(--nbg-color-border-default);
+      background: transparent;
+      color: var(--nbg-color-fg-secondary);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: var(--nbg-fs-sm);
+      font-weight: var(--nbg-fw-medium);
+      line-height: 1;
+      transition:
+        background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        color            var(--nbg-dur-fast) var(--nbg-ease-out),
+        border-color     var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-auth__signin:hover {
+      background: var(--nbg-color-bg-surface-hover);
+      color: var(--nbg-color-fg-primary);
+      border-color: var(--nbg-color-border-strong);
+    }
+    .nbg-auth__signin:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
+
+    /* ── Signed-in: 32px circular avatar button + popover menu ───────── */
+    .nbg-auth__user {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .nbg-auth__avatar-btn {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid var(--nbg-color-border-subtle);
+      border-radius: var(--nbg-r-full);
+      background: var(--nbg-color-bg-surface);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition:
+        border-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        box-shadow   var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-auth__avatar-btn:hover {
+      border-color: var(--nbg-color-border-strong);
+    }
+    .nbg-auth__avatar-btn[aria-expanded='true'] {
+      border-color: var(--nbg-color-accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--nbg-color-accent) 28%, transparent);
+    }
+    .nbg-auth__avatar-btn:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
+
+    .nbg-auth__avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--nbg-r-full);
+      display: block;
+      background: var(--nbg-color-bg-surface-hover);
+      object-fit: cover;
+    }
+
+    /* ── Dropdown popover ────────────────────────────────────────────── */
+    .nbg-auth__menu {
+      position: absolute;
+      top: calc(100% + var(--nbg-sp-2));
+      right: 0;
+      min-width: 16rem;
+      padding: var(--nbg-sp-2);
+      border: 1px solid var(--nbg-color-border-default);
+      border-radius: var(--nbg-r-lg);
+      background: var(--nbg-color-bg-elevated);
+      color: var(--nbg-color-fg-primary);
+      box-shadow: var(--nbg-sh-lg);
+      z-index: var(--nbg-z-popover);
+      transform-origin: top right;
+      animation: nbg-auth-menu-in 120ms var(--nbg-ease-out);
+    }
+    @keyframes nbg-auth-menu-in {
+      from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+      to   { opacity: 1; transform: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .nbg-auth__menu { animation: none; }
+    }
+
+    .nbg-auth__menu-header {
+      display: flex;
+      align-items: center;
+      gap: var(--nbg-sp-2-5);
+      padding: var(--nbg-sp-2) var(--nbg-sp-2-5);
+      border-radius: var(--nbg-r-md);
+    }
+    .nbg-auth__menu-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--nbg-r-full);
+      display: block;
+      object-fit: cover;
+      background: var(--nbg-color-bg-surface-hover);
+    }
+    .nbg-auth__menu-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .nbg-auth__menu-label {
+      font-family: var(--nbg-type-mono);
+      font-size: var(--nbg-fs-xs);
+      color: var(--nbg-color-fg-muted);
+      letter-spacing: var(--nbg-ls-wide);
+      text-transform: uppercase;
+      line-height: 1;
+    }
+    .nbg-auth__menu-login {
+      font-family: inherit;
+      font-weight: var(--nbg-fw-semibold);
+      font-size: var(--nbg-fs-sm);
+      color: var(--nbg-color-fg-primary);
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .nbg-auth__menu-divider {
+      margin: var(--nbg-sp-1) 0;
+      height: 1px;
+      background: var(--nbg-color-border-subtle);
+    }
+
+    .nbg-auth__menu-item {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--nbg-sp-2);
+      width: 100%;
+      padding: var(--nbg-sp-2) var(--nbg-sp-2-5);
+      border: 0;
+      border-radius: var(--nbg-r-md);
+      background: transparent;
+      color: var(--nbg-color-fg-primary);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: var(--nbg-fs-sm);
+      text-align: left;
+      transition: background-color var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-auth__menu-item:hover {
+      background: var(--nbg-color-bg-surface-hover);
+    }
+    .nbg-auth__menu-item:focus-visible {
+      outline: none;
+      background: var(--nbg-color-bg-surface-hover);
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
+
+    /* The `[hidden]` bug fix. Without these the author rules above set
+     * display: inline-flex which overrides the UA `[hidden] { display: none }`.
+     * Result without the fix: both Sign in pill AND signed-in avatar render
+     * simultaneously. Build-output test guards this rule's presence. */
+    .nbg-auth__signin[hidden],
+    .nbg-auth__user[hidden],
+    .nbg-auth__menu[hidden] {
+      display: none !important;
+    }
+  }
+</style>
+
+<script>
+  import { readToken, signOut, subscribe } from '../lib/auth.ts';
+
+  type Refs = {
+    root: HTMLElement;
+    signinBtn: HTMLButtonElement;
+    userWrap: HTMLElement;
+    avatarBtn: HTMLButtonElement;
+    avatar: HTMLImageElement;
+    menu: HTMLElement;
+    menuAvatar: HTMLImageElement;
+    menuLogin: HTMLElement;
+    signoutBtn: HTMLButtonElement;
+  };
+
+  function collect(root: HTMLElement): Refs | null {
+    const signinBtn = root.querySelector<HTMLButtonElement>('[data-nbg-auth-signin]');
+    const userWrap = root.querySelector<HTMLElement>('[data-nbg-auth-user]');
+    const avatarBtn = root.querySelector<HTMLButtonElement>('[data-nbg-auth-menu-toggle]');
+    const avatar = root.querySelector<HTMLImageElement>('[data-nbg-auth-avatar]');
+    const menu = root.querySelector<HTMLElement>('[data-nbg-auth-menu]');
+    const menuAvatar = root.querySelector<HTMLImageElement>('[data-nbg-auth-menu-avatar]');
+    const menuLogin = root.querySelector<HTMLElement>('[data-nbg-auth-menu-login]');
+    const signoutBtn = root.querySelector<HTMLButtonElement>('[data-nbg-auth-signout]');
+    if (!signinBtn || !userWrap || !avatarBtn || !avatar || !menu || !menuAvatar || !menuLogin || !signoutBtn) {
+      return null;
+    }
+    return { root, signinBtn, userWrap, avatarBtn, avatar, menu, menuAvatar, menuLogin, signoutBtn };
+  }
+
+  function setMenuOpen(refs: Refs, open: boolean): void {
+    refs.avatarBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    refs.menu.hidden = !open;
+  }
+
+  function render(refs: Refs): void {
+    let state: ReturnType<typeof readToken> = null;
+    try {
+      state = readToken();
+    } catch {
+      // localStorage unavailable — keep anonymous state, no throw.
+      state = null;
+    }
+    if (state === null) {
+      refs.signinBtn.hidden = false;
+      refs.userWrap.hidden = true;
+      refs.avatar.removeAttribute('src');
+      refs.menuAvatar.removeAttribute('src');
+      refs.menuLogin.textContent = '';
+      setMenuOpen(refs, false);
+    } else {
+      refs.signinBtn.hidden = true;
+      refs.userWrap.hidden = false;
+      refs.avatar.src = state.user.avatar_url;
+      refs.avatar.alt = `@${state.user.login} avatar`;
+      refs.menuAvatar.src = state.user.avatar_url;
+      refs.menuAvatar.alt = '';
+      refs.menuLogin.textContent = `@${state.user.login}`;
+    }
+  }
+
+  function wire(root: HTMLElement): void {
+    const refs = collect(root);
+    if (!refs) return;
+
+    refs.signinBtn.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('nbgaihub:open-signin-modal'));
+    });
+
+    refs.avatarBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const open = refs.avatarBtn.getAttribute('aria-expanded') === 'true';
+      setMenuOpen(refs, !open);
+    });
+
+    refs.signoutBtn.addEventListener('click', () => {
+      try {
+        signOut();
+      } catch {
+        // Storage unavailable — nothing to clear. Fall through to re-render.
+      }
+      render(refs);
+    });
+
+    // Close menu on outside click.
+    document.addEventListener('click', (event) => {
+      if (!(event.target instanceof Node)) return;
+      if (refs.avatarBtn.getAttribute('aria-expanded') !== 'true') return;
+      if (refs.menu.contains(event.target) || refs.avatarBtn.contains(event.target)) return;
+      setMenuOpen(refs, false);
+    });
+
+    // Escape to close.
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (refs.avatarBtn.getAttribute('aria-expanded') !== 'true') return;
+      setMenuOpen(refs, false);
+      refs.avatarBtn.focus();
+    });
+
+    // Re-render on any auth state change (signIn from modal, signOut from menu).
+    subscribe(() => render(refs));
+
+    render(refs);
+  }
+
+  function init(): void {
+    // Multi-instance safe: wire every [data-nbg-auth-root] on the page.
+    // SplashAwareHeader mounts one on splash; SocialIconsOverride mounts
+    // up to two on content-detail (desktop Header + MobileMenuFooter), each
+    // with its own dropdown state.
+    const roots = document.querySelectorAll<HTMLElement>('[data-nbg-auth-root]');
+    roots.forEach((root) => wire(root));
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init, { once: true });
+  } else {
+    init();
+  }
+</script>

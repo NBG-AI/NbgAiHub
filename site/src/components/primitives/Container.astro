@@ -1,0 +1,45 @@
+---
+/**
+ * Container.astro — Width-capped horizontal wrapper.
+ *
+ * Purpose: Centers content and applies side padding. Caps max-width to a
+ * named "track" via the `width` prop. Block-level by default.
+ *
+ * Related: project-design.md §S.13.4.1 + §S.13.5.1.
+ * Backs: layout primitives backbone (consumed by MarketingShell + every surface).
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Tag = 'div' | 'section' | 'article' | 'main';
+
+interface Props {
+  width?: 'narrow' | 'default' | 'wide' | 'full';
+  as?: Tag;
+}
+
+const { width = 'default', as = 'div' } = Astro.props;
+const Tag = as;
+---
+<Tag class="nbg-container" data-width={width}>
+  <slot />
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-container {
+      box-sizing: border-box;
+      margin-inline: auto;
+      padding-inline: var(--nbg-sp-4);
+      width: 100%;
+    }
+    .nbg-container[data-width='narrow']  { max-width: 56rem; }
+    .nbg-container[data-width='default'] { max-width: 72rem; }
+    .nbg-container[data-width='wide']    { max-width: 88rem; }
+    .nbg-container[data-width='full']    { max-width: 100%; padding-inline: 0; }
+
+    @media (min-width: 40rem) {
+      .nbg-container {
+        padding-inline: var(--nbg-sp-6);
+      }
+    }
+  }
+</style>

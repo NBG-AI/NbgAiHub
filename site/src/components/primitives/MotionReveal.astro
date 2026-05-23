@@ -1,0 +1,52 @@
+---
+/**
+ * MotionReveal.astro — Wrapper that marks its child as reveal-on-scroll.
+ *
+ * Purpose: Adds `data-reveal="true"` so the IntersectionObserver utility
+ * (motion.ts — owned by P4.K) can toggle `.is-revealed` when the element
+ * crosses the threshold. Initial CSS hides the element; reveal class shows.
+ *
+ * Reduced-motion handling (defense in depth):
+ *   1. Tokens collapse duration to instant (primitives.css).
+ *   2. CSS overrides initial state to opacity:1 / transform:none (here).
+ *   3. JS observer (P4.K) early-returns under reduced-motion.
+ *
+ * Related: project-design.md §S.13.5.15 + §S.13.7.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Tag = 'div' | 'section' | 'article' | 'li';
+
+interface Props {
+  delay?: number;
+  as?: Tag;
+}
+
+const { delay, as = 'div' } = Astro.props;
+const Tag = as;
+---
+<Tag
+  class="nbg-motion-reveal"
+  data-reveal="true"
+  {...(delay !== undefined ? { 'data-reveal-delay': String(delay) } : {})}
+>
+  <slot />
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    /* Per UAT 2026-05-19 — MotionReveal is now a no-op wrapper. Content is
+     * always visible, regardless of viewport position or JS state.
+     *
+     * Why: the previous opacity:0-by-default + IntersectionObserver gate
+     * caused entire tip clusters and skill grids to render as blank space
+     * when their bounding box exceeded the 50% threshold or sat below the
+     * rootMargin's -20% bottom inset. Editorial polish is not worth the
+     * content-visibility bug. The component is kept as a stable wrapper
+     * (so every call-site still compiles) and the script keeps managing
+     * the `.is-revealed` class for any future opt-in animation. */
+    .nbg-motion-reveal {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>

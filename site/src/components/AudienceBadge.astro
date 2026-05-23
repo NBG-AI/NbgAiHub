@@ -1,6 +1,14 @@
 ---
 // AudienceBadge.astro — Renders an audience pill (beginner | advanced | both).
-// See project-design.md §S.3.4.
+// See project-design.md §S.3.4 + §S.13.5.9.
+//
+// @deprecated — use <Badge tone={audience}> from primitives directly.
+// Kept in place during the Wave-2 redesign because consumers across pages
+// import this component by name. Internally renders <Badge tone={audience}>,
+// so the legacy flat audience colors are gone and the new tokenized
+// semantic audience tokens drive the visual. Wave 3 will delete this file.
+
+import Badge from './primitives/Badge.astro';
 
 interface Props {
   audience: 'beginner' | 'advanced' | 'both';
@@ -9,4 +17,4 @@ interface Props {
 const { audience } = Astro.props;
 ---
 
-<span class={`audience-badge audience-badge--${audience}`}>{audience}</span>
+<Badge tone={audience}>{audience}</Badge>

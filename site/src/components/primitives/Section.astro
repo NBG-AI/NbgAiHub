@@ -1,0 +1,54 @@
+---
+/**
+ * Section.astro — Full-bleed vertical-rhythm region.
+ *
+ * Purpose: Establishes vertical padding rhythm with optional tinted background.
+ * Sets `container-type: inline-size` so primitives nested inside can adapt
+ * to the section's width via @container queries.
+ *
+ * Related: project-design.md §S.13.4.1 + §S.13.5.2 + §S.13.4.3.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Tag = 'section' | 'div' | 'article' | 'aside' | 'header' | 'footer';
+
+interface Props {
+  spacing?: 'snug' | 'default' | 'spacious' | 'epic';
+  tone?: 'default' | 'subtle' | 'inverse';
+  as?: Tag;
+  surfaceId?: string;
+}
+
+const { spacing = 'default', tone = 'default', as = 'section', surfaceId } = Astro.props;
+const Tag = as;
+---
+<Tag
+  class="nbg-section"
+  data-spacing={spacing}
+  data-tone={tone}
+  {...(surfaceId ? { 'data-surface': surfaceId } : {})}
+>
+  <slot />
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-section {
+      container-type: inline-size;
+      container-name: nbg-section;
+      width: 100%;
+    }
+    /* Per UAT 2026-05-19 — the original epic/spacious tokens (96px / 64px
+     * padding-block) plus nested Stack gaps were stacking to ~180px of empty
+     * space between every card on list pages. Tokens halved so list pages
+     * (glossary / news / skills / tips) compress without losing the
+     * editorial-air feel on the home hero. */
+    .nbg-section[data-spacing='snug']     { padding-block: var(--nbg-sp-4); }
+    .nbg-section[data-spacing='default']  { padding-block: var(--nbg-sp-6); }
+    .nbg-section[data-spacing='spacious'] { padding-block: var(--nbg-sp-10); }
+    .nbg-section[data-spacing='epic']     { padding-block: var(--nbg-sp-12); }
+
+    .nbg-section[data-tone='default']  { background: var(--nbg-color-bg-canvas); color: var(--nbg-color-fg-primary); }
+    .nbg-section[data-tone='subtle']   { background: var(--nbg-color-bg-page); color: var(--nbg-color-fg-primary); }
+    .nbg-section[data-tone='inverse']  { background: var(--nbg-color-bg-elevated); color: var(--nbg-color-fg-primary); }
+  }
+</style>

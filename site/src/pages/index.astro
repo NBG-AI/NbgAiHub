@@ -1,0 +1,63 @@
+---
+/**
+ * / — Homepage.
+ *
+ * Composition: MarketingShell hero with editorial Display H1 + HomeStats
+ * (build-time content counts) + NewsPanel (3 most recent items).
+ *
+ * Why this is an .astro page and not an MDX page in content/docs/:
+ *   Previously the homepage lived at src/content/docs/index.mdx with
+ *   Starlight's splash template, and the MDX body embedded <MarketingShell>.
+ *   That re-emitted a SECOND <StarlightPage> inside the first, producing
+ *   duplicate chrome (two header bars, two theme selects, two empty h1#_top
+ *   blocks). MarketingShell already wraps StarlightPage internally — so by
+ *   moving the homepage into src/pages/ we get a single chrome render, the
+ *   same way every other marketing surface (/skills, /tips, /glossary,
+ *   /news) already works. Closes Issues - Pending Items.md #12.
+ *
+ * Related: project-design.md §S.13.6, §S.13.10.1.
+ */
+import MarketingShell from '../components/MarketingShell.astro';
+import Section from '../components/primitives/Section.astro';
+import Split from '../components/primitives/Split.astro';
+import Stack from '../components/primitives/Stack.astro';
+import Cluster from '../components/primitives/Cluster.astro';
+import Eyebrow from '../components/primitives/Eyebrow.astro';
+import Display from '../components/primitives/Display.astro';
+import Lede from '../components/primitives/Lede.astro';
+import Button from '../components/primitives/Button.astro';
+import HomeStats from '../components/HomeStats.astro';
+import NewsPanel from '../components/NewsPanel.astro';
+---
+
+<MarketingShell
+  title="NBG AI Hub"
+  description="A field manual for newcomers to Claude Code — what I wish I knew a year ago."
+  surfaceId="home"
+  width="wide"
+>
+  <Split slot="hero" ratio="3/5" stack="md" gap="8">
+    <Stack slot="start" gap="5">
+      <Eyebrow tone="accent">Claude Code</Eyebrow>
+      <Display level={1} size="xl">What I wish I knew a year ago.</Display>
+      <Lede size="lg">
+        A curated Claude Code knowledge hub for bank colleagues.
+        Skills, tips, news, and onboarding paths — opinionated,
+        plainspoken, no AI-slop hedging.
+      </Lede>
+      <Cluster gap="3" align="center">
+        <Button variant="primary" size="lg" href="/start-here/day-1/">
+          Start Here → Day 1
+        </Button>
+        <Button variant="secondary" size="lg" href="/skills/">
+          Browse Skills
+        </Button>
+      </Cluster>
+    </Stack>
+    <HomeStats slot="end" />
+  </Split>
+
+  <Section spacing="default" tone="default" surfaceId="home-news">
+    <NewsPanel limit={3} />
+  </Section>
+</MarketingShell>

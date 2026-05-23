@@ -1,0 +1,42 @@
+---
+/**
+ * Lede.astro — Oversized intro paragraph that sits below a hero h1.
+ *
+ * Purpose: First-paragraph display treatment — light weight, expressive
+ * size, tightened line-height. Sets reading tone for the surface.
+ *
+ * Related: project-design.md §S.13.5.13.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Tag = 'p' | 'div';
+type Size = 'sm' | 'lg';
+
+interface Props {
+  as?: Tag;
+  size?: Size;
+}
+
+const { as = 'p', size = 'sm' } = Astro.props;
+const Tag = as;
+---
+<Tag class="nbg-lede" data-size={size}>
+  <slot />
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-lede {
+      margin: 0;
+      max-width: 56ch;
+      color: var(--nbg-color-fg-secondary);
+      font-family: var(--nbg-type-body);
+      font-weight: var(--nbg-fw-regular);
+      line-height: var(--nbg-lh-tight);
+    }
+    .nbg-lede[data-size='sm'] { font-size: var(--nbg-fs-lg); }
+    .nbg-lede[data-size='lg'] {
+      font-size: var(--nbg-fs-xl);
+      font-variation-settings: 'opsz' var(--nbg-opsz-lede);
+    }
+  }
+</style>

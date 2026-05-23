@@ -1,0 +1,73 @@
+---
+/**
+ * Grid.astro — CSS grid wrapper.
+ *
+ * Purpose: Two modes — explicit fixed column count, or auto-fit
+ * `minmax(min, 1fr)` flow. Per global CLAUDE.md no-fallback rule, the
+ * `min` prop is REQUIRED when `columns === 'auto-fit'` — the frontmatter
+ * throws if it's missing.
+ *
+ * Caution: per §S.13.5.5, marketing surfaces /skills, /news, /tips must
+ * NOT use min='18rem' (AC8/9/10 forbid the legacy uniform grid).
+ *
+ * Related: project-design.md §S.13.4.1 + §S.13.5.5.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Gap = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '8' | '10';
+type Tag = 'div' | 'ul' | 'ol';
+
+interface Props {
+  columns?: 'auto-fit' | number;
+  min?: string;
+  gap?: Gap;
+  as?: Tag;
+}
+
+const { columns = 'auto-fit', min, gap = '4', as = 'div' } = Astro.props;
+
+// Global no-fallback rule — explicit exception when required config is absent.
+if (columns === 'auto-fit' && !min) {
+  throw new Error('Grid columns="auto-fit" requires a min prop (e.g. min="20rem"). See §S.13.5.5.');
+}
+
+const Tag = as;
+const columnsAttr = String(columns);
+---
+<Tag
+  class="nbg-grid"
+  data-columns={columnsAttr}
+  data-min={min}
+  data-gap={gap}
+  style={
+    columns === 'auto-fit'
+      ? `--nbg-grid-min: ${min};`
+      : `--nbg-grid-cols: ${columns};`
+  }
+>
+  <slot />
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-grid {
+      display: grid;
+      min-width: 0;
+    }
+    .nbg-grid[data-columns='auto-fit'] {
+      grid-template-columns: repeat(auto-fit, minmax(var(--nbg-grid-min, 18rem), 1fr));
+    }
+    .nbg-grid:not([data-columns='auto-fit']) {
+      grid-template-columns: repeat(var(--nbg-grid-cols, 1), minmax(0, 1fr));
+    }
+
+    .nbg-grid[data-gap='0']  { gap: var(--nbg-sp-0); }
+    .nbg-grid[data-gap='1']  { gap: var(--nbg-sp-1); }
+    .nbg-grid[data-gap='2']  { gap: var(--nbg-sp-2); }
+    .nbg-grid[data-gap='3']  { gap: var(--nbg-sp-3); }
+    .nbg-grid[data-gap='4']  { gap: var(--nbg-sp-4); }
+    .nbg-grid[data-gap='5']  { gap: var(--nbg-sp-5); }
+    .nbg-grid[data-gap='6']  { gap: var(--nbg-sp-6); }
+    .nbg-grid[data-gap='8']  { gap: var(--nbg-sp-8); }
+    .nbg-grid[data-gap='10'] { gap: var(--nbg-sp-10); }
+  }
+</style>

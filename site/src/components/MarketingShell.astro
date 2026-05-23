@@ -1,0 +1,172 @@
+---
+/**
+ * MarketingShell.astro — The Starlight isolation boundary for marketing surfaces.
+ *
+ * Purpose: ONE shared wrapper for every marketing page (/news, /skills,
+ * /tips, /glossary, /reference, /contribute, /start-here/*, /my-pins,
+ * /submit-skill, /). Wraps StarlightPage with `template: 'splash'` (drops
+ * sidebar + TOC).
+ *
+ * Header chrome on splash pages is owned by SplashAwareHeader.astro (the
+ * `components: { Header }` override in astro.config.mjs) — that file
+ * renders the unified nbg-topnav with brand + section links + search +
+ * auth + theme toggle + mobile drawer + SignInModal. MarketingShell here
+ * is just the page-body wrapper: hero slot, content slot, footer slot.
+ *
+ * Before 2026-05-19, MarketingShell rendered its own nbg-topnav INSIDE
+ * the StarlightPage content (which produced a second navigation bar
+ * below Starlight's chrome header). The unified-header refactor moved
+ * that markup up into SplashAwareHeader.astro so the marketing surface
+ * has exactly one nav bar — the one at the very top.
+ *
+ * Option-2 escape hatch: an Option-2 escalation (replace Starlight)
+ * rewrites THIS file + tokens/aliases.css + SplashAwareHeader.astro +
+ * SocialIconsOverride.astro. Everything else (primitives, content
+ * collections, lib/, surface pages) survives.
+ *
+ * Related: project-design.md §S.13.6 (this file's body wrapper),
+ *          §S.13.6.1 (the unified header in SplashAwareHeader).
+ * Backs: AC31, AC32, AC33, AC36 (Starlight isolation boundary).
+ */
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import Container from './primitives/Container.astro';
+import Section from './primitives/Section.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+  eyebrow?: string;
+  surfaceId?: string;
+  hero?: 'auto' | 'none';
+  width?: 'default' | 'wide' | 'full';
+  theme?: 'default' | 'inverse';
+}
+
+const {
+  title,
+  description,
+  eyebrow,
+  surfaceId,
+  hero = 'auto',
+  width = 'wide',
+  theme = 'default',
+} = Astro.props;
+
+// Per global no-fallback rule — `title` is required.
+if (!title) {
+  throw new Error('MarketingShell requires a `title` prop.');
+}
+
+const hasHeroSlot = Astro.slots.has('hero');
+const hasFooter   = Astro.slots.has('footer');
+const showHero    = hero === 'auto' && hasHeroSlot;
+---
+<StarlightPage frontmatter={{ template: 'splash', title, description, pagefind: true }}>
+  <main
+    class="nbg-marketing"
+    data-marketing="true"
+    data-surface={surfaceId}
+    data-theme-mode={theme}
+    data-width={width}
+  >
+    {eyebrow && (
+      <p class="nbg-marketing__eyebrow" data-marketing-eyebrow>{eyebrow}</p>
+    )}
+
+    {showHero && (
+      <Section spacing="default" tone="default" as="header" surfaceId={surfaceId ? `${surfaceId}-hero` : undefined}>
+        <Container width={width}>
+          <slot name="hero" />
+        </Container>
+      </Section>
+    )}
+
+    <Container width={width}>
+      <slot />
+    </Container>
+
+    {hasFooter && (
+      <Section spacing="default" tone="subtle" as="footer">
+        <Container width={width}>
+          <slot name="footer" />
+        </Container>
+      </Section>
+    )}
+  </main>
+</StarlightPage>
+
+<script>
+  // P4.K — wire the scroll-reveal IntersectionObserver on every marketing
+  // page. Astro hoists module-imported `<script>` tags and dedupes them
+  // across renders. The module honors prefers-reduced-motion internally.
+  import '../scripts/motion.ts';
+</script>
+
+<style is:global>
+  /* Marketing-page resets — applied at @layer nbg.components so they win over
+   * Starlight's defaults without needing !important.
+   *
+   * (1) Hide Starlight's auto-rendered page <h1> on splash marketing pages —
+   *     each surface renders its own Display H1 inside the hero slot, so the
+   *     auto title is a duplicate.
+   * (2) Hide Starlight's auto prev/next pagination on marketing pages — we
+   *     drive navigation through the top-nav, not pager links.
+   */
+  /* Hide the single auto-rendered Starlight page-title and its wrapping
+   * content-panel. Splash template emits
+   * `.content-panel > .sl-container > h1#_top` at the top of every page;
+   * each marketing surface renders its own Display H1 inside the hero
+   * slot, so the auto title is a visual duplicate.
+   *
+   * Unlayered + !important because Starlight ships its own .content-panel
+   * rules inside `@layer starlight.core` with `:where()` (0 specificity).
+   * Layer-ordering would otherwise need an explicit @layer order declaration
+   * to ensure nbg.components wins; the !important short-circuits that. */
+  .content-panel:has(> .sl-container > h1#_top),
+  h1#_top {
+    display: none !important;
+  }
+
+  /* Starlight ships `.content-panel { border-top: 1px solid var(--sl-color-hairline) }`
+   * which adds a hairline above every content panel. On marketing surfaces
+   * we hide the FIRST content-panel (the auto h1 wrapper, rule above) so
+   * the SECOND content-panel's border-top renders just below the sticky
+   * bar — producing a visible "doubled hairline" stacked beneath the
+   * Starlight header border. Drop all content-panel borders on
+   * data-marketing surfaces so only the Starlight header hairline remains. */
+  body:has([data-marketing='true']) .content-panel {
+    border-top: 0 !important;
+  }
+
+  /* Pagination — Starlight auto-builds prev/next from the sidebar order.
+   * The top-nav covers this on every marketing surface. */
+  .pagination-links {
+    display: none !important;
+  }
+</style>
+
+<style>
+  @layer nbg.components {
+    .nbg-marketing {
+      background: var(--nbg-color-bg-canvas);
+      color: var(--nbg-color-fg-primary);
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-md);
+      line-height: var(--nbg-lh-base);
+      min-height: 100%;
+    }
+    .nbg-marketing[data-theme-mode='inverse'] {
+      background: var(--nbg-color-bg-elevated);
+    }
+    .nbg-marketing__eyebrow {
+      margin: 0;
+      padding-block: var(--nbg-sp-4);
+      text-align: center;
+      font-family: var(--nbg-type-mono);
+      font-size: var(--nbg-fs-xs);
+      letter-spacing: var(--nbg-ls-wide);
+      text-transform: uppercase;
+      color: var(--nbg-color-fg-muted);
+    }
+  }
+</style>

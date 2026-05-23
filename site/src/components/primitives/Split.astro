@@ -1,0 +1,75 @@
+---
+/**
+ * Split.astro — Two-column asymmetric split for hero layouts.
+ *
+ * Purpose: Two-column row that collapses to a stack below a configurable
+ * breakpoint. Named slots `start` and `end`. Used by homepage hero and
+ * any surface that wants asymmetric editorial composition.
+ *
+ * Related: project-design.md §S.13.4.1 + §S.13.5.6.
+ * Portability: zero Starlight imports — primitives consume only design tokens.
+ */
+type Ratio = '1/2' | '1/3' | '2/3' | '3/5' | '2/5';
+type Gap = '0' | '4' | '6' | '8' | '12' | '16';
+type StackBp = 'sm' | 'md' | 'lg';
+type Tag = 'div' | 'section' | 'article';
+
+interface Props {
+  ratio?: Ratio;
+  gap?: Gap;
+  stack?: StackBp;
+  as?: Tag;
+}
+
+const { ratio = '3/5', gap = '8', stack = 'md', as = 'section' } = Astro.props;
+const Tag = as;
+---
+<Tag class="nbg-split" data-ratio={ratio} data-gap={gap} data-stack={stack}>
+  <div class="nbg-split__start"><slot name="start" /></div>
+  <div class="nbg-split__end"><slot name="end" /></div>
+</Tag>
+
+<style>
+  @layer nbg.primitives {
+    .nbg-split {
+      display: grid;
+      grid-template-columns: 1fr;
+      min-width: 0;
+    }
+    .nbg-split[data-gap='0']  { gap: var(--nbg-sp-0); }
+    .nbg-split[data-gap='4']  { gap: var(--nbg-sp-4); }
+    .nbg-split[data-gap='6']  { gap: var(--nbg-sp-6); }
+    .nbg-split[data-gap='8']  { gap: var(--nbg-sp-8); }
+    .nbg-split[data-gap='12'] { gap: var(--nbg-sp-12); }
+    .nbg-split[data-gap='16'] { gap: var(--nbg-sp-16); }
+
+    .nbg-split__start,
+    .nbg-split__end {
+      min-width: 0;
+    }
+
+    /* Above the stack breakpoint, split becomes two columns. */
+    @media (min-width: 40rem) {
+      .nbg-split[data-stack='sm'] {
+        grid-template-columns: var(--nbg-split-start, 3fr) var(--nbg-split-end, 2fr);
+      }
+    }
+    @media (min-width: 64rem) {
+      .nbg-split[data-stack='md'] {
+        grid-template-columns: var(--nbg-split-start, 3fr) var(--nbg-split-end, 2fr);
+      }
+    }
+    @media (min-width: 80rem) {
+      .nbg-split[data-stack='lg'] {
+        grid-template-columns: var(--nbg-split-start, 3fr) var(--nbg-split-end, 2fr);
+      }
+    }
+
+    /* Ratio mapping — declared with CSS custom properties for theme-able overrides */
+    .nbg-split[data-ratio='1/2'] { --nbg-split-start: 1fr;  --nbg-split-end: 1fr; }
+    .nbg-split[data-ratio='1/3'] { --nbg-split-start: 1fr;  --nbg-split-end: 2fr; }
+    .nbg-split[data-ratio='2/3'] { --nbg-split-start: 2fr;  --nbg-split-end: 1fr; }
+    .nbg-split[data-ratio='3/5'] { --nbg-split-start: 3fr;  --nbg-split-end: 2fr; }
+    .nbg-split[data-ratio='2/5'] { --nbg-split-start: 2fr;  --nbg-split-end: 3fr; }
+  }
+</style>

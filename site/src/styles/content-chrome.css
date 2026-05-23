@@ -1,0 +1,162 @@
+/* site/src/styles/content-chrome.css
+ *
+ * P4.J — Content-detail chrome theme override for Starlight's sidebar, top
+ * header bar, and right-rail TOC on MDX-rendered detail pages. Most chrome
+ * already retints via the `--sl-color-*` aliases in tokens/aliases.css; this
+ * file adds the refinements that aliases alone can't deliver:
+ *   - non-pill active sidebar state (left-bar 2px accent + bg tint) — AC17
+ *   - mono eyebrow style for sidebar group labels
+ *   - refined TOC typography + accent left-bar on current item — AC18
+ *   - subtle backdrop blur on the sticky header
+ *
+ * Related: docs/design/project-design.md §S.13.11.1.
+ * Backs: AC17 (sidebar active state), AC18 (TOC), AC32 (sidebar reachable).
+ *
+ * Layer: @layer nbg.components — same layer as content-prose.css.
+ */
+
+@layer nbg.components {
+  /* ─── Sticky header backdrop blur ───────────────────────────────────── */
+
+  header.header,
+  .sl-flex.header {
+    backdrop-filter: saturate(180%) blur(8px);
+    -webkit-backdrop-filter: saturate(180%) blur(8px);
+    background: color-mix(in srgb, var(--nbg-color-bg-canvas) 85%, transparent);
+    border-bottom: 1px solid var(--nbg-color-border-subtle);
+  }
+
+  /* ─── Sidebar — refined typography + non-pill active state ──────────── */
+
+  /* Sidebar entries — base typography */
+  .sidebar-content a,
+  .sl-link-card {
+    font-family: var(--nbg-type-body);
+    font-size: var(--nbg-fs-sm);
+    color: var(--nbg-color-fg-secondary);
+    border-radius: var(--nbg-r-sm);
+    transition:
+      background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+      color            var(--nbg-dur-fast) var(--nbg-ease-out),
+      border-color     var(--nbg-dur-fast) var(--nbg-ease-out);
+  }
+
+  .sidebar-content a:hover {
+    color: var(--nbg-color-fg-primary);
+    background: var(--nbg-color-bg-surface-hover);
+  }
+
+  /* AC17 — non-pill active state: 2px accent left-bar + accent bg tint */
+  .sidebar-content a[aria-current='page'],
+  .sidebar-content a[aria-current='true'] {
+    color: var(--nbg-color-accent-fg);
+    background: var(--nbg-color-accent-bg);
+    border-radius: 0 var(--nbg-r-sm) var(--nbg-r-sm) 0;
+    box-shadow: inset 2px 0 0 0 var(--nbg-color-accent);
+    font-weight: var(--nbg-fw-semibold);
+  }
+
+  /* Group labels — mono eyebrow treatment */
+  .sidebar-content .group-label,
+  .sidebar-content details > summary,
+  .sidebar-content [data-collapsible] > summary {
+    font-family: var(--nbg-type-mono);
+    font-size: var(--nbg-fs-xs);
+    font-weight: var(--nbg-fw-medium);
+    letter-spacing: var(--nbg-ls-wide);
+    text-transform: uppercase;
+    color: var(--nbg-color-fg-muted);
+  }
+
+  /* ─── Right-rail TOC — AC18 ─────────────────────────────────────────── */
+
+  starlight-toc nav,
+  starlight-toc {
+    font-family: var(--nbg-type-body);
+    font-size: var(--nbg-fs-sm);
+    color: var(--nbg-color-fg-secondary);
+  }
+
+  starlight-toc nav h2,
+  starlight-toc nav .toc-title {
+    font-family: var(--nbg-type-mono);
+    font-size: var(--nbg-fs-xs);
+    font-weight: var(--nbg-fw-medium);
+    letter-spacing: var(--nbg-ls-wide);
+    text-transform: uppercase;
+    color: var(--nbg-color-fg-muted);
+    margin-bottom: var(--nbg-sp-2);
+  }
+
+  starlight-toc nav a {
+    display: block;
+    padding: var(--nbg-sp-1) var(--nbg-sp-3);
+    color: var(--nbg-color-fg-muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    line-height: var(--nbg-lh-snug);
+    transition:
+      color           var(--nbg-dur-fast) var(--nbg-ease-out),
+      border-color    var(--nbg-dur-fast) var(--nbg-ease-out);
+  }
+  starlight-toc nav a:hover {
+    color: var(--nbg-color-fg-primary);
+  }
+  starlight-toc nav a[aria-current='true'],
+  starlight-toc nav [aria-current='true'] a {
+    color: var(--nbg-color-accent-fg);
+    border-left-color: var(--nbg-color-accent);
+    font-weight: var(--nbg-fw-semibold);
+  }
+  starlight-toc nav a:focus-visible {
+    outline: none;
+    box-shadow: var(--nbg-sh-focus-ring);
+    border-radius: var(--nbg-r-xs);
+  }
+
+  /* ─── Pagination (prev/next) ────────────────────────────────────────── */
+
+  .pagination-links a {
+    background: var(--nbg-color-bg-surface);
+    border: 1px solid var(--nbg-color-border-subtle);
+    border-radius: var(--nbg-r-md);
+    color: var(--nbg-color-fg-primary);
+    transition:
+      background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+      border-color     var(--nbg-dur-fast) var(--nbg-ease-out);
+  }
+  .pagination-links a:hover {
+    background: var(--nbg-color-bg-surface-hover);
+    border-color: var(--nbg-color-border-default);
+  }
+  .pagination-links a:focus-visible {
+    outline: none;
+    box-shadow: var(--nbg-sh-focus-ring);
+  }
+
+  /* ─── Search affordance in header ───────────────────────────────────── */
+
+  button[data-open-modal],
+  site-search button {
+    border-radius: var(--nbg-r-md);
+    border: 1px solid var(--nbg-color-border-subtle);
+    background: var(--nbg-color-bg-surface);
+    color: var(--nbg-color-fg-secondary);
+    font-family: var(--nbg-type-body);
+    transition:
+      background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+      border-color     var(--nbg-dur-fast) var(--nbg-ease-out),
+      color            var(--nbg-dur-fast) var(--nbg-ease-out);
+  }
+  button[data-open-modal]:hover,
+  site-search button:hover {
+    background: var(--nbg-color-bg-surface-hover);
+    border-color: var(--nbg-color-border-default);
+    color: var(--nbg-color-fg-primary);
+  }
+  button[data-open-modal]:focus-visible,
+  site-search button:focus-visible {
+    outline: none;
+    box-shadow: var(--nbg-sh-focus-ring);
+  }
+}

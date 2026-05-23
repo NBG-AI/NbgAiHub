@@ -4,7 +4,7 @@ Single source of truth for **what the project's components do**, expressed as la
 
 When a new feature is planned, append a new section to this file with its `F<N>` functional contract entries.
 
-**Last updated:** 2026-05-19 (added Personalization & contributions block)
+**Last updated:** 2026-05-19 (added Personalization & contributions block; added UI redesign block — Linear/Vercel/Stripe aesthetic, three-tier token system, 16 portable primitives, MarketingShell)
 
 ---
 
@@ -275,3 +275,50 @@ On submit, the client assembles `---\n<yaml-frontmatter>\n---\n<body>\n`, URL-en
 ### F-P-NF — Non-functional constraints (per refined-request NF-P1..NF-P13)
 
 TypeScript strict + `noUncheckedIndexedAccess`. No fallback config (missing `config/maintainers.json` throws). Anonymous build path unchanged (`npm run build` produces fully-functional static site with no GH API at view time). No runtime AI on the site. Dev port still `4321`. `astro check` and `npm run build` both exit 0. Each new functional unit has Vitest coverage (`site/` 127 tests; `pipeline/` 112 tests post-Wave B).
+
+---
+
+## UI redesign — Linear/Vercel/Stripe aesthetic (R1-R12 per docs/refined-requests/ui-redesign.md)
+
+### F-UI-TOK-1 — Three-tier design token system (R1, AC1-AC4)
+
+`site/src/styles/tokens/{primitives,semantic,aliases,layers,legacy,index}.css` define a 3-tier CSS custom-property contract: **primitives** (theme-neutral raw values — 6 color ramps × 11 steps, type/space/radius/shadow/motion/z-index scales — ~135 declarations), **semantic** (named for purpose, scoped under both `:root[data-theme='dark']` and `:root[data-theme='light']` — ~38 per theme), **component** (scoped inside each primitive's `<style>` block — ~70 across all primitives). Plus a **cross-system aliases** layer mapping 16 Starlight `--sl-color-*` tokens × 2 themes to our `--nbg-*` tokens, which transitively retints Pagefind's modal via Starlight's existing `--pagefind-ui-*` aliasing (see docs/research/pagefind-ui-variant-in-starlight-0-39.md). Cascade order is documented in `layers.css`: `@layer reset, tokens, starlight.base, starlight.core, starlight.components, nbg.primitives, nbg.components, nbg.utilities;`. Loaded via Starlight's `customCss` array in order `tokens/index.css` → `motion.css` → `content-prose.css` → `content-chrome.css`.
+
+### F-UI-FONT-1 — Self-hosted variable fonts via Astro Fonts API (R2, AC5)
+
+`site/astro.config.mjs` declares `fonts: [...]` using `fontProviders.fontsource()` (stable in Astro 6.3.5; see docs/research/astro-fonts-api-experimental-stability.md) for **Inter Variable** (body + display via `opsz` axis, weights `100 900`, `latin + latin-ext` subsets) and **JetBrains Mono Variable** (weights `100 800`, same subsets). Astro emits `.woff2` files to `dist/_astro/` (~393 KB total), generates `@font-face` declarations with metric-adjusted fallbacks (`size-adjust`, `ascent-override`), and injects preload `<link>` automatically. Aliased into Starlight's chrome via `--sl-font: var(--nbg-font-body)` and `--sl-font-mono: var(--nbg-font-mono)` in `tokens/aliases.css` — propagates to sidebar, code blocks, search modal, prose, etc.
+
+### F-UI-PRIM-1 — Portable primitive component library (R3, AC36)
+
+`site/src/components/primitives/` ships 16 framework-agnostic Astro components (Container, Section, Stack, Cluster, Grid, Split, Card, Button, Badge, Chip, Kbd, Eyebrow, Lede, Display, MotionReveal, StepIndicator). **Portability gate**: zero `@astrojs/starlight` imports anywhere under the directory — verified by `grep -r '@astrojs/starlight' site/src/components/primitives/` returning zero hits. Each primitive consumes only `--nbg-*` tokens, exposes a documented prop interface (see project-design.md §S.13.5), and follows the design's A11y contract (focus-visible, semantic HTML, ARIA where interactive). This isolation is the **portability hedge** that survives an Option-2 escalation (replacing Starlight).
+
+### F-UI-SHELL-1 — MarketingShell wraps all 11 marketing surfaces (R4, AC10)
+
+`site/src/components/MarketingShell.astro` is the ONE allowed Starlight coupling outside the alias block. It wraps `<StarlightPage frontmatter={{ template: 'splash', title, description }}>` with a primitive-composed layout (Container + Section + Stack). Marketing surfaces (`/`, `/start-here/{day-1,week-1}`, `/skills`, `/news`, `/tips`, `/glossary`, `/reference`, `/contribute`, `/my-pins`, `/submit-skill`) import this shell as their outermost element. Replacing it is the only file work needed to escalate to Option 2.
+
+### F-UI-MOT-1 — IntersectionObserver-based scroll reveal + native View Transitions (R5, AC22-AC23)
+
+`site/src/scripts/motion.ts` (50 LOC, zero deps) creates an `IntersectionObserver` with `rootMargin: '0px 0px -20% 0px'` and `threshold: 0.5`, targeting `[data-reveal="true"]` elements. On intersection, adds `is-revealed` class and calls `observer.unobserve(target)` (one-shot). Honors `prefers-reduced-motion: reduce` by skipping the observer entirely and adding `is-revealed` immediately on script start. Wired globally via a `<script>` import inside MarketingShell. Native `@view-transition { navigation: auto; }` rule in `site/src/styles/motion.css` provides cross-document crossfades on every page navigation (no `<ClientRouter />` — pure CSS).
+
+### F-UI-CONTENT-1 — Content-page theme override (R6, AC17, AC18, AC34)
+
+`site/src/styles/content-prose.css` (`.sl-markdown-content` typography — headings, paragraphs, lists, links, blockquotes, code, tables, callouts, kbd, details) and `site/src/styles/content-chrome.css` (sidebar non-pill active state, `starlight-toc` typography, header backdrop blur, search affordance) deeply theme the MDX content detail pages (`/news/[slug]/`) without modifying Starlight itself. Both stylesheets scope rules under `@layer nbg.components` so they win specificity over Starlight's `starlight.*` layers without `!important`. Pagefind modal retints automatically through the `--sl-color-*` → `--pagefind-ui-*` aliasing chain — verified in built CSS (`dist/_astro/*.css`).
+
+### F-UI-PAGE-1 — 11 marketing surfaces redesigned with primitive composition (R4, AC10)
+
+Per docs/design/project-design.md §S.13.10:
+- **Homepage `/`** — asymmetric `<Split>` hero (Display + Lede + Button cluster + Kbd chord), `<HomeStats>` strip reading `getCollection()` at SSG, motion-revealed `<NewsPanel limit={3}>`.
+- **`/start-here/day-1`** — sticky `<StepIndicator>` + 6 hand-coded `<section id="step-N">` wrappers around server-rendered markdown chunks (via `@astrojs/markdown-remark`'s `createMarkdownProcessor`, no new deps); pull-quote between steps 3-4.
+- **`/start-here/week-1`** — editorial "still drafting" surface with 6 planned-topic cards (no centered "Coming soon" stub).
+- **`/skills`** — feature card spans 2 cols + content-variant cards; restyled `<AudienceFilter>` (segmented-control look, real checkboxes preserved per A6).
+- **`/news`** — magazine layout: featured lead + content-variant cards in a Stack with rules.
+- **`/tips`** — 12 tips clustered by theme (prompting, survival, context, compliance) with mono eyebrow labels.
+- **`/glossary`** — alphabetical letter rail + ~30-line inline vanilla-JS filter input (no deps).
+- **`/reference`** — placeholder treatment previewing future content shape via disabled link cards.
+- **`/contribute`** — `<Split>` two-path CTA (submit-skill flow + GitHub PR flow).
+- **`/my-pins`** — three distinct visual states (loading skeleton, anonymous feature card, signed-in 5-type Stack of grouped sections) wrapping the existing PAT-paste sign-in + gist-favourites client script.
+- **`/submit-skill`** — numbered editorial "Step N" form sections wrapping the existing 17-rule live validator + URL-redirect-to-GitHub-editor client script. All `id`/`name`/`data-*`/`aria-*` selectors preserved bit-for-bit.
+
+### F-UI-NF — Non-functional constraints (per refined-request AC29-AC39 + DoD)
+
+`cd site && npm run build` exits 0 (28 pages built). `cd site && npm test` returns ≥ 174 passing. `cd site && npx astro check` returns 0 errors / 0 warnings. Zero new npm dependencies. Zero deprecated dependencies. Zero security advisories. WCAG AA contrast minimum. `prefers-reduced-motion` respected at three layers (CSS, JS, design tokens). Dark mode is default; light mode is best-effort and still passes contrast. Cascade Layers maintain Starlight's chrome integrity (no `!important` anywhere). Test floor of 127 preserved (now 174). 8 `site/src/lib/` modules untouched (AC32). 16 primitives are Starlight-free (AC36 portability gate for Option-2 escalation).

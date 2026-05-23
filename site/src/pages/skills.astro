@@ -1,29 +1,202 @@
 ---
+/**
+ * /skills — Editorial skills catalog landing.
+ *
+ * Composition: MarketingShell hero (Eyebrow + Display + Lede + AudienceFilter)
+ * + featured lead skill (Card variant="feature") + Grid of remaining skills
+ * (Card variant="content"). The lead skill spans full width; the rest flow in
+ * an auto-fit grid sized for readable cards (NOT the legacy 18rem grid).
+ *
+ * Related: project-design.md §S.13.10.4, plan-004 §P4.F.
+ * Backs: AC8 (visual variety), AC35 (AudienceFilter functional).
+ */
 import { getCollection } from 'astro:content';
-import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
-import SkillCard from '../components/SkillCard.astro';
+import MarketingShell from '../components/MarketingShell.astro';
 import AudienceFilter from '../components/AudienceFilter.astro';
+import PinButton from '../components/PinButton.astro';
+import Section from '../components/primitives/Section.astro';
+import Stack from '../components/primitives/Stack.astro';
+import Cluster from '../components/primitives/Cluster.astro';
+import Grid from '../components/primitives/Grid.astro';
+import Card from '../components/primitives/Card.astro';
+import Eyebrow from '../components/primitives/Eyebrow.astro';
+import Display from '../components/primitives/Display.astro';
+import Lede from '../components/primitives/Lede.astro';
+import Badge from '../components/primitives/Badge.astro';
+import Chip from '../components/primitives/Chip.astro';
+import Button from '../components/primitives/Button.astro';
+import MotionReveal from '../components/primitives/MotionReveal.astro';
 
 const items = await getCollection('skills');
+// Lead = freshest skill by `authored` desc (falls back to title sort if tied).
+const sorted = items.sort((a, b) => {
+  const byDate = b.data.authored.localeCompare(a.data.authored);
+  return byDate !== 0 ? byDate : a.data.title.localeCompare(b.data.title);
+});
+const lead = sorted[0];
+const rest = sorted.slice(1);
 ---
 
-<StarlightPage frontmatter={{ title: 'Skills' }}>
-  <p>
-    The skills catalog — reusable Claude Code skills and plugins worth your
-    attention.
-  </p>
+<MarketingShell
+  title="Skills"
+  description="The skills catalog — reusable Claude Code skills and plugins worth your attention."
+  surfaceId="skills"
+  width="wide"
+>
+  <Stack slot="hero" gap="6">
+    <Eyebrow tone="accent">{items.length} skills</Eyebrow>
+    <Display level={1} size="lg">Skills worth installing.</Display>
+    <Lede size="sm">
+      A curated catalog of Claude Code skills and plugins — the ones we keep
+      reaching for. Each entry tells you what the skill does, who it's for,
+      and how to install it.
+    </Lede>
+    <AudienceFilter scope=".skill-card[data-audience], [data-skill-card][data-audience]" />
+  </Stack>
 
   {items.length === 0 ? (
-    <p class="empty-state">
-      No items yet. See <a href="/contribute/">Contribute</a> for how to add
-      one.
-    </p>
+    <Section spacing="default">
+      <Card variant="content">
+        <p>
+          No items yet. See <a href="/contribute/">Contribute</a> for how to
+          add one.
+        </p>
+      </Card>
+    </Section>
   ) : (
-    <>
-      <AudienceFilter scope=".skill-card[data-audience]" />
-      <div class="card-grid">
-        {items.map((entry) => <SkillCard entry={entry} />)}
-      </div>
-    </>
+    <Stack gap="10">
+      {lead && (
+        <Section spacing="snug" surfaceId="skills-lead">
+          <MotionReveal>
+            <article
+              class="skill-card"
+              data-skill-card="lead"
+              data-audience={lead.data.audience}
+              data-topics={lead.data.topics.join(',')}
+            >
+              <Card variant="feature">
+                <Stack slot="header" gap="3">
+                  <Cluster gap="2" align="center">
+                    <Eyebrow tone="accent">Featured skill</Eyebrow>
+                    <Badge tone={lead.data.audience}>{lead.data.audience}</Badge>
+                  </Cluster>
+                  <Display level={2} size="md">
+                    {lead.data.external_link ? (
+                      <a href={lead.data.external_link}>{lead.data.title} ↗</a>
+                    ) : (
+                      lead.data.title
+                    )}
+                  </Display>
+                </Stack>
+                <p class="nbg-lede">{lead.data.ai_summary}</p>
+                {lead.data.topics.length > 0 && (
+                  <Cluster gap="2" align="center">
+                    {lead.data.topics.map((topic) => <Chip>{topic}</Chip>)}
+                  </Cluster>
+                )}
+                <Cluster slot="footer" gap="3" align="center" justify="between">
+                  <Cluster gap="2" align="center">
+                    {lead.data.external_link && (
+                      <Button
+                        variant="primary"
+                        size="md"
+                        href={lead.data.external_link}
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        Install
+                      </Button>
+                    )}
+                    {lead.data.deeper_link && (
+                      <Button
+                        variant="secondary"
+                        size="md"
+                        href={lead.data.deeper_link}
+                        target="_blank"
+                        rel="noopener"
+                      >
+                        Read more
+                      </Button>
+                    )}
+                  </Cluster>
+                  <PinButton type="skill" slug={lead.id} />
+                </Cluster>
+              </Card>
+            </article>
+          </MotionReveal>
+        </Section>
+      )}
+
+      {rest.length > 0 && (
+        <Section spacing="snug" surfaceId="skills-grid">
+          <Grid columns="auto-fit" min="22rem" gap="6">
+            {rest.map((entry) => (
+              <article
+                class="skill-card"
+                data-skill-card="content"
+                data-audience={entry.data.audience}
+                data-topics={entry.data.topics.join(',')}
+              >
+                <Card variant="content">
+                  <Stack slot="header" gap="2">
+                    <Cluster gap="2" align="center">
+                      <Badge tone={entry.data.audience}>{entry.data.audience}</Badge>
+                    </Cluster>
+                    <h3 class="nbg-display" data-size="sm" data-weight="semibold">
+                      {entry.data.external_link ? (
+                        <a href={entry.data.external_link}>{entry.data.title} ↗</a>
+                      ) : (
+                        entry.data.title
+                      )}
+                    </h3>
+                  </Stack>
+                  <p class="nbg-summary">{entry.data.ai_summary}</p>
+                  {entry.data.topics.length > 0 && (
+                    <Cluster gap="2" align="center">
+                      {entry.data.topics.slice(0, 4).map((topic) => (
+                        <Chip>{topic}</Chip>
+                      ))}
+                    </Cluster>
+                  )}
+                  <Cluster slot="footer" gap="3" align="center" justify="between">
+                    <span class="nbg-skill-meta">{entry.data.category}</span>
+                    <PinButton type="skill" slug={entry.id} />
+                  </Cluster>
+                </Card>
+              </article>
+            ))}
+          </Grid>
+        </Section>
+      )}
+    </Stack>
   )}
-</StarlightPage>
+</MarketingShell>
+
+<style>
+  @layer nbg.components {
+    .skill-card a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .skill-card a:hover {
+      color: var(--nbg-color-link);
+      text-decoration: underline;
+    }
+    .nbg-summary {
+      margin: 0;
+      color: var(--nbg-color-fg-secondary);
+      font-size: var(--nbg-fs-md);
+      line-height: var(--nbg-lh-base);
+    }
+    .nbg-skill-meta {
+      font-family: var(--nbg-type-mono);
+      font-size: var(--nbg-fs-xs);
+      color: var(--nbg-color-fg-muted);
+      text-transform: uppercase;
+      letter-spacing: var(--nbg-ls-wide);
+    }
+    .skill-card.audience-hidden {
+      display: none;
+    }
+  }
+</style>

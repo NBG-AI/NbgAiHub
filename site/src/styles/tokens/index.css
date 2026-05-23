@@ -1,0 +1,17 @@
+/* site/src/styles/tokens/index.css
+ *
+ * Aggregator for the three-tier design-token layer + cascade-layer
+ * declaration + legacy holding-pen. Imported by Starlight via
+ * `customCss` in astro.config.mjs.
+ *
+ * Related: project-design.md §S.13.2 (Design tokens contract).
+ *
+ * Import order matters — layers.css MUST be first so the @layer order is
+ * established before any @layer { ... } rule from the other files fires.
+ */
+
+@import './layers.css';
+@import './primitives.css';
+@import './semantic.css';
+@import './aliases.css';
+@import './legacy.css';

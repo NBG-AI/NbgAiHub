@@ -1,0 +1,164 @@
+/* site/src/styles/tokens/semantic.css
+ *
+ * Tier 2 — Semantic tokens. Meaning, not value. Theme-dependent.
+ * Every component resolves against these (not directly against primitives).
+ *
+ * Related: project-design.md §S.13.2.3 (Semantic tier — meaning, not value).
+ * Backs AC1 + AC3 (theme scopes for dark/light) + AC21 (audience contrast).
+ *
+ * Scoping rule (per Pagefind research §"Dark/light mode behaviour"):
+ *   - :root, :root[data-theme='dark'] — dark defaults (also catches the
+ *     no-attribute case before Starlight's inline ThemeProvider script runs).
+ *   - :root[data-theme='light']       — light overrides.
+ *
+ * Defining tokens under :root alone (without theme scope) breaks Pagefind
+ * retinting and locks the page to whichever value happened to be declared.
+ */
+
+@layer tokens {
+  /* ─── DARK (default) ─────────────────────────────────────────────── */
+  :root,
+  :root[data-theme='dark'] {
+    /* Surface tokens — six steps from canvas to highest elevation */
+    --nbg-color-bg-canvas:        var(--nbg-c-slate-950);
+    --nbg-color-bg-page:          var(--nbg-c-slate-900);
+    --nbg-color-bg-surface:       var(--nbg-c-slate-800);
+    --nbg-color-bg-surface-hover: var(--nbg-c-slate-700);
+    --nbg-color-bg-elevated:      var(--nbg-c-slate-700);
+    --nbg-color-bg-overlay:       hsl(220 25% 3% / 0.75);
+
+    /* Foreground tokens — four steps */
+    --nbg-color-fg-primary:   var(--nbg-c-slate-50);
+    --nbg-color-fg-secondary: var(--nbg-c-slate-200);
+    --nbg-color-fg-muted:     var(--nbg-c-slate-400);
+    --nbg-color-fg-on-accent: var(--nbg-c-slate-50);
+
+    /* Border tokens */
+    --nbg-color-border-subtle:  var(--nbg-c-slate-800);
+    --nbg-color-border-default: var(--nbg-c-slate-700);
+    --nbg-color-border-strong:  var(--nbg-c-slate-500);
+
+    /* Accent tokens */
+    --nbg-color-accent:        var(--nbg-c-violet-400);
+    --nbg-color-accent-hover:  var(--nbg-c-violet-300);
+    --nbg-color-accent-bg:     hsl(265 85% 60% / 0.12);
+    --nbg-color-accent-fg:     var(--nbg-c-violet-300);
+    --nbg-color-accent-strong: var(--nbg-c-violet-500);
+    --nbg-color-accent-glow:   var(--nbg-sh-glow-accent);
+
+    /* Link tokens — link state never falls back to "blue" */
+    --nbg-color-link:         var(--nbg-c-violet-300);
+    --nbg-color-link-hover:   var(--nbg-c-violet-200);
+    --nbg-color-link-visited: var(--nbg-c-violet-400);
+
+    /* Focus ring color (the shadow primitive owns the ring geometry) */
+    --nbg-color-focus-ring: var(--nbg-c-violet-400);
+
+    /* Audience semantic tokens — three pairs (bg + fg), AA verified */
+    --nbg-color-audience-beginner-bg: hsl(155 60% 18%);
+    --nbg-color-audience-beginner-fg: var(--nbg-c-emerald-200);
+    --nbg-color-audience-advanced-bg: hsl(28 70% 18%);
+    --nbg-color-audience-advanced-fg: var(--nbg-c-amber-200);
+    --nbg-color-audience-both-bg:     hsl(210 60% 20%);
+    --nbg-color-audience-both-fg:     var(--nbg-c-sky-200);
+
+    /* Confidence semantic tokens */
+    --nbg-color-confidence-high-bg:   hsl(155 60% 18%);
+    --nbg-color-confidence-high-fg:   var(--nbg-c-emerald-200);
+    --nbg-color-confidence-medium-bg: hsl(28 70% 18%);
+    --nbg-color-confidence-medium-fg: var(--nbg-c-amber-200);
+    --nbg-color-confidence-low-bg:    hsl(350 55% 22%);
+    --nbg-color-confidence-low-fg:    var(--nbg-c-rose-200);
+
+    /* Status semantic tokens — callouts, form validation */
+    --nbg-color-status-success-bg: hsl(155 60% 12%);
+    --nbg-color-status-success-fg: var(--nbg-c-emerald-300);
+    --nbg-color-status-warning-bg: hsl(38 70% 12%);
+    --nbg-color-status-warning-fg: var(--nbg-c-amber-300);
+    --nbg-color-status-danger-bg:  hsl(350 55% 14%);
+    --nbg-color-status-danger-fg:  var(--nbg-c-rose-300);
+    --nbg-color-status-info-bg:    hsl(210 55% 14%);
+    --nbg-color-status-info-fg:    var(--nbg-c-sky-300);
+
+    /* Type semantic tokens — named uses for the three families */
+    --nbg-type-body:    var(--nbg-ff-body);
+    --nbg-type-mono:    var(--nbg-ff-mono);
+    --nbg-type-display: var(--nbg-ff-display);
+  }
+
+  /* ─── LIGHT overrides ─────────────────────────────────────────────── */
+  :root[data-theme='light'] {
+    /* Surface tokens */
+    --nbg-color-bg-canvas:        var(--nbg-c-slate-50);
+    --nbg-color-bg-page:          var(--nbg-c-slate-100);
+    --nbg-color-bg-surface:       var(--nbg-c-slate-50);
+    --nbg-color-bg-surface-hover: var(--nbg-c-slate-100);
+    --nbg-color-bg-elevated:      #ffffff;
+    --nbg-color-bg-overlay:       hsl(220 25% 30% / 0.45);
+
+    /* Foreground tokens */
+    --nbg-color-fg-primary:   var(--nbg-c-slate-950);
+    --nbg-color-fg-secondary: var(--nbg-c-slate-700);
+    --nbg-color-fg-muted:     var(--nbg-c-slate-500);
+    --nbg-color-fg-on-accent: #ffffff;
+
+    /* Border tokens */
+    --nbg-color-border-subtle:  var(--nbg-c-slate-200);
+    --nbg-color-border-default: var(--nbg-c-slate-300);
+    --nbg-color-border-strong:  var(--nbg-c-slate-500);
+
+    /* Accent tokens */
+    --nbg-color-accent:        var(--nbg-c-violet-600);
+    --nbg-color-accent-hover:  var(--nbg-c-violet-700);
+    --nbg-color-accent-bg:     hsl(265 85% 60% / 0.08);
+    --nbg-color-accent-fg:     var(--nbg-c-violet-700);
+    --nbg-color-accent-strong: var(--nbg-c-violet-500);
+    --nbg-color-accent-glow:   0 0 0 1px var(--nbg-c-violet-500),
+                               0 0 16px hsl(265 85% 60% / 0.18);
+
+    /* Link tokens */
+    --nbg-color-link:         var(--nbg-c-violet-700);
+    --nbg-color-link-hover:   var(--nbg-c-violet-900);
+    --nbg-color-link-visited: var(--nbg-c-violet-800);
+
+    /* Focus ring color */
+    --nbg-color-focus-ring: var(--nbg-c-violet-600);
+
+    /* Audience semantic tokens */
+    --nbg-color-audience-beginner-bg: var(--nbg-c-emerald-100);
+    --nbg-color-audience-beginner-fg: var(--nbg-c-emerald-800);
+    --nbg-color-audience-advanced-bg: var(--nbg-c-amber-100);
+    --nbg-color-audience-advanced-fg: var(--nbg-c-amber-800);
+    --nbg-color-audience-both-bg:     var(--nbg-c-sky-100);
+    --nbg-color-audience-both-fg:     var(--nbg-c-sky-800);
+
+    /* Confidence semantic tokens */
+    --nbg-color-confidence-high-bg:   var(--nbg-c-emerald-50);
+    --nbg-color-confidence-high-fg:   var(--nbg-c-emerald-700);
+    --nbg-color-confidence-medium-bg: var(--nbg-c-amber-50);
+    --nbg-color-confidence-medium-fg: var(--nbg-c-amber-700);
+    --nbg-color-confidence-low-bg:    var(--nbg-c-rose-50);
+    --nbg-color-confidence-low-fg:    var(--nbg-c-rose-700);
+
+    /* Status semantic tokens */
+    --nbg-color-status-success-bg: var(--nbg-c-emerald-50);
+    --nbg-color-status-success-fg: var(--nbg-c-emerald-700);
+    --nbg-color-status-warning-bg: var(--nbg-c-amber-50);
+    --nbg-color-status-warning-fg: var(--nbg-c-amber-700);
+    --nbg-color-status-danger-bg:  var(--nbg-c-rose-50);
+    --nbg-color-status-danger-fg:  var(--nbg-c-rose-700);
+    --nbg-color-status-info-bg:    var(--nbg-c-sky-50);
+    --nbg-color-status-info-fg:    var(--nbg-c-sky-700);
+
+    /* Shadow softening for light mode — shorter offsets, lighter alpha */
+    --nbg-sh-xs: 0 1px 2px hsl(220 30% 10% / 0.06);
+    --nbg-sh-sm: 0 2px 4px hsl(220 30% 10% / 0.08),
+                 0 1px 2px hsl(220 30% 10% / 0.06);
+    --nbg-sh-md: 0 4px 12px hsl(220 30% 10% / 0.1),
+                 0 2px 4px hsl(220 30% 10% / 0.06);
+    --nbg-sh-lg: 0 12px 32px hsl(220 30% 10% / 0.12),
+                 0 4px 12px hsl(220 30% 10% / 0.08);
+    --nbg-sh-xl: 0 24px 60px hsl(220 30% 10% / 0.16),
+                 0 8px 24px hsl(220 30% 10% / 0.1);
+  }
+}

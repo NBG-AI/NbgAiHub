@@ -11,8 +11,20 @@
 //
 // No raw fetch calls in this file — all gist + pin-index access is via the
 // shared lib modules.
+//
+// Phase 6 / P4.H — Personalization Surfaces (Coder-H). Visual chrome migrated
+// onto MarketingShell + primitives. The 14 data-* hooks, 2 ARIA-labelled
+// section IDs, role="alert", and the entire <script> block are preserved
+// bit-for-bit (AC23 + AC34). See project-design.md §S.13.10.10.
 
-import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import MarketingShell from '../components/MarketingShell.astro';
+import Section from '../components/primitives/Section.astro';
+import Stack from '../components/primitives/Stack.astro';
+import Cluster from '../components/primitives/Cluster.astro';
+import Card from '../components/primitives/Card.astro';
+import Eyebrow from '../components/primitives/Eyebrow.astro';
+import Display from '../components/primitives/Display.astro';
+import Lede from '../components/primitives/Lede.astro';
 
 // F-P11 display order — repeated server-side so SSR markup matches the
 // client-side iteration order.
@@ -28,209 +40,371 @@ const PIN_TYPE_HEADINGS: ReadonlyArray<{
 ];
 ---
 
-<StarlightPage frontmatter={{ title: 'My Pins' }}>
-  <p>
-    Your personal pinned-items dashboard. Pins live in your own GitHub gist
-    (unlisted) — they are not shared with the team.
-  </p>
+<MarketingShell
+  title="My Pins"
+  description="Your personal pinned-items dashboard. Pins live in your own GitHub gist (unlisted) — they are not shared with the team."
+  surfaceId="my-pins"
+  width="default"
+>
+  <Stack slot="hero" gap="4">
+    <Eyebrow tone="accent">Personal</Eyebrow>
+    <Display level={1} size="lg">My Pins</Display>
+    <Lede size="lg">
+      Your personal pinned-items dashboard. Pins live in your own GitHub gist
+      (unlisted) — they are not shared with the team.
+    </Lede>
+  </Stack>
 
-  {/* Loading state — visible by default, hidden by the script once auth state
-      is determined. */}
-  <p data-my-pins-loading>Loading your pins…</p>
+  <Stack gap="12">
+    {/* Loading state — visible by default, hidden by the script once auth
+        state is determined. Tokenised skeleton-style placeholder. */}
+    <Section spacing="snug" tone="subtle" as="div">
+      <div class="my-pins__loading" data-my-pins-loading>
+        <span class="my-pins__skeleton" aria-hidden="true"></span>
+        <span class="my-pins__skeleton" aria-hidden="true"></span>
+        <span class="my-pins__skeleton" aria-hidden="true"></span>
+        <p class="sr-only">Loading your pins…</p>
+      </div>
+    </Section>
 
-  {/* Anonymous panel — shown when readToken() returns null. */}
-  <section data-my-pins-anonymous hidden aria-labelledby="my-pins-anon-heading">
-    <h2 id="my-pins-anon-heading">Sign in to see your pins</h2>
-    <p>
-      Pinning is per-user and stored in a private gist on your GitHub account.
-      Sign in to view, add, or remove pins.
-    </p>
-    <button type="button" class="my-pins__signin-btn" data-my-pins-signin>
-      Sign in
-    </button>
-  </section>
+    {/* Anonymous panel — shown when readToken() returns null. */}
+    <section
+      class="my-pins__anonymous"
+      data-my-pins-anonymous
+      hidden
+      aria-labelledby="my-pins-anon-heading"
+    >
+      <Card variant="feature">
+        <Stack gap="4">
+          <Eyebrow tone="accent">Sign in</Eyebrow>
+          <h2 id="my-pins-anon-heading" class="my-pins__anon-heading">
+            Sign in to see your pins
+          </h2>
+          <Lede>
+            Pinning is per-user and stored in a private gist on your GitHub
+            account. Sign in to view, add, or remove pins.
+          </Lede>
+          <Cluster gap="3">
+            <button
+              type="button"
+              class="my-pins__signin-btn"
+              data-my-pins-signin
+            >
+              Sign in
+            </button>
+          </Cluster>
+        </Stack>
+      </Card>
+    </section>
 
-  {/* Signed-in panel — populated by the script. The five type sections render
-      in F-P11 order regardless of pin count; empty sections show a small
-      "(none)" placeholder. */}
-  <section data-my-pins-signed-in hidden aria-labelledby="my-pins-signed-in-heading">
-    <h2 id="my-pins-signed-in-heading" class="sr-only">Your pinned items</h2>
+    {/* Signed-in panel — populated by the script. The five type sections
+        render in F-P11 order regardless of pin count; empty sections show a
+        small "(none)" placeholder. */}
+    <section
+      class="my-pins__signed-in"
+      data-my-pins-signed-in
+      hidden
+      aria-labelledby="my-pins-signed-in-heading"
+    >
+      <h2 id="my-pins-signed-in-heading" class="sr-only">Your pinned items</h2>
 
-    <p data-my-pins-empty hidden class="my-pins__empty">
-      You haven't pinned anything yet. Click the pin button on any news item,
-      tip, skill, glossary term, or journey step to pin it here.
-    </p>
+      <Stack gap="8">
+        <p data-my-pins-empty hidden class="my-pins__empty">
+          You haven't pinned anything yet. Click the pin button on any news
+          item, tip, skill, glossary term, or journey step to pin it here.
+        </p>
 
-    <p data-my-pins-error hidden class="my-pins__error" role="alert"></p>
+        <p
+          data-my-pins-error
+          hidden
+          class="my-pins__error"
+          role="alert"
+        ></p>
 
-    {PIN_TYPE_HEADINGS.map(({ type, label }) => (
-      <section class="my-pins__group" data-pin-group={type}>
-        <h3>{label}</h3>
-        <p data-pin-group-empty={type} class="my-pins__group-empty" hidden>(none)</p>
-        <ul class="my-pins__list" data-pin-list={type}></ul>
-      </section>
-    ))}
-  </section>
+        {PIN_TYPE_HEADINGS.map(({ type, label }) => (
+          <section class="my-pins__group" data-pin-group={type}>
+            <Stack gap="3">
+              <Eyebrow tone="accent">{label}</Eyebrow>
+              <h3 class="my-pins__group-heading">{label}</h3>
+              <p data-pin-group-empty={type} class="my-pins__group-empty" hidden>
+                (none)
+              </p>
+              <ul class="my-pins__list" data-pin-list={type}></ul>
+            </Stack>
+          </section>
+        ))}
+      </Stack>
+    </section>
 
-  {/* Privacy callout (F-P21). */}
-  <aside class="my-pins__privacy" aria-label="Privacy">
-    <h3>Privacy</h3>
-    <p>
-      Your pins live in your own GitHub gist (unlisted). They're not shared
-      with the team. Clearing your token signs out and removes the
-      <code>gist_id</code> from this browser, but does not delete the gist
-      itself — go to <a
-        href="https://github.com/settings/tokens"
-        target="_blank"
-        rel="noopener noreferrer"
-      >github.com/settings/tokens</a> to revoke access.
-    </p>
-  </aside>
-</StarlightPage>
+    {/* Privacy callout (F-P21) — editorial aside on subtle tone. */}
+    <Section spacing="default" tone="subtle" as="aside" aria-label="Privacy">
+      <Stack gap="3">
+        <Eyebrow>Privacy</Eyebrow>
+        <Display level={3} size="sm">How pins are stored</Display>
+        <p class="my-pins__privacy-body">
+          Your pins live in your own GitHub gist (unlisted). They're not
+          shared with the team. Clearing your token signs out and removes the
+          <code>gist_id</code> from this browser, but does not delete the
+          gist itself — go to <a
+            href="https://github.com/settings/tokens"
+            target="_blank"
+            rel="noopener noreferrer"
+          >github.com/settings/tokens</a> to revoke access.
+        </p>
+      </Stack>
+    </Section>
+  </Stack>
+</MarketingShell>
 
 <style>
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
+  @layer nbg.components {
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
 
-  .my-pins__signin-btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    border-radius: 0.35rem;
-    border: 1px solid var(--sl-color-accent);
-    background: var(--sl-color-accent);
-    color: var(--sl-color-white);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  .my-pins__signin-btn:hover {
-    filter: brightness(1.08);
-  }
-  .my-pins__signin-btn:focus-visible {
-    outline: 2px solid var(--sl-color-accent);
-    outline-offset: 2px;
-  }
+    /* Loading state — opacity-pulsing token-driven skeleton placeholders. */
+    .my-pins__loading {
+      display: flex;
+      flex-direction: column;
+      gap: var(--nbg-sp-3);
+    }
+    .my-pins__skeleton {
+      display: block;
+      height: var(--nbg-sp-5);
+      border-radius: var(--nbg-r-sm);
+      background: var(--nbg-color-bg-surface);
+      animation: nbg-skeleton-pulse var(--nbg-dur-slow, 1.5s) ease-in-out infinite;
+    }
+    .my-pins__skeleton:nth-child(1) { width: 65%; }
+    .my-pins__skeleton:nth-child(2) { width: 80%; }
+    .my-pins__skeleton:nth-child(3) { width: 45%; }
 
-  .my-pins__group {
-    margin-top: 1.5rem;
-  }
-  .my-pins__group h3 {
-    margin-bottom: 0.5rem;
-  }
+    @keyframes nbg-skeleton-pulse {
+      0%, 100% { opacity: 0.55; }
+      50%      { opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .my-pins__skeleton { animation: none; opacity: 0.75; }
+    }
 
-  .my-pins__list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
+    /* Anonymous-state heading — mirrors Display level=2 size=sm look, but is
+       a real <h2 id> so the surrounding section can use aria-labelledby
+       without a Display-primitive prop forwarding change. */
+    .my-pins__anon-heading {
+      margin: 0;
+      font-family: var(--nbg-type-display);
+      font-size: var(--nbg-fs-display-sm);
+      font-weight: var(--nbg-fw-bold);
+      letter-spacing: var(--nbg-ls-tight);
+      line-height: var(--nbg-lh-display);
+      color: var(--nbg-color-fg-primary);
+      font-variation-settings: 'opsz' var(--nbg-opsz-display);
+      text-wrap: balance;
+    }
 
-  .my-pins__list li {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.4rem 0.6rem;
-    border: 1px solid var(--sl-color-gray-5);
-    border-radius: 0.35rem;
-  }
+    /* Group heading — sits below the accent Eyebrow as the semantic label.
+       Display primitive is reserved for hero + privacy callout; group rows
+       use a quieter heading so the eye reads the list, not the labels. */
+    .my-pins__group-heading {
+      margin: 0;
+      font-family: var(--nbg-type-display);
+      font-size: var(--nbg-fs-xl);
+      font-weight: var(--nbg-fw-semibold);
+      letter-spacing: var(--nbg-ls-tight);
+      line-height: var(--nbg-lh-tight);
+      color: var(--nbg-color-fg-primary);
+    }
 
-  .my-pins__list li.my-pins__stale {
-    opacity: 0.55;
-    font-style: italic;
-  }
+    /* Anonymous-state sign-in button — token-driven primary CTA. Plain
+       <button> rather than the Button primitive because the script reads
+       its `data-my-pins-signin` attribute via querySelector. */
+    .my-pins__signin-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--nbg-sp-2);
+      padding: var(--nbg-sp-3) var(--nbg-sp-6);
+      border: 1px solid var(--nbg-color-accent-strong);
+      border-radius: var(--nbg-r-md);
+      background: var(--nbg-color-accent-strong);
+      color: var(--nbg-color-fg-on-accent);
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-lg);
+      font-weight: var(--nbg-fw-semibold);
+      letter-spacing: var(--nbg-ls-normal);
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+                  border-color     var(--nbg-dur-fast) var(--nbg-ease-out),
+                  transform        var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .my-pins__signin-btn:hover {
+      background: var(--nbg-color-accent-hover);
+      border-color: var(--nbg-color-accent-hover);
+      transform: translateY(-1px);
+    }
+    .my-pins__signin-btn:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
 
-  .my-pins__list a {
-    color: var(--sl-color-text-accent);
-    text-decoration: none;
-    font-weight: 600;
-  }
-  .my-pins__list a:hover {
-    text-decoration: underline;
-  }
+    /* List rendering — preserved selectors. The JS dynamically appends <li>
+       children into ul[data-pin-list], so the styling has to live on these
+       class names (.my-pins__list, .my-pins__stale, .my-pins__unpin,
+       .my-pins__audience, .my-pins__audience--*). */
+    .my-pins__list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--nbg-sp-2);
+    }
 
-  .my-pins__audience {
-    display: inline-block;
-    padding: 0.1rem 0.45rem;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    background: var(--sl-color-gray-6);
-    color: var(--sl-color-text);
-  }
-  .my-pins__audience--beginner {
-    background: rgba(76, 175, 80, 0.18);
-    color: #4caf50;
-  }
-  .my-pins__audience--advanced {
-    background: rgba(255, 152, 0, 0.18);
-    color: #ff9800;
-  }
-  .my-pins__audience--both {
-    background: rgba(33, 150, 243, 0.18);
-    color: #2196f3;
-  }
+    .my-pins__list li {
+      display: flex;
+      align-items: center;
+      gap: var(--nbg-sp-3);
+      padding: var(--nbg-sp-2) var(--nbg-sp-3);
+      border: 1px solid var(--nbg-color-border-subtle);
+      border-radius: var(--nbg-r-md);
+      background: var(--nbg-color-bg-surface);
+      transition: background-color var(--nbg-dur-base) var(--nbg-ease-out),
+                  border-color     var(--nbg-dur-base) var(--nbg-ease-out);
+    }
+    .my-pins__list li:hover {
+      background: var(--nbg-color-bg-surface-hover);
+      border-color: var(--nbg-color-border-default);
+    }
 
-  .my-pins__unpin {
-    margin-left: auto;
-    padding: 0.25rem 0.55rem;
-    border-radius: 0.3rem;
-    border: 1px solid var(--sl-color-gray-5);
-    background: transparent;
-    color: var(--sl-color-text);
-    font: inherit;
-    font-size: 0.8rem;
-    cursor: pointer;
-  }
-  .my-pins__unpin:hover {
-    background: var(--sl-color-gray-6);
-  }
-  .my-pins__unpin[disabled] {
-    opacity: 0.6;
-    cursor: progress;
-  }
+    .my-pins__list li.my-pins__stale {
+      opacity: 0.55;
+      font-style: italic;
+    }
 
-  .my-pins__empty {
-    padding: 1rem;
-    border: 1px dashed var(--sl-color-gray-5);
-    border-radius: 0.35rem;
-    background: var(--sl-color-gray-6);
-  }
+    .my-pins__list a {
+      color: var(--nbg-color-link);
+      text-decoration: none;
+      font-weight: var(--nbg-fw-semibold);
+    }
+    .my-pins__list a:hover {
+      color: var(--nbg-color-link-hover);
+      text-decoration: underline;
+    }
 
-  .my-pins__error {
-    padding: 0.6rem 0.8rem;
-    border-radius: 0.35rem;
-    background: rgba(230, 102, 0, 0.12);
-    color: #e60;
-    border: 1px solid rgba(230, 102, 0, 0.4);
-    margin-bottom: 1rem;
-  }
+    /* Audience labels created dynamically in JS — token-driven via the
+       Badge tone palette. */
+    .my-pins__audience {
+      display: inline-flex;
+      align-items: center;
+      padding: var(--nbg-sp-0-5) var(--nbg-sp-2);
+      border-radius: var(--nbg-r-pill);
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-xs);
+      font-weight: var(--nbg-fw-medium);
+      letter-spacing: var(--nbg-ls-loose);
+      line-height: 1.3;
+      background: var(--nbg-color-bg-surface);
+      color: var(--nbg-color-fg-secondary);
+    }
+    .my-pins__audience--beginner {
+      background: var(--nbg-color-audience-beginner-bg);
+      color: var(--nbg-color-audience-beginner-fg);
+    }
+    .my-pins__audience--advanced {
+      background: var(--nbg-color-audience-advanced-bg);
+      color: var(--nbg-color-audience-advanced-fg);
+    }
+    .my-pins__audience--both {
+      background: var(--nbg-color-audience-both-bg);
+      color: var(--nbg-color-audience-both-fg);
+    }
 
-  .my-pins__group-empty {
-    opacity: 0.65;
-    font-size: 0.9rem;
-    margin: 0;
-  }
+    .my-pins__unpin {
+      margin-left: auto;
+      padding: var(--nbg-sp-1) var(--nbg-sp-3);
+      border-radius: var(--nbg-r-md);
+      border: 1px solid var(--nbg-color-border-default);
+      background: transparent;
+      color: var(--nbg-color-fg-secondary);
+      font: inherit;
+      font-size: var(--nbg-fs-sm);
+      font-weight: var(--nbg-fw-medium);
+      cursor: pointer;
+      transition: background-color var(--nbg-dur-fast) var(--nbg-ease-out),
+                  border-color     var(--nbg-dur-fast) var(--nbg-ease-out),
+                  color            var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .my-pins__unpin:hover {
+      background: var(--nbg-color-bg-surface-hover);
+      border-color: var(--nbg-color-border-strong);
+      color: var(--nbg-color-fg-primary);
+    }
+    .my-pins__unpin:focus-visible {
+      outline: none;
+      box-shadow: var(--nbg-sh-focus-ring);
+    }
+    .my-pins__unpin[disabled] {
+      opacity: 0.6;
+      cursor: progress;
+    }
 
-  .my-pins__privacy {
-    margin-top: 2.5rem;
-    padding: 1rem 1.2rem;
-    border-left: 4px solid var(--sl-color-accent);
-    background: var(--sl-color-gray-6);
-    border-radius: 0 0.35rem 0.35rem 0;
-  }
-  .my-pins__privacy h3 {
-    margin-top: 0;
+    .my-pins__empty {
+      padding: var(--nbg-sp-4) var(--nbg-sp-5);
+      border: 1px dashed var(--nbg-color-border-default);
+      border-radius: var(--nbg-r-md);
+      background: var(--nbg-color-bg-page);
+      color: var(--nbg-color-fg-secondary);
+      margin: 0;
+    }
+
+    .my-pins__error {
+      padding: var(--nbg-sp-2) var(--nbg-sp-4);
+      border-radius: var(--nbg-r-md);
+      background: var(--nbg-color-status-danger-bg);
+      color: var(--nbg-color-status-danger-fg);
+      border: 1px solid var(--nbg-color-status-danger-fg);
+      margin: 0;
+    }
+
+    .my-pins__group-empty {
+      opacity: 0.7;
+      font-size: var(--nbg-fs-sm);
+      color: var(--nbg-color-fg-muted);
+      margin: 0;
+    }
+
+    .my-pins__privacy-body {
+      margin: 0;
+      max-width: 64ch;
+      color: var(--nbg-color-fg-secondary);
+      line-height: var(--nbg-lh-relaxed);
+    }
+    .my-pins__privacy-body code {
+      font-family: var(--nbg-type-mono);
+      font-size: 0.9em;
+      padding: 0 var(--nbg-sp-1);
+      border-radius: var(--nbg-r-sm);
+      background: var(--nbg-color-bg-surface);
+      color: var(--nbg-color-accent);
+    }
+    .my-pins__privacy-body a {
+      color: var(--nbg-color-link);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .my-pins__privacy-body a:hover {
+      color: var(--nbg-color-link-hover);
+    }
   }
 </style>
 

@@ -1,14 +1,195 @@
 ---
-import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
-import NewsList from '../../components/NewsList.astro';
+/**
+ * /news — Chronological news feed with featured lead.
+ *
+ * Composition: MarketingShell hero (Eyebrow + Display + Lede + AudienceFilter)
+ * + featured lead news item (Card variant="feature") + Stack of remaining items
+ * (Card variant="content") rendered magazine-style — NOT a uniform grid.
+ *
+ * Related: project-design.md §S.13.10.5, plan-004 §P4.F.
+ * Backs: AC9 (lead visually distinct), AC35 (AudienceFilter functional).
+ */
+import MarketingShell from '../../components/MarketingShell.astro';
 import AudienceFilter from '../../components/AudienceFilter.astro';
+import PinButton from '../../components/PinButton.astro';
+import Section from '../../components/primitives/Section.astro';
+import Stack from '../../components/primitives/Stack.astro';
+import Cluster from '../../components/primitives/Cluster.astro';
+import Card from '../../components/primitives/Card.astro';
+import Eyebrow from '../../components/primitives/Eyebrow.astro';
+import Display from '../../components/primitives/Display.astro';
+import Lede from '../../components/primitives/Lede.astro';
+import Badge from '../../components/primitives/Badge.astro';
+import Chip from '../../components/primitives/Chip.astro';
+import Button from '../../components/primitives/Button.astro';
+import MotionReveal from '../../components/primitives/MotionReveal.astro';
+import { getRecentNews } from '../../lib/news.ts';
+
+const items = await getRecentNews();
+const lead = items[0];
+const rest = items.slice(1);
 ---
 
-<StarlightPage frontmatter={{ title: 'News' }}>
-  <p>
-    Curated Claude Code news from the RSS pipeline. Filter by audience to focus
-    on what's relevant to you.
-  </p>
-  <AudienceFilter scope=".news-card[data-audience]" />
-  <NewsList />
-</StarlightPage>
+<MarketingShell
+  title="News"
+  description="Curated Claude Code news from the RSS pipeline."
+  surfaceId="news"
+  width="wide"
+>
+  <Stack slot="hero" gap="6">
+    <Eyebrow tone="accent">Updates</Eyebrow>
+    <Display level={1} size="lg">News</Display>
+    <Lede size="sm">
+      Curated Claude Code news from the RSS pipeline — daily triage, no
+      newsletter noise. Filter by audience to focus on what's relevant to you.
+    </Lede>
+    <AudienceFilter scope=".news-card[data-audience]" />
+  </Stack>
+
+  {items.length === 0 ? (
+    <Section spacing="default">
+      <Card variant="content">
+        <p>
+          No items yet. See <a href="/contribute/">Contribute</a> for how to
+          add one.
+        </p>
+      </Card>
+    </Section>
+  ) : (
+    <Stack gap="10">
+      {lead && (
+        <Section spacing="snug" surfaceId="news-lead">
+          <MotionReveal>
+            <article
+              class="news-card news-card--lead"
+              data-audience={lead.data.audience}
+              data-topics={lead.data.topics.join(',')}
+            >
+              <Card variant="feature">
+                <Stack slot="header" gap="3">
+                  <Cluster gap="2" align="center">
+                    <Eyebrow tone="accent">Latest</Eyebrow>
+                    <span class="news-source">{lead.data.source}</span>
+                    <span class="news-date">{lead.data.authored}</span>
+                  </Cluster>
+                  <Display level={2} size="md">
+                    <a href={`/news/${lead.id}/`}>{lead.data.title}</a>
+                  </Display>
+                </Stack>
+                <p class="news-summary">{lead.data.ai_summary}</p>
+                <Cluster gap="2" align="center">
+                  <Badge tone={lead.data.audience}>{lead.data.audience}</Badge>
+                  <Badge tone={lead.data.editor_confidence}>
+                    confidence: {lead.data.editor_confidence}
+                  </Badge>
+                  {lead.data.topics.slice(0, 5).map((topic) => <Chip>{topic}</Chip>)}
+                </Cluster>
+                <Cluster slot="footer" gap="3" align="center" justify="between">
+                  <Button variant="secondary" size="md" href={`/news/${lead.id}/`}>
+                    Read the full item
+                  </Button>
+                  <PinButton type="news" slug={lead.id} />
+                </Cluster>
+              </Card>
+            </article>
+          </MotionReveal>
+        </Section>
+      )}
+
+      {rest.length > 0 && (
+        <Section spacing="snug" surfaceId="news-feed">
+          <Stack gap="2" as="ol">
+            {rest.map((item) => (
+              <li class="news-row">
+                <article
+                  class="news-card"
+                  data-audience={item.data.audience}
+                  data-topics={item.data.topics.join(',')}
+                >
+                  <Card variant="content">
+                    <Stack slot="header" gap="2">
+                      <Cluster gap="2" align="center">
+                        <span class="news-source">{item.data.source}</span>
+                        <span class="news-date">{item.data.authored}</span>
+                        <Badge tone={item.data.audience}>{item.data.audience}</Badge>
+                        <Badge tone={item.data.editor_confidence}>
+                          {item.data.editor_confidence}
+                        </Badge>
+                      </Cluster>
+                      <h3 class="nbg-display" data-size="sm" data-weight="semibold">
+                        <a href={`/news/${item.id}/`}>{item.data.title}</a>
+                      </h3>
+                    </Stack>
+                    <p class="news-summary">{item.data.ai_summary}</p>
+                    <Cluster slot="footer" gap="3" align="center" justify="between">
+                      {item.data.topics.length > 0 ? (
+                        <Cluster gap="2" align="center">
+                          {item.data.topics.slice(0, 4).map((topic) => <Chip>{topic}</Chip>)}
+                        </Cluster>
+                      ) : <span />}
+                      <PinButton type="news" slug={item.id} />
+                    </Cluster>
+                  </Card>
+                </article>
+              </li>
+            ))}
+          </Stack>
+        </Section>
+      )}
+    </Stack>
+  )}
+</MarketingShell>
+
+<style>
+  @layer nbg.components {
+    .news-card a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .news-card a:hover {
+      color: var(--nbg-color-link);
+      text-decoration: underline;
+    }
+    .news-source {
+      font-family: var(--nbg-type-mono);
+      font-size: var(--nbg-fs-xs);
+      color: var(--nbg-color-fg-muted);
+      letter-spacing: var(--nbg-ls-wide);
+      text-transform: uppercase;
+    }
+    .news-date {
+      font-family: var(--nbg-type-mono);
+      font-size: var(--nbg-fs-xs);
+      color: var(--nbg-color-fg-muted);
+    }
+    .news-summary {
+      margin: 0;
+      color: var(--nbg-color-fg-secondary);
+      font-size: var(--nbg-fs-md);
+      line-height: var(--nbg-lh-base);
+    }
+    .news-row {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      position: relative;
+    }
+    .news-row + .news-row::before {
+      content: '';
+      position: absolute;
+      top: calc(-1 * var(--nbg-sp-1));
+      left: 0;
+      right: 0;
+      border-top: 1px solid var(--nbg-color-border-subtle);
+    }
+    /* Compact news cards in the feed — the lead card stays full-padded. */
+    .news-row .news-card :global(.nbg-card) {
+      padding: var(--nbg-sp-4);
+      gap: var(--nbg-sp-2);
+      box-shadow: none;
+    }
+    .news-card.audience-hidden {
+      display: none;
+    }
+  }
+</style>

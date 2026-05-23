@@ -90,6 +90,278 @@
         "ui-preview",
         "interactive-prompting"
       ]
+    },
+    {
+      "slug": "9-things-about-claude-i-wish-someone-had-told-me-10-years",
+      "title": "9 things about Claude I wish someone had told me 10 years ago",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "prompt-engineering",
+        "best-practices"
+      ]
+    },
+    {
+      "slug": "claude-status-update-elevated-errors-on-claude-haiku-4-5-on",
+      "title": "Claude Status Update : Elevated errors on Claude Haiku 4.5 on 2026-05-19T08:30:38.000Z",
+      "audience": "both",
+      "topics": [
+        "platform-news",
+        "outage",
+        "claudehaiku"
+      ]
+    },
+    {
+      "slug": "fast-mode-now-defaults-to-opus-4-7-in-claude-code",
+      "title": "Fast mode now defaults to Opus 4.7 in Claude Code.",
+      "audience": "both",
+      "topics": [
+        "platform-news",
+        "model-selection",
+        "workflow"
+      ]
+    },
+    {
+      "slug": "fastest-way-to-publish-a-claude-artifact-as-a-public-website",
+      "title": "Fastest way to publish a Claude artifact as a public website",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "artifact-publishing",
+        "claudecode"
+      ]
+    },
+    {
+      "slug": "found-a-cleaner-way-to-give-claude-code-real-browser",
+      "title": "Found a cleaner way to give Claude Code real browser context — some notes",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "integration",
+        "browser-context",
+        "field-report"
+      ]
+    },
+    {
+      "slug": "i-figured-out-why-i-keep-hitting-my-claude-code-session",
+      "title": "I figured out why I keep hitting my Claude Code session limit before lunch. It's not what I thought.",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "session-limits",
+        "optimization",
+        "api-calls",
+        "field-report"
+      ]
+    },
+    {
+      "slug": "nobody-reads-the-readme-anymore-make-claude-draw-you-the",
+      "title": "Nobody reads the README anymore. Make Claude draw you the map instead.",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "visualization",
+        "planning",
+        "documentation"
+      ]
+    },
+    {
+      "slug": "self-hosted-sandboxes-and-mcp-tunnels-for-claude-managed",
+      "title": "Self-hosted sandboxes and MCP tunnels for Claude Managed Agents are now in public beta.",
+      "audience": "advanced",
+      "topics": [
+        "claudemd",
+        "platform-news",
+        "security",
+        "deployment"
+      ]
+    },
+    {
+      "slug": "100-tips-tricks-for-building-your-own-personal-ai-agent",
+      "title": "100 Tips & Tricks for Building Your Own Personal AI Agent /LONG POST/",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "agent-design",
+        "prompt-engineering",
+        "claudecode",
+        "field-report",
+        "best-practices"
+      ]
+    },
+    {
+      "slug": "after-a-year-in-claude-code-the-thing-slowing-me-down",
+      "title": "After a year in Claude Code, the thing slowing me down turned out to be me",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "automation",
+        "productivity",
+        "agent-parallelization"
+      ]
+    },
+    {
+      "slug": "andrej-karpathy-joins-anthropic-returning-to-r-d-and-pre",
+      "title": "🏢 Andrej Karpathy Joins Anthropic - Returning to R&D and Pre-training",
+      "audience": "both",
+      "topics": [
+        "personnel-move",
+        "model-launch",
+        "industry-news"
+      ]
+    },
+    {
+      "slug": "anthropic-just-bought-the-company-that-generates-most",
+      "title": "Anthropic just bought the company that generates most production MCP servers",
+      "audience": "advanced",
+      "topics": [
+        "mcp",
+        "platform-news",
+        "enterprise-use",
+        "acquisition"
+      ]
+    },
+    {
+      "slug": "everything-announced-at-google-i-o-2026-gemini-search-smart",
+      "title": "Everything Announced at Google I/O 2026: Gemini, Search, Smart Glasses",
+      "audience": "both",
+      "topics": [
+        "model-launch",
+        "multimodal",
+        "agentic-ai",
+        "platform-news"
+      ]
+    },
+    {
+      "slug": "gemini-3-5-flash",
+      "title": "Gemini 3.5 Flash",
+      "audience": "both",
+      "topics": [
+        "model-launch",
+        "api",
+        "capability-breakthrough"
+      ]
+    },
+    {
+      "slug": "mistral-ai-acquires-emmi-ai",
+      "title": "Mistral AI acquires Emmi AI",
+      "audience": "both",
+      "topics": [
+        "industry-news",
+        "acquisition",
+        "mistral-ai"
+      ]
+    },
+    {
+      "slug": "tested-the-orchestrator-pattern-with-opus-4-7-the-task",
+      "title": "Tested the orchestrator pattern with Opus 4.7. The task decomposition quality is noticeably better on complex multi-step work.",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "model-selection",
+        "multi-agent",
+        "opus"
+      ]
+    },
+    {
+      "slug": "anthropic-is-paying-spacex-15-billion-per-year",
+      "title": "Anthropic is paying SpaceX $15 billion per year",
+      "audience": "both",
+      "topics": [
+        "compute-deal",
+        "industry-news",
+        "partnership",
+        "infrastructure"
+      ]
+    },
+    {
+      "slug": "claude-has-extreme-anxiety-about-filling-up-context-windows",
+      "title": "Claude has extreme anxiety about filling up context windows",
+      "audience": "both",
+      "topics": [
+        "field-report",
+        "context-window",
+        "model-behavior"
+      ]
+    },
+    {
+      "slug": "enterprise-solutions-architect-14-years-claude-in",
+      "title": "enterprise solutions architect 14 years. claude in enterprise consulting projects. what's working + what regulators are about to break.",
+      "audience": "advanced",
+      "topics": [
+        "enterprise-use",
+        "regulated-industries",
+        "compliance",
+        "workflow",
+        "field-report"
+      ]
+    },
+    {
+      "slug": "i-kept-hitting-claude-limits-every-day-here-s-what-was",
+      "title": "I kept hitting Claude limits every day. Here's what was actually wrong in my workflow.",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "usage-limits",
+        "session-management",
+        "prompt-engineering"
+      ]
+    },
+    {
+      "slug": "i-used-claude-code-to-build-while-delegating-coding-to",
+      "title": "I used Claude Code to build while delegating coding to Mistral/DeepSeek - 10 days, 57M tokens saved, over 90% costs savings, Claude quality result",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "cost-optimization",
+        "model-selection",
+        "delegation",
+        "field-report"
+      ]
+    },
+    {
+      "slug": "karpathy-joins-anthropic",
+      "title": "Karpathy joins Anthropic",
+      "audience": "both",
+      "topics": [
+        "industry-news",
+        "personnel-move",
+        "anthropic"
+      ]
+    },
+    {
+      "slug": "openai-to-confidentially-file-for-ipo-as-soon-as-friday",
+      "title": "OpenAI to confidentially file for IPO as soon as Friday",
+      "audience": "both",
+      "topics": [
+        "industry-news",
+        "strategic-moves",
+        "openai",
+        "ipo"
+      ]
+    },
+    {
+      "slug": "running-claude-code-agents-in-parallel",
+      "title": "Running Claude Code Agents In Parallel.",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "agent-orchestration",
+        "parallel-processing",
+        "error-handling",
+        "tool-integration"
+      ]
+    },
+    {
+      "slug": "setting-up-a-project-for-claude-code-a-blueprint-that-works",
+      "title": "Setting Up a Project for Claude Code: A Blueprint That Works For Me",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "project-setup",
+        "claudemd",
+        "field-report"
+      ]
     }
   ]
 }
