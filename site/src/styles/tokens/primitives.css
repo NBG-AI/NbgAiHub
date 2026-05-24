@@ -16,20 +16,40 @@
      * Color primitives — six OKLCH-tuned ramps, 11 steps each (50..950).
      * ───────────────────────────────────────────────────────────────── */
 
-    /* Slate — neutral cool gray (workhorse — surfaces, borders, body type) */
-    --nbg-c-slate-50:  hsl(220 25% 98%);
-    --nbg-c-slate-100: hsl(220 22% 95%);
-    --nbg-c-slate-200: hsl(220 20% 88%);
-    --nbg-c-slate-300: hsl(220 18% 75%);
-    --nbg-c-slate-400: hsl(220 15% 58%);
-    --nbg-c-slate-500: hsl(220 12% 45%);
-    --nbg-c-slate-600: hsl(220 14% 32%);
-    --nbg-c-slate-700: hsl(220 16% 22%);
-    --nbg-c-slate-800: hsl(220 18% 14%);
-    --nbg-c-slate-900: hsl(220 22% 9%);
-    --nbg-c-slate-950: hsl(220 25% 5%);
+    /* Slate — neutral cool gray (workhorse — surfaces, borders, body type)
+     * Re-anchored 2026-05-24 to AgentNews aesthetic palette
+     * (docs/reference/investigation-agentnews-aesthetic.md §1).
+     * Hex values pulled directly from AgentNews home-inline-styles.css. */
+    --nbg-c-slate-50:  #f4f6f9;  /* AgentNews --bg light */
+    --nbg-c-slate-100: #eef2f7;  /* AgentNews --bg-2 light */
+    --nbg-c-slate-150: #ebeff5;  /* AgentNews --hairline light (new step) */
+    --nbg-c-slate-200: #dce3eb;  /* AgentNews --border light */
+    --nbg-c-slate-300: #c0cad6;  /* interpolated */
+    --nbg-c-slate-400: #8392a6;  /* AgentNews --muted-2 light */
+    --nbg-c-slate-500: #5b6b80;  /* AgentNews --muted light */
+    --nbg-c-slate-600: #3a4c63;  /* interpolated */
+    --nbg-c-slate-700: #1a3148;  /* AgentNews --ink-2 light */
+    --nbg-c-slate-800: #14232c;  /* AgentNews --surface dark */
+    --nbg-c-slate-850: #0f1c24;  /* AgentNews --bg-2 dark (new step) */
+    --nbg-c-slate-900: #0b1e2e;  /* AgentNews --ink light */
+    --nbg-c-slate-950: #0b1419;  /* AgentNews --bg dark */
 
-    /* Violet — brand accent (buttons, links, focus rings) */
+    /* Teal — AgentNews accent (added 2026-05-24).
+     * Replaces violet as primary accent in semantic tier. */
+    --nbg-c-teal-50:  #e0f2f4;  /* AgentNews --accent-soft light */
+    --nbg-c-teal-100: #b8e0e3;  /* interpolated */
+    --nbg-c-teal-200: #80c8cd;  /* interpolated */
+    --nbg-c-teal-300: #4cb4ba;  /* interpolated */
+    --nbg-c-teal-400: #2dd4bf;  /* AgentNews --accent dark (brighter) */
+    --nbg-c-teal-500: #007a8a;  /* AgentNews --accent light */
+    --nbg-c-teal-600: #00525c;  /* AgentNews --accent-ink light */
+    --nbg-c-teal-700: #003c44;  /* interpolated */
+    --nbg-c-teal-800: #0a3a42;  /* AgentNews --accent-soft dark */
+    --nbg-c-teal-900: #052329;  /* interpolated */
+    --nbg-c-teal-950: #021419;  /* interpolated */
+
+    /* Violet — legacy accent (pre-AgentNews retune). Kept for non-marketing
+     * components that haven't migrated. Marked deprecated; do not reuse. */
     --nbg-c-violet-50:  hsl(265 100% 97%);
     --nbg-c-violet-100: hsl(265 95% 92%);
     --nbg-c-violet-200: hsl(265 92% 85%);
@@ -101,24 +121,38 @@
 
     /* Family aliases. Astro Fonts API emits --nbg-font-body / --nbg-font-mono
      * at build time (wired in P4.B). --nbg-ff-* are the canonical primitive
-     * names. Display reuses body family at higher opsz — single font file. */
-    --nbg-ff-body:    var(--nbg-font-body);
-    --nbg-ff-mono:    var(--nbg-font-mono);
-    --nbg-ff-display: var(--nbg-font-body);
+     * names.
+     *
+     * Re-anchored 2026-05-24 to AgentNews aesthetic:
+     *   - body  = IBM Plex Sans (was Inter Variable)
+     *   - mono  = IBM Plex Mono  (was JetBrains Mono)
+     *   - display = Newsreader (NEW — was body family)
+     */
+    --nbg-ff-body:    'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --nbg-ff-mono:    'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    --nbg-ff-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+    --nbg-ff-serif:   'Newsreader', Georgia, 'Times New Roman', serif;
 
-    /* Size scale — modular ~1.2 ratio, with display steps for hero headlines */
-    --nbg-fs-2xs:         0.6875rem; /* 11px — kbd, eyebrow micro */
-    --nbg-fs-xs:          0.75rem;   /* 12px — eyebrow, chip, badge */
-    --nbg-fs-sm:          0.875rem;  /* 14px — secondary body, captions */
-    --nbg-fs-md:          1rem;      /* 16px — body default */
+    /* Size scale — modular ~1.2 ratio, with display steps for hero headlines.
+     * Plus AgentNews clamp tokens for fluid hero/feature titles (2026-05-24). */
+    --nbg-fs-3xs:         0.625rem;  /* 10px — date-label micro (AgentNews) */
+    --nbg-fs-2xs:         0.6875rem; /* 11px — kbd, eyebrow micro, tag */
+    --nbg-fs-xs:          0.75rem;   /* 12px — date-value, mono small */
+    --nbg-fs-sm:          0.8125rem; /* 13px — section count, feature CTA */
+    --nbg-fs-sm-2:        0.875rem;  /* 14px — nav, footer link */
+    --nbg-fs-md:          0.90625rem;/* 14.5px — card summary (AgentNews) */
+    --nbg-fs-md-2:        1rem;      /* 16px — body default */
     --nbg-fs-lg:          1.125rem;  /* 18px — lede small */
-    --nbg-fs-xl:          1.375rem;  /* 22px — h3 / lede large */
-    --nbg-fs-2xl:         1.75rem;   /* 28px — h2 */
+    --nbg-fs-xl:          1.375rem;  /* 22px — card h3 (AgentNews) */
+    --nbg-fs-2xl:         1.75rem;   /* 28px — empty-state h2 */
     --nbg-fs-display-sm:  2.25rem;   /* 36px — section eyebrow display */
     --nbg-fs-display-md:  3rem;      /* 48px — h1 marketing */
-    --nbg-fs-display-lg:  4rem;      /* 64px — hero h1 minimum (AC5) */
+    --nbg-fs-display-lg:  4rem;      /* 64px — hero h1 minimum */
     --nbg-fs-display-xl:  5rem;      /* 80px — hero h1 desktop wide */
     --nbg-fs-display-2xl: 6.5rem;    /* 104px — reserved oversized hero */
+    /* AgentNews fluid display clamps (new) */
+    --nbg-fs-hero:        clamp(2.5rem, 5vw, 4rem);     /* 40-64px */
+    --nbg-fs-feature:     clamp(1.75rem, 3vw, 2.5rem);  /* 28-40px */
 
     /* Weights — Inter Variable axis 100..900 */
     --nbg-fw-thin:      200;
@@ -239,10 +273,16 @@
      * container-query expressions (which accept var()). Real @media
      * queries inline the values because custom-media is Stage 2.
      * ───────────────────────────────────────────────────────────────── */
-    --nbg-bp-sm: 40rem;   /* 640px  */
-    --nbg-bp-md: 64rem;   /* 1024px */
-    --nbg-bp-lg: 80rem;   /* 1280px */
-    --nbg-bp-xl: 96rem;   /* 1536px */
+    /* Re-anchored 2026-05-24 to AgentNews breakpoints (investigation §3) */
+    --nbg-bp-sm: 45rem;    /* 720px  — container padding shrinks */
+    --nbg-bp-md: 55rem;    /* 880px  — grids collapse to 1 col   */
+    --nbg-bp-lg: 57.5rem;  /* 920px  — nav hides, search shrinks */
+    --nbg-bp-xl: 77.5rem;  /* 1240px — container max-width       */
+
+    /* Container — AgentNews .wrap (added 2026-05-24) */
+    --nbg-container-max:         77.5rem; /* 1240px */
+    --nbg-container-pad-desktop: 2rem;    /* 32px   */
+    --nbg-container-pad-mobile:  1.25rem; /* 20px   */
   }
 
   /* Reduced motion — collapse durations to instant.

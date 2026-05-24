@@ -105,8 +105,8 @@
     font-size: 0.78rem;
   }
 
-  /* TODO(P4.I): Replace AudienceBadge.astro inline with <Badge tone={audience} />.
-   * Flat #0a7 / #e60 / #08c colors will move to tokenized semantic audience tokens. */
+  /* Tokenised 2026-05-24 (AgentNews retune) — values now resolve through
+   * --nbg-color-audience-* / --nbg-color-confidence-* semantic tokens. */
   .audience-badge {
     display: inline-block;
     font-size: 0.72rem;
@@ -115,13 +115,21 @@
     letter-spacing: 0.04em;
     padding: 0.15rem 0.45rem;
     border-radius: 0.25rem;
-    color: #fff;
+    color: var(--nbg-color-fg-on-accent);
   }
-  .audience-badge--beginner { background: #0a7; }
-  .audience-badge--advanced { background: #e60; }
-  .audience-badge--both     { background: #08c; }
+  .audience-badge--beginner {
+    background: var(--nbg-color-audience-beginner-bg);
+    color: var(--nbg-color-audience-beginner-fg);
+  }
+  .audience-badge--advanced {
+    background: var(--nbg-color-audience-advanced-bg);
+    color: var(--nbg-color-audience-advanced-fg);
+  }
+  .audience-badge--both {
+    background: var(--nbg-color-audience-both-bg);
+    color: var(--nbg-color-audience-both-fg);
+  }
 
-  /* TODO(P4.I): Replace ConfidenceChip.astro inline with <Badge tone={confidence} />. */
   .confidence-chip {
     display: inline-block;
     font-size: 0.7rem;
@@ -129,9 +137,9 @@
     border-radius: 0.25rem;
     border: 1px solid currentColor;
   }
-  .confidence-chip--low    { color: #e60; }
-  .confidence-chip--medium { color: #aa6; }
-  .confidence-chip--high   { color: #666; }
+  .confidence-chip--low    { color: var(--nbg-color-confidence-low-fg); }
+  .confidence-chip--medium { color: var(--nbg-color-confidence-medium-fg); }
+  .confidence-chip--high   { color: var(--nbg-color-confidence-high-fg); }
 
   /* TODO(P4.I): Tokenize AudienceFilter visual via Chip primitive (selectable). */
   .audience-filter {

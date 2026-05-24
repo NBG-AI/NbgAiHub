@@ -1,44 +1,17 @@
 ---
 /**
- * /start-here/day-1 — Day-1 onboarding journey, chapter layout.
+ * /start-here/day-1 — AgentNews-aesthetic Day-1 onboarding journey.
  *
- * Composition: MarketingShell hero (Eyebrow + Display + Lede) + Split
- * (sticky StepIndicator on the side / six numbered <section id="step-N">
- * step blocks). Each step is wrapped in <MotionReveal>. Between steps 3
- * and 4 sits a "what I wish I knew" pull-quote on a subtle Section.
+ * Preserves the existing markdown-segmentation + step-rendering logic
+ * (Astro markdown processor, `## Step N — Title` split, server-side HTML
+ * injection). Chrome is migrated to AgentNews .hero + .section + .wrap.
  *
- * Step segmentation strategy (per project-design.md §S.13.0 item 1,
- * §S.13.10.2, and plan-004 §P4.G):
- *   - Read the journey collection entry's raw markdown via `entry.body`.
- *   - Split on `## Step N — Title` headings using a regex; the leading
- *     prose (before any step) becomes the Lede / intro paragraph.
- *   - Render each step's body chunk to HTML server-side via
- *     `@astrojs/markdown-remark`'s `createMarkdownProcessor` (a transitive
- *     dependency of Astro itself — no new deps).
- *   - Inject the rendered HTML inside the step's <section id="step-N">
- *     using `set:html`. This guarantees the section markers appear in the
- *     static build output (verifiable via grep) and StepIndicator's
- *     IntersectionObserver finds its `section[id^='step-']` targets.
- *
- * Related: project-design.md §S.13.10.2, plan-004 §P4.G.
- * Backs: AC6.
+ * Related: project-design.md §S.13.16, plan-005 phase 4 #10.
+ * Backs AC10, AC15.
  */
 import { getEntry } from 'astro:content';
 import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import MarketingShell from '../../components/MarketingShell.astro';
-import Section from '../../components/primitives/Section.astro';
-import Stack from '../../components/primitives/Stack.astro';
-import Cluster from '../../components/primitives/Cluster.astro';
-import Split from '../../components/primitives/Split.astro';
-import Grid from '../../components/primitives/Grid.astro';
-import Card from '../../components/primitives/Card.astro';
-import Eyebrow from '../../components/primitives/Eyebrow.astro';
-import Display from '../../components/primitives/Display.astro';
-import Lede from '../../components/primitives/Lede.astro';
-import Badge from '../../components/primitives/Badge.astro';
-import Button from '../../components/primitives/Button.astro';
-import MotionReveal from '../../components/primitives/MotionReveal.astro';
-import StepIndicator from '../../components/primitives/StepIndicator.astro';
 
 const entry = await getEntry('journeys', 'day-1');
 if (!entry) {
@@ -47,9 +20,6 @@ if (!entry) {
   );
 }
 
-// Per global no-fallback rule — the page contract requires a non-empty body
-// that segments into one or more `## Step N — Title` headings. Throw early
-// if the markdown source has drifted from that shape.
 const rawBody: string | undefined = entry.body;
 if (typeof rawBody !== 'string' || rawBody.trim().length === 0) {
   throw new Error(
@@ -63,10 +33,6 @@ interface ParsedStep {
   bodyMd: string;
 }
 
-/**
- * Split a journey markdown body into `## Step N — Title` chunks.
- * Returns the intro (text before the first step) and the ordered steps.
- */
 function splitSteps(body: string): { intro: string; steps: ParsedStep[] } {
   const lines = body.split('\n');
   const headingRe = /^##\s+Step\s+(\d+)\s*[—\-]\s*(.+?)\s*$/;
@@ -79,11 +45,7 @@ function splitSteps(body: string): { intro: string; steps: ParsedStep[] } {
     const match = line.match(headingRe);
     if (match && match[1] && match[2]) {
       if (current) steps.push(current);
-      current = {
-        n: Number.parseInt(match[1], 10),
-        title: match[2],
-        bodyMd: '',
-      };
+      current = { n: Number.parseInt(match[1], 10), title: match[2], bodyMd: '' };
       continue;
     }
     if (current) {
@@ -94,17 +56,11 @@ function splitSteps(body: string): { intro: string; steps: ParsedStep[] } {
   }
   if (current) steps.push(current);
 
-  // Strip a trailing `---` rule that the source markdown uses between steps.
   for (const step of steps) {
-    step.bodyMd = step.bodyMd
-      .replace(/\n---\s*\n?\s*$/, '\n')
-      .trim();
+    step.bodyMd = step.bodyMd.replace(/\n---\s*\n?\s*$/, '\n').trim();
   }
 
-  return {
-    intro: introLines.join('\n').trim(),
-    steps,
-  };
+  return { intro: introLines.join('\n').trim(), steps };
 }
 
 const { intro, steps } = splitSteps(rawBody);
@@ -115,9 +71,6 @@ if (steps.length === 0) {
   );
 }
 
-// Render each step body to HTML server-side using Astro's bundled markdown
-// processor. This guarantees the rendered HTML lives in the static output,
-// which makes `<section id='step-N'>` greppable in the built artifact.
 const processor = await createMarkdownProcessor();
 
 const renderedSteps = await Promise.all(
@@ -127,27 +80,11 @@ const renderedSteps = await Promise.all(
   }),
 );
 
-// Intro markdown — the paragraph before the first step. Used as Lede if
-// `ai_summary` isn't a better fit. We prefer `ai_summary` (the curated
-// one-liner from the frontmatter) over the intro paragraph for the hero
-// lede, and surface the intro paragraph below the StepIndicator as the
-// "before you start" line.
-const introHtml = intro.length > 0
-  ? (await processor.render(intro)).code
-  : '';
-
-// StepIndicator steps array — `id` matches the <section id> below.
-const indicatorSteps = renderedSteps.map((s) => ({
-  id: `step-${s.n}`,
-  label: s.title,
-}));
+const introHtml = intro.length > 0 ? (await processor.render(intro)).code : '';
 
 const heroTitle = entry.data.title ?? 'Day 1';
 const heroSummary = entry.data.ai_summary;
 
-// Pull-quote between steps 3 and 4 — opinionated, sourced from step 3's
-// "The single most important key is Esc." line. Surfaced as a separate
-// editorial moment per §S.13.10.2.
 const pullQuote = 'If you remember nothing else from today: Esc stops Claude.';
 ---
 
@@ -155,243 +92,187 @@ const pullQuote = 'If you remember nothing else from today: Esc stops Claude.';
   title={heroTitle}
   description={heroSummary}
   surfaceId="day-1"
-  width="wide"
+  width="full"
+  hero="none"
 >
-  <Stack slot="hero" gap="6">
-    <Cluster gap="3" align="center">
-      <Eyebrow tone="accent">Start here</Eyebrow>
-      <Badge tone="beginner">{entry.data.audience}</Badge>
-    </Cluster>
-    <Display level={1} size="lg">Day 1 — what I wish I knew.</Display>
-    <Lede size="sm">{heroSummary}</Lede>
-  </Stack>
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero__intro">
+        <h1 class="hero__title">Day 1 — <em>what I wish I knew.</em></h1>
+        <p class="hero__lede">
+          {heroSummary}
+          <small>Audience: {entry.data.audience} · ~30 min</small>
+          <small><a href="/start-here/week-1/">→ Week 1 next</a></small>
+        </p>
+      </div>
+    </div>
+  </section>
 
-  <Stack gap="12">
-    <Section spacing="default" surfaceId="day-1-steps">
-      <Split ratio="1/3" stack="md" gap="12">
-        <div slot="start">
-          <StepIndicator
-            steps={indicatorSteps}
-            current={indicatorSteps[0]?.id}
-            sticky
-            ariaLabel="Day 1 steps"
-          />
+  {introHtml.length > 0 && (
+    <section class="section" id="intro" style="padding-block: 2rem;">
+      <div class="wrap">
+        <div class="journey-intro sl-markdown-content" set:html={introHtml} />
+      </div>
+    </section>
+  )}
+
+  {renderedSteps.map((step) => (
+    <>
+      <section
+        class="section"
+        id={`step-${step.n}`}
+        data-step={step.n}
+        aria-label={`Step ${step.n}: ${step.title}`}
+      >
+        <div class="wrap">
+          <div class="section__head">
+            <h2>Step {step.n} / {renderedSteps.length}</h2>
+            <span class="count">{step.title}</span>
+          </div>
+          <div class="journey-step">
+            <h3 class="journey-step__title">{step.title}</h3>
+            <div class="journey-step__body sl-markdown-content" set:html={step.html} />
+          </div>
         </div>
+      </section>
 
-        <div slot="end">
-          <Stack gap="10">
-            {introHtml.length > 0 && (
-              <div class="journey-intro" set:html={introHtml} />
-            )}
+      {step.n === 3 && (
+        <section class="section section--pullquote" id="day-1-pullquote">
+          <div class="wrap">
+            <blockquote class="journey-pullquote">
+              <p>{pullQuote}</p>
+              <footer class="journey-pullquote__attrib">— what every newcomer learns in hour one</footer>
+            </blockquote>
+          </div>
+        </section>
+      )}
+    </>
+  ))}
 
-            {renderedSteps.map((step) => {
-              // Insert the pull-quote between step 3 and step 4 — rendered
-              // as its own MotionReveal so it tweens in like the steps.
-              return (
-                <>
-                  <MotionReveal delay={step.n * 100}>
-                    <section
-                      id={`step-${step.n}`}
-                      class="journey-step"
-                      data-step={step.n}
-                      aria-label={`Step ${step.n}: ${step.title}`}
-                    >
-                      <Stack gap="4">
-                        <Cluster gap="3" align="baseline">
-                          <Eyebrow tone="accent">Step {step.n} / {renderedSteps.length}</Eyebrow>
-                        </Cluster>
-                        <Display level={2} size="sm">
-                          {step.title}
-                        </Display>
-                        <div class="journey-step__body" set:html={step.html} />
-                      </Stack>
-                    </section>
-                  </MotionReveal>
-
-                  {step.n === 3 && (
-                    <MotionReveal>
-                      <Section spacing="snug" tone="subtle" surfaceId="day-1-pullquote">
-                        <blockquote class="journey-pullquote">
-                          <p>{pullQuote}</p>
-                          <footer class="journey-pullquote__attrib">— what every newcomer learns in hour one</footer>
-                        </blockquote>
-                      </Section>
-                    </MotionReveal>
-                  )}
-                </>
-              );
-            })}
-          </Stack>
-        </div>
-      </Split>
-    </Section>
-
-    <Section spacing="default" surfaceId="day-1-next" tone="subtle">
-      <Stack gap="6">
-        <Stack gap="3">
-          <Eyebrow tone="accent">Tomorrow</Eyebrow>
-          <Display level={2} size="sm">You finished Day 1. Now what?</Display>
-          <Lede size="sm">
-            Don't try to learn everything at once. Pick one of these and keep
-            today's habits warm.
-          </Lede>
-        </Stack>
-        <Grid columns="auto-fit" min="20rem" gap="6">
-          <Card variant="link" href="/start-here/week-1/">
-            <Stack slot="header" gap="2">
-              <Eyebrow>Onboarding</Eyebrow>
-              <h3 class="journey-cta__title">Week 1 →</h3>
-            </Stack>
-            <p class="journey-cta__body">
+  <section class="section" id="next">
+    <div class="wrap">
+      <div class="section__head">
+        <h2>Tomorrow</h2>
+        <span class="count">Three paths</span>
+      </div>
+      <div class="grid-3">
+        <article class="card card--text">
+          <div class="card__body">
+            <div class="card__meta"><span class="eyebrow eyebrow--accent">Onboarding</span></div>
+            <h3 class="card__title"><a href="/start-here/week-1/">Week 1 →</a></h3>
+            <p class="card__summary">
               The week-1 journey is still drafting — but the planned topics
               are listed there so you know what's coming.
             </p>
-          </Card>
-          <Card variant="link" href="/skills/">
-            <Stack slot="header" gap="2">
-              <Eyebrow>Skills</Eyebrow>
-              <h3 class="journey-cta__title">Browse the catalog</h3>
-            </Stack>
-            <p class="journey-cta__body">
+          </div>
+        </article>
+        <article class="card card--text">
+          <div class="card__body">
+            <div class="card__meta"><span class="eyebrow eyebrow--accent">Skills</span></div>
+            <h3 class="card__title"><a href="/skills/">Browse the catalog</a></h3>
+            <p class="card__summary">
               Nine team-curated skills, each with a one-line install and a
               "what it actually does" summary.
             </p>
-          </Card>
-          <Card variant="link" href="/tips/">
-            <Stack slot="header" gap="2">
-              <Eyebrow>Tips</Eyebrow>
-              <h3 class="journey-cta__title">Tips &amp; tricks</h3>
-            </Stack>
-            <p class="journey-cta__body">
+          </div>
+        </article>
+        <article class="card card--text">
+          <div class="card__body">
+            <div class="card__meta"><span class="eyebrow eyebrow--accent">Tips</span></div>
+            <h3 class="card__title"><a href="/tips/">Tips &amp; tricks</a></h3>
+            <p class="card__summary">
               Prompting patterns, survival keys, context discipline — the
               small habits that compound.
             </p>
-          </Card>
-        </Grid>
-        <Cluster gap="3" align="center">
-          <Button variant="secondary" size="md" href="https://556lowcodenocode.github.io/Onboarding/" target="_blank" rel="noopener">
-            Team Onboarding guide ↗
-          </Button>
-          <Button variant="ghost" size="md" href="/glossary/">
-            Glossary
-          </Button>
-        </Cluster>
-      </Stack>
-    </Section>
-  </Stack>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
 </MarketingShell>
 
 <style>
   @layer nbg.components {
     .journey-intro {
-      color: var(--nbg-color-fg-secondary);
-      font-size: var(--nbg-fs-lg);
-      line-height: var(--nbg-lh-relaxed);
+      color: var(--nbg-ink-2);
+      font-size: 1.125rem;
+      line-height: 1.7;
       max-width: 56ch;
     }
     .journey-intro :global(p) {
-      margin: 0 0 var(--nbg-sp-4) 0;
+      margin: 0 0 1rem 0;
     }
     .journey-step {
-      scroll-margin-top: var(--nbg-sp-12);
+      max-width: 56rem;
+      scroll-margin-top: 5rem;
+    }
+    .journey-step__title {
+      font-family: var(--nbg-ff-serif);
+      font-weight: 500;
+      font-size: var(--nbg-fs-feature);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      color: var(--nbg-ink);
+      margin: 0 0 1rem 0;
     }
     .journey-step__body {
-      color: var(--nbg-color-fg-primary);
-      font-size: var(--nbg-fs-md);
-      line-height: var(--nbg-lh-relaxed);
+      color: var(--nbg-ink);
+      font-size: 1rem;
+      line-height: 1.7;
     }
     .journey-step__body :global(p) {
-      margin: 0 0 var(--nbg-sp-4) 0;
+      margin: 0 0 1rem 0;
     }
     .journey-step__body :global(p:last-child) {
       margin-bottom: 0;
     }
     .journey-step__body :global(ul),
     .journey-step__body :global(ol) {
-      margin: 0 0 var(--nbg-sp-4) 0;
-      padding-left: var(--nbg-sp-5);
+      margin: 0 0 1rem 0;
+      padding-left: 1.5rem;
     }
     .journey-step__body :global(li) {
-      margin-bottom: var(--nbg-sp-2);
-    }
-    .journey-step__body :global(li:last-child) {
-      margin-bottom: 0;
+      margin-bottom: 0.5rem;
     }
     .journey-step__body :global(code) {
-      font-family: var(--nbg-type-mono);
+      font-family: var(--nbg-ff-mono);
       font-size: 0.95em;
-      background: var(--nbg-color-bg-surface);
+      background: var(--nbg-surface-2);
       padding: 0.1em 0.35em;
       border-radius: var(--nbg-r-sm);
-      border: 1px solid var(--nbg-color-border-subtle);
     }
     .journey-step__body :global(pre) {
-      margin: 0 0 var(--nbg-sp-4) 0;
-      padding: var(--nbg-sp-4);
-      background: var(--nbg-color-bg-surface);
-      border: 1px solid var(--nbg-color-border-subtle);
+      background: var(--nbg-surface-2);
+      border: 1px solid var(--nbg-hairline);
       border-radius: var(--nbg-r-md);
+      padding: 1rem;
       overflow-x: auto;
-      font-family: var(--nbg-type-mono);
-      font-size: var(--nbg-fs-sm);
-      line-height: var(--nbg-lh-base);
     }
-    .journey-step__body :global(pre code) {
-      background: transparent;
-      border: none;
-      padding: 0;
-      font-size: inherit;
+    .section--pullquote {
+      background: var(--nbg-surface-2);
     }
-    .journey-step__body :global(a) {
-      color: var(--nbg-color-link);
-      text-decoration: underline;
-      text-underline-offset: 0.2em;
-    }
-    .journey-step__body :global(a:hover) {
-      color: var(--nbg-color-link-hover);
-    }
-    .journey-step__body :global(strong) {
-      font-weight: var(--nbg-fw-semibold);
-      color: var(--nbg-color-fg-primary);
-    }
-    .journey-step__body :global(hr) {
-      display: none;
-    }
-
     .journey-pullquote {
+      font-family: var(--nbg-ff-serif);
+      font-size: clamp(1.5rem, 2.5vw, 2rem);
+      line-height: 1.3;
+      letter-spacing: -0.015em;
+      color: var(--nbg-ink);
       margin: 0;
-      max-width: 48ch;
-      font-family: var(--nbg-type-display);
-      font-size: var(--nbg-fs-display-sm);
-      line-height: var(--nbg-lh-display);
-      letter-spacing: var(--nbg-ls-tight);
-      color: var(--nbg-color-fg-primary);
-      text-wrap: balance;
+      max-width: 56rem;
+      padding-left: 2rem;
+      border-left: 3px solid var(--nbg-accent);
     }
     .journey-pullquote p {
-      margin: 0 0 var(--nbg-sp-3) 0;
+      margin: 0 0 0.75rem 0;
+      font-style: italic;
     }
     .journey-pullquote__attrib {
-      font-family: var(--nbg-type-mono);
-      font-size: var(--nbg-fs-xs);
-      letter-spacing: var(--nbg-ls-wide);
+      font-family: var(--nbg-ff-mono);
+      font-size: 0.6875rem;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--nbg-color-fg-muted);
-    }
-
-    .journey-cta__title {
-      margin: 0;
-      font-family: var(--nbg-type-display);
-      font-size: var(--nbg-fs-display-sm);
-      font-weight: var(--nbg-fw-semibold);
-      letter-spacing: var(--nbg-ls-tight);
-      color: var(--nbg-color-fg-primary);
-    }
-    .journey-cta__body {
-      margin: 0;
-      color: var(--nbg-color-fg-secondary);
-      font-size: var(--nbg-fs-md);
-      line-height: var(--nbg-lh-base);
+      color: var(--nbg-muted);
+      font-style: normal;
     }
   }
 </style>

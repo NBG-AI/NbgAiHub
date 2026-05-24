@@ -1,29 +1,17 @@
 ---
 /**
- * /glossary — Filterable glossary with A-Z index strip.
+ * /glossary — AgentNews-aesthetic filterable glossary with A-Z strip.
  *
- * Composition: MarketingShell hero (Eyebrow + Display + Lede) + a sticky
- * Cluster of <input data-glossary-filter> + an A-Z chip strip + a Stack of
- * <article data-term> cards. The filter script lives at
- * site/src/scripts/glossary-filter.ts and is imported via a client <script>.
+ * Filter behaviour preserved: <input data-glossary-filter> + `[data-term]`
+ * markers consumed by site/src/scripts/glossary-filter.ts which sets
+ * `[hidden]` on non-matching <article>.
  *
- * Each term is wrapped in `<article data-term data-term-label="...">` so the
- * filter can hide non-matching entries by setting `[hidden]`. Anchor links use
- * the entry slug as `id`.
- *
- * Related: project-design.md §S.13.10.7, plan-004 §P4.F.
- * Backs: AC11 (filter narrows visible terms).
+ * Related: project-design.md §S.13.16, plan-005 phase 4 #5.
+ * Backs AC10, AC15. Preserves filter test floor.
  */
 import { getCollection, render } from 'astro:content';
 import MarketingShell from '../components/MarketingShell.astro';
 import PinButton from '../components/PinButton.astro';
-import Section from '../components/primitives/Section.astro';
-import Stack from '../components/primitives/Stack.astro';
-import Cluster from '../components/primitives/Cluster.astro';
-import Card from '../components/primitives/Card.astro';
-import Eyebrow from '../components/primitives/Eyebrow.astro';
-import Display from '../components/primitives/Display.astro';
-import Lede from '../components/primitives/Lede.astro';
 
 const items = await getCollection('glossary');
 const sorted = items.sort((a, b) =>
@@ -39,8 +27,6 @@ const rendered = await Promise.all(
   }),
 );
 
-// Build the A-Z strip — only show letters with at least one term initially,
-// but render every A-Z so anchor structure is stable.
 const lettersWithEntries = new Set(rendered.map((r) => r.firstLetter));
 const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
 ---
@@ -49,31 +35,40 @@ const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
   title="Glossary"
   description="Plain-language definitions for the Claude Code vocabulary."
   surfaceId="glossary"
-  width="wide"
+  width="full"
+  hero="none"
 >
-  <Stack slot="hero" gap="6">
-    <Eyebrow tone="accent">{items.length} terms</Eyebrow>
-    <Display level={1} size="lg">Glossary.</Display>
-    <Lede size="sm">
-      Plain-language definitions for the Claude Code vocabulary. Link directly
-      to any term with <code>/glossary#&lt;slug&gt;</code>.
-    </Lede>
-  </Stack>
+  <section class="hero hero--compact">
+    <div class="wrap">
+      <div class="hero__intro">
+        <h1 class="hero__title">The Claude Code <em>vocabulary.</em></h1>
+        <p class="hero__lede">
+          Plain-language definitions for the words that keep coming up.
+          Link directly to any term with <code>/glossary#&lt;slug&gt;</code>.
+          <small>{items.length} terms</small>
+        </p>
+      </div>
+    </div>
+  </section>
 
   {rendered.length === 0 ? (
-    <Section spacing="default">
-      <Card variant="content">
-        <p>
-          No items yet. See <a href="/contribute/">Contribute</a> for how to
-          add one.
-        </p>
-      </Card>
-    </Section>
+    <section class="section">
+      <div class="wrap">
+        <div class="empty">
+          <p class="empty__eyebrow">No items yet</p>
+          <h2 class="empty__title">The glossary is empty.</h2>
+          <p class="empty__body">
+            See <a href="/contribute/">Contribute</a> for how to add one.
+          </p>
+        </div>
+      </div>
+    </section>
   ) : (
-    <Stack gap="8">
-      <Section spacing="snug" surfaceId="glossary-rail">
-        <div class="glossary-rail">
-          <Cluster gap="3" align="center">
+    <>
+      {/* Filter + A-Z strip */}
+      <section class="section" id="glossary-rail" style="padding-block: 1.5rem;">
+        <div class="wrap">
+          <div class="glossary-rail">
             <input
               type="search"
               data-glossary-filter
@@ -83,58 +78,62 @@ const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
               autocomplete="off"
               spellcheck="false"
             />
-          </Cluster>
-          <Cluster gap="1" align="center" wrap={true}>
-            {alphabet.map((letter) => {
-              const hasEntry = lettersWithEntries.has(letter);
-              return (
-                <a
-                  href={`#letter-${letter}`}
-                  data-letter={letter}
-                  data-empty={hasEntry ? undefined : 'true'}
-                  class="glossary-letter"
-                  aria-label={`Jump to terms starting with ${letter.toUpperCase()}`}
-                >
-                  {letter.toUpperCase()}
-                </a>
-              );
-            })}
-          </Cluster>
+            <div class="glossary-letters">
+              {alphabet.map((letter) => {
+                const hasEntry = lettersWithEntries.has(letter);
+                return (
+                  <a
+                    href={`#letter-${letter}`}
+                    data-letter={letter}
+                    data-empty={hasEntry ? undefined : 'true'}
+                    class="glossary-letter"
+                    aria-label={`Jump to terms starting with ${letter.toUpperCase()}`}
+                  >
+                    {letter.toUpperCase()}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      </Section>
+      </section>
 
-      <Section spacing="default" surfaceId="glossary-list">
-        <Stack gap="3">
-          {rendered.map(({ entry, Content, label, firstLetter }) => (
-            <article
-              id={entry.id}
-              data-term
-              data-term-label={label}
-            >
-              <span class="glossary-anchor" id={`letter-${firstLetter}`} aria-hidden="true" />
-              <Card variant="content">
-                <Stack slot="header" gap="2">
-                  <Cluster gap="2" align="center">
-                    <Eyebrow tone="accent">{firstLetter.toUpperCase()}</Eyebrow>
-                  </Cluster>
-                  <h2 class="nbg-display" data-size="sm" data-weight="bold">
+      {/* Terms */}
+      <section class="section" id="glossary-list">
+        <div class="wrap">
+          <div class="section__head">
+            <h2>Terms</h2>
+            <span class="count">{rendered.length} entries</span>
+          </div>
+          <div class="glossary-terms">
+            {rendered.map(({ entry, Content, label, firstLetter }) => (
+              <article
+                id={entry.id}
+                data-term
+                data-term-label={label}
+                class="glossary-term"
+              >
+                <span class="glossary-anchor" id={`letter-${firstLetter}`} aria-hidden="true" />
+                <div class="glossary-term__head">
+                  <span class="eyebrow eyebrow--accent">{firstLetter.toUpperCase()}</span>
+                  <h3 class="card__title">
                     <a class="glossary-term-link" href={`#${entry.id}`} aria-label={`Anchor for ${entry.data.title}`}>
                       {entry.data.title}
                     </a>
-                  </h2>
-                </Stack>
+                  </h3>
+                </div>
                 <div class="glossary-body sl-markdown-content">
                   <Content />
                 </div>
-                <Cluster slot="footer" gap="3" align="center" justify="end">
+                <div class="glossary-term__footer">
                   <PinButton type="glossary" slug={entry.id} />
-                </Cluster>
-              </Card>
-            </article>
-          ))}
-        </Stack>
-      </Section>
-    </Stack>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
   )}
 </MarketingShell>
 
@@ -143,49 +142,54 @@ const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
     .glossary-rail {
       display: flex;
       flex-direction: column;
-      gap: var(--nbg-sp-3);
+      gap: 1rem;
       position: sticky;
-      top: var(--nbg-sp-4);
+      top: 4.5rem;
       z-index: 1;
-      padding: var(--nbg-sp-3) var(--nbg-sp-4);
-      background: var(--nbg-color-bg-page);
-      border: 1px solid var(--nbg-color-border-subtle);
+      padding: 1.25rem 1.5rem;
+      background: var(--nbg-surface);
+      border: 1px solid var(--nbg-hairline);
       border-radius: var(--nbg-r-lg);
-      box-shadow: var(--nbg-sh-sm);
+      box-shadow: var(--nbg-shadow-md);
     }
     .glossary-filter-input {
       width: 100%;
       max-width: 28rem;
-      padding: var(--nbg-sp-2) var(--nbg-sp-3);
-      font-family: var(--nbg-type-body);
-      font-size: var(--nbg-fs-md);
-      color: var(--nbg-color-fg-primary);
-      background: var(--nbg-color-bg-surface);
-      border: 1px solid var(--nbg-color-border-default);
+      padding: 0.5rem 0.75rem;
+      font-family: var(--nbg-ff-body);
+      font-size: 0.9375rem;
+      color: var(--nbg-ink);
+      background: var(--nbg-bg);
+      border: 1px solid var(--nbg-border);
       border-radius: var(--nbg-r-md);
     }
     .glossary-filter-input:focus-visible {
-      outline: none;
-      box-shadow: var(--nbg-sh-focus-ring);
+      outline: 2px solid var(--nbg-accent);
+      outline-offset: 2px;
+      border-color: var(--nbg-accent);
+    }
+    .glossary-letters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
     }
     .glossary-letter {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: var(--nbg-sp-7);
-      padding: var(--nbg-sp-1) var(--nbg-sp-2);
-      font-family: var(--nbg-type-mono);
-      font-size: var(--nbg-fs-xs);
-      font-weight: var(--nbg-fw-semibold);
-      color: var(--nbg-color-fg-primary);
+      min-width: 1.75rem;
+      padding: 0.25rem 0.5rem;
+      font-family: var(--nbg-ff-mono);
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--nbg-ink);
       text-decoration: none;
       border-radius: var(--nbg-r-sm);
-      transition: background-color var(--nbg-dur-fast) var(--nbg-ease-out),
-        color var(--nbg-dur-fast) var(--nbg-ease-out);
+      transition: background-color 150ms, color 150ms;
     }
     .glossary-letter:hover {
-      background: var(--nbg-color-bg-surface-hover);
-      color: var(--nbg-color-link);
+      background: var(--nbg-surface-2);
+      color: var(--nbg-accent);
     }
     .glossary-letter[data-empty='true'] {
       opacity: 0.35;
@@ -194,41 +198,55 @@ const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
     .glossary-anchor {
       display: block;
       position: relative;
-      top: calc(-1 * var(--nbg-sp-12));
+      top: -5rem;
       visibility: hidden;
+    }
+    .glossary-terms {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .glossary-term {
+      padding: 1.5rem;
+      background: var(--nbg-surface);
+      border: 1px solid var(--nbg-hairline);
+      border-radius: var(--nbg-r-lg);
+      box-shadow: var(--nbg-shadow-md);
+    }
+    .glossary-term__head {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
     }
     .glossary-term-link {
       color: inherit;
       text-decoration: none;
     }
     .glossary-term-link:hover {
-      color: var(--nbg-color-link);
+      color: var(--nbg-accent);
     }
     .glossary-term-link:hover::after {
       content: ' #';
-      color: var(--nbg-color-accent);
-      font-family: var(--nbg-type-mono);
-      font-weight: var(--nbg-fw-medium);
+      color: var(--nbg-accent);
+      font-family: var(--nbg-ff-mono);
+      font-weight: 500;
     }
     .glossary-body {
-      color: var(--nbg-color-fg-secondary);
-      font-size: var(--nbg-fs-md);
-      line-height: var(--nbg-lh-base);
+      color: var(--nbg-ink-2);
+      font-size: 0.9375rem;
+      line-height: 1.6;
     }
     .glossary-body :global(p) {
-      margin: 0 0 var(--nbg-sp-2);
+      margin: 0 0 0.75rem;
     }
     .glossary-body :global(p:last-child) {
       margin-bottom: 0;
     }
-    /* Compact glossary cards — short definitions don't need 24px padding. */
-    article[data-term] :global(.nbg-card) {
-      padding: var(--nbg-sp-4);
-      gap: var(--nbg-sp-2);
-    }
-    article[data-term] :global(.nbg-card .nbg-display) {
-      font-size: var(--nbg-fs-xl);
-      line-height: var(--nbg-lh-headline);
+    .glossary-term__footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 1rem;
     }
     article[data-term][hidden] {
       display: none;

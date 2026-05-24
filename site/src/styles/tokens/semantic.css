@@ -3,128 +3,87 @@
  * Tier 2 — Semantic tokens. Meaning, not value. Theme-dependent.
  * Every component resolves against these (not directly against primitives).
  *
- * Related: project-design.md §S.13.2.3 (Semantic tier — meaning, not value).
+ * Related: project-design.md §S.13.16 (AgentNews aesthetic anchor).
  * Backs AC1 + AC3 (theme scopes for dark/light) + AC21 (audience contrast).
  *
- * Scoping rule (per Pagefind research §"Dark/light mode behaviour"):
- *   - :root, :root[data-theme='dark'] — dark defaults (also catches the
- *     no-attribute case before Starlight's inline ThemeProvider script runs).
- *   - :root[data-theme='light']       — light overrides.
+ * Scoping rule (refreshed 2026-05-24 — light is now default per AgentNews):
+ *   - :root, :root[data-theme='light'] — LIGHT defaults (matches AgentNews default).
+ *   - :root[data-theme='dark']         — DARK overrides.
+ *   - @media (prefers-color-scheme: dark) :root:not([data-theme='light'])
+ *                                       — system-dark fallback.
  *
- * Defining tokens under :root alone (without theme scope) breaks Pagefind
- * retinting and locks the page to whichever value happened to be declared.
+ * The flat AgentNews-style tokens (--nbg-bg, --nbg-surface, --nbg-ink, etc.)
+ * are added as supplementary tokens consumed by site/src/styles/agentnews-layout.css.
+ * The pre-existing --nbg-color-* tokens stay for backward compatibility per
+ * refined-spec A8 (token names survive; values change).
  */
 
 @layer tokens {
-  /* ─── DARK (default) ─────────────────────────────────────────────── */
+  /* ─── LIGHT (default — AgentNews matches its default theme) ──────── */
   :root,
-  :root[data-theme='dark'] {
-    /* Surface tokens — six steps from canvas to highest elevation */
-    --nbg-color-bg-canvas:        var(--nbg-c-slate-950);
-    --nbg-color-bg-page:          var(--nbg-c-slate-900);
-    --nbg-color-bg-surface:       var(--nbg-c-slate-800);
-    --nbg-color-bg-surface-hover: var(--nbg-c-slate-700);
-    --nbg-color-bg-elevated:      var(--nbg-c-slate-700);
-    --nbg-color-bg-overlay:       hsl(220 25% 3% / 0.75);
-
-    /* Foreground tokens — four steps */
-    --nbg-color-fg-primary:   var(--nbg-c-slate-50);
-    --nbg-color-fg-secondary: var(--nbg-c-slate-200);
-    --nbg-color-fg-muted:     var(--nbg-c-slate-400);
-    --nbg-color-fg-on-accent: var(--nbg-c-slate-50);
-
-    /* Border tokens */
-    --nbg-color-border-subtle:  var(--nbg-c-slate-800);
-    --nbg-color-border-default: var(--nbg-c-slate-700);
-    --nbg-color-border-strong:  var(--nbg-c-slate-500);
-
-    /* Accent tokens */
-    --nbg-color-accent:        var(--nbg-c-violet-400);
-    --nbg-color-accent-hover:  var(--nbg-c-violet-300);
-    --nbg-color-accent-bg:     hsl(265 85% 60% / 0.12);
-    --nbg-color-accent-fg:     var(--nbg-c-violet-300);
-    --nbg-color-accent-strong: var(--nbg-c-violet-500);
-    --nbg-color-accent-glow:   var(--nbg-sh-glow-accent);
-
-    /* Link tokens — link state never falls back to "blue" */
-    --nbg-color-link:         var(--nbg-c-violet-300);
-    --nbg-color-link-hover:   var(--nbg-c-violet-200);
-    --nbg-color-link-visited: var(--nbg-c-violet-400);
-
-    /* Focus ring color (the shadow primitive owns the ring geometry) */
-    --nbg-color-focus-ring: var(--nbg-c-violet-400);
-
-    /* Audience semantic tokens — three pairs (bg + fg), AA verified */
-    --nbg-color-audience-beginner-bg: hsl(155 60% 18%);
-    --nbg-color-audience-beginner-fg: var(--nbg-c-emerald-200);
-    --nbg-color-audience-advanced-bg: hsl(28 70% 18%);
-    --nbg-color-audience-advanced-fg: var(--nbg-c-amber-200);
-    --nbg-color-audience-both-bg:     hsl(210 60% 20%);
-    --nbg-color-audience-both-fg:     var(--nbg-c-sky-200);
-
-    /* Confidence semantic tokens */
-    --nbg-color-confidence-high-bg:   hsl(155 60% 18%);
-    --nbg-color-confidence-high-fg:   var(--nbg-c-emerald-200);
-    --nbg-color-confidence-medium-bg: hsl(28 70% 18%);
-    --nbg-color-confidence-medium-fg: var(--nbg-c-amber-200);
-    --nbg-color-confidence-low-bg:    hsl(350 55% 22%);
-    --nbg-color-confidence-low-fg:    var(--nbg-c-rose-200);
-
-    /* Status semantic tokens — callouts, form validation */
-    --nbg-color-status-success-bg: hsl(155 60% 12%);
-    --nbg-color-status-success-fg: var(--nbg-c-emerald-300);
-    --nbg-color-status-warning-bg: hsl(38 70% 12%);
-    --nbg-color-status-warning-fg: var(--nbg-c-amber-300);
-    --nbg-color-status-danger-bg:  hsl(350 55% 14%);
-    --nbg-color-status-danger-fg:  var(--nbg-c-rose-300);
-    --nbg-color-status-info-bg:    hsl(210 55% 14%);
-    --nbg-color-status-info-fg:    var(--nbg-c-sky-300);
-
-    /* Type semantic tokens — named uses for the three families */
-    --nbg-type-body:    var(--nbg-ff-body);
-    --nbg-type-mono:    var(--nbg-ff-mono);
-    --nbg-type-display: var(--nbg-ff-display);
-  }
-
-  /* ─── LIGHT overrides ─────────────────────────────────────────────── */
   :root[data-theme='light'] {
+    /* ════════════════════════════════════════════════════════════════
+     * AgentNews flat tokens (new — consumed by agentnews-layout.css)
+     * ════════════════════════════════════════════════════════════════ */
+    --nbg-bg:           var(--nbg-c-slate-50);   /* #f4f6f9 */
+    --nbg-bg-2:         var(--nbg-c-slate-100);  /* #eef2f7 */
+    --nbg-surface:      #ffffff;
+    --nbg-surface-2:    #f8fafc;
+    --nbg-ink:          var(--nbg-c-slate-900);  /* #0b1e2e */
+    --nbg-ink-2:        var(--nbg-c-slate-700);  /* #1a3148 */
+    --nbg-muted:        var(--nbg-c-slate-500);  /* #5b6b80 */
+    --nbg-muted-2:      var(--nbg-c-slate-400);  /* #8392a6 */
+    --nbg-border:       var(--nbg-c-slate-200);  /* #dce3eb */
+    --nbg-hairline:     var(--nbg-c-slate-150);  /* #ebeff5 */
+    --nbg-accent:       var(--nbg-c-teal-500);   /* #007a8a */
+    --nbg-accent-ink:   var(--nbg-c-teal-600);   /* #00525c */
+    --nbg-accent-soft:  var(--nbg-c-teal-50);    /* #e0f2f4 */
+    --nbg-header-bg:    rgba(244, 246, 249, 0.82);
+    --nbg-shadow-md:    0 4px 18px -8px rgba(11, 30, 46, 0.18),
+                        0 0 0 1px rgba(11, 30, 46, 0.05);
+
+    /* ════════════════════════════════════════════════════════════════
+     * Legacy --nbg-color-* tokens (preserved for backward compat).
+     * Values re-anchored to map onto AgentNews palette.
+     * ════════════════════════════════════════════════════════════════ */
+
     /* Surface tokens */
-    --nbg-color-bg-canvas:        var(--nbg-c-slate-50);
-    --nbg-color-bg-page:          var(--nbg-c-slate-100);
-    --nbg-color-bg-surface:       var(--nbg-c-slate-50);
-    --nbg-color-bg-surface-hover: var(--nbg-c-slate-100);
-    --nbg-color-bg-elevated:      #ffffff;
-    --nbg-color-bg-overlay:       hsl(220 25% 30% / 0.45);
+    --nbg-color-bg-canvas:        var(--nbg-bg);
+    --nbg-color-bg-page:          var(--nbg-bg-2);
+    --nbg-color-bg-surface:       var(--nbg-surface);
+    --nbg-color-bg-surface-hover: var(--nbg-surface-2);
+    --nbg-color-bg-elevated:      var(--nbg-surface);
+    --nbg-color-bg-overlay:       rgba(11, 30, 46, 0.45);
 
     /* Foreground tokens */
-    --nbg-color-fg-primary:   var(--nbg-c-slate-950);
-    --nbg-color-fg-secondary: var(--nbg-c-slate-700);
-    --nbg-color-fg-muted:     var(--nbg-c-slate-500);
+    --nbg-color-fg-primary:   var(--nbg-ink);
+    --nbg-color-fg-secondary: var(--nbg-ink-2);
+    --nbg-color-fg-muted:     var(--nbg-muted);
     --nbg-color-fg-on-accent: #ffffff;
 
     /* Border tokens */
-    --nbg-color-border-subtle:  var(--nbg-c-slate-200);
-    --nbg-color-border-default: var(--nbg-c-slate-300);
-    --nbg-color-border-strong:  var(--nbg-c-slate-500);
+    --nbg-color-border-subtle:  var(--nbg-hairline);
+    --nbg-color-border-default: var(--nbg-border);
+    --nbg-color-border-strong:  var(--nbg-muted);
 
-    /* Accent tokens */
-    --nbg-color-accent:        var(--nbg-c-violet-600);
-    --nbg-color-accent-hover:  var(--nbg-c-violet-700);
-    --nbg-color-accent-bg:     hsl(265 85% 60% / 0.08);
-    --nbg-color-accent-fg:     var(--nbg-c-violet-700);
-    --nbg-color-accent-strong: var(--nbg-c-violet-500);
-    --nbg-color-accent-glow:   0 0 0 1px var(--nbg-c-violet-500),
-                               0 0 16px hsl(265 85% 60% / 0.18);
+    /* Accent tokens — now teal */
+    --nbg-color-accent:        var(--nbg-accent);
+    --nbg-color-accent-hover:  var(--nbg-accent-ink);
+    --nbg-color-accent-bg:     var(--nbg-accent-soft);
+    --nbg-color-accent-fg:     var(--nbg-accent-ink);
+    --nbg-color-accent-strong: var(--nbg-accent);
+    --nbg-color-accent-glow:   0 0 0 1px var(--nbg-accent),
+                               0 0 16px rgba(0, 122, 138, 0.18);
 
     /* Link tokens */
-    --nbg-color-link:         var(--nbg-c-violet-700);
-    --nbg-color-link-hover:   var(--nbg-c-violet-900);
-    --nbg-color-link-visited: var(--nbg-c-violet-800);
+    --nbg-color-link:         var(--nbg-accent);
+    --nbg-color-link-hover:   var(--nbg-accent-ink);
+    --nbg-color-link-visited: var(--nbg-accent-ink);
 
     /* Focus ring color */
-    --nbg-color-focus-ring: var(--nbg-c-violet-600);
+    --nbg-color-focus-ring: var(--nbg-accent);
 
-    /* Audience semantic tokens */
+    /* Audience semantic tokens — kept as-is (out of AgentNews scope) */
     --nbg-color-audience-beginner-bg: var(--nbg-c-emerald-100);
     --nbg-color-audience-beginner-fg: var(--nbg-c-emerald-800);
     --nbg-color-audience-advanced-bg: var(--nbg-c-amber-100);
@@ -150,15 +109,159 @@
     --nbg-color-status-info-bg:    var(--nbg-c-sky-50);
     --nbg-color-status-info-fg:    var(--nbg-c-sky-700);
 
-    /* Shadow softening for light mode — shorter offsets, lighter alpha */
-    --nbg-sh-xs: 0 1px 2px hsl(220 30% 10% / 0.06);
-    --nbg-sh-sm: 0 2px 4px hsl(220 30% 10% / 0.08),
-                 0 1px 2px hsl(220 30% 10% / 0.06);
-    --nbg-sh-md: 0 4px 12px hsl(220 30% 10% / 0.1),
-                 0 2px 4px hsl(220 30% 10% / 0.06);
-    --nbg-sh-lg: 0 12px 32px hsl(220 30% 10% / 0.12),
-                 0 4px 12px hsl(220 30% 10% / 0.08);
-    --nbg-sh-xl: 0 24px 60px hsl(220 30% 10% / 0.16),
-                 0 8px 24px hsl(220 30% 10% / 0.1);
+    /* Type semantic tokens */
+    --nbg-type-body:    var(--nbg-ff-body);
+    --nbg-type-mono:    var(--nbg-ff-mono);
+    --nbg-type-display: var(--nbg-ff-display);
+    --nbg-type-serif:   var(--nbg-ff-serif);
+
+    /* Shadow re-anchored to AgentNews (single primary shadow for light) */
+    --nbg-sh-xs: 0 1px 2px rgba(11, 30, 46, 0.06);
+    --nbg-sh-sm: 0 2px 4px rgba(11, 30, 46, 0.08),
+                 0 1px 2px rgba(11, 30, 46, 0.06);
+    --nbg-sh-md: var(--nbg-shadow-md);
+    --nbg-sh-lg: 0 12px 32px rgba(11, 30, 46, 0.12),
+                 0 4px 12px rgba(11, 30, 46, 0.08);
+    --nbg-sh-xl: 0 24px 60px rgba(11, 30, 46, 0.16),
+                 0 8px 24px rgba(11, 30, 46, 0.10);
+
+    color-scheme: light;
+  }
+
+  /* ─── DARK overrides ─────────────────────────────────────────────── */
+  :root[data-theme='dark'] {
+    /* AgentNews flat tokens — dark mode */
+    --nbg-bg:           var(--nbg-c-slate-950);  /* #0b1419 */
+    --nbg-bg-2:         var(--nbg-c-slate-850);  /* #0f1c24 */
+    --nbg-surface:      var(--nbg-c-slate-800);  /* #14232c */
+    --nbg-surface-2:    #1a2d38;
+    --nbg-ink:          #e6edf3;
+    --nbg-ink-2:        #c5d1dc;
+    --nbg-muted:        #8b9aab;
+    --nbg-muted-2:      #6b7a8c;
+    --nbg-border:       #243441;
+    --nbg-hairline:     #1c2b36;
+    --nbg-accent:       var(--nbg-c-teal-400);   /* #2dd4bf */
+    --nbg-accent-ink:   #67e8f9;
+    --nbg-accent-soft:  var(--nbg-c-teal-800);   /* #0a3a42 */
+    --nbg-header-bg:    rgba(11, 20, 25, 0.85);
+    --nbg-shadow-md:    0 4px 18px -8px rgba(0, 0, 0, 0.55),
+                        0 0 0 1px rgba(255, 255, 255, 0.04);
+
+    /* Legacy --nbg-color-* re-anchored to dark flat tokens */
+    --nbg-color-bg-canvas:        var(--nbg-bg);
+    --nbg-color-bg-page:          var(--nbg-bg-2);
+    --nbg-color-bg-surface:       var(--nbg-surface);
+    --nbg-color-bg-surface-hover: var(--nbg-surface-2);
+    --nbg-color-bg-elevated:      var(--nbg-surface);
+    --nbg-color-bg-overlay:       rgba(0, 0, 0, 0.75);
+
+    --nbg-color-fg-primary:   var(--nbg-ink);
+    --nbg-color-fg-secondary: var(--nbg-ink-2);
+    --nbg-color-fg-muted:     var(--nbg-muted);
+    --nbg-color-fg-on-accent: var(--nbg-ink);
+
+    --nbg-color-border-subtle:  var(--nbg-hairline);
+    --nbg-color-border-default: var(--nbg-border);
+    --nbg-color-border-strong:  var(--nbg-muted);
+
+    --nbg-color-accent:        var(--nbg-accent);
+    --nbg-color-accent-hover:  var(--nbg-accent-ink);
+    --nbg-color-accent-bg:     var(--nbg-accent-soft);
+    --nbg-color-accent-fg:     var(--nbg-accent);
+    --nbg-color-accent-strong: var(--nbg-accent);
+    --nbg-color-accent-glow:   0 0 0 1px var(--nbg-accent),
+                               0 0 24px rgba(45, 212, 191, 0.35);
+
+    --nbg-color-link:         var(--nbg-accent);
+    --nbg-color-link-hover:   var(--nbg-accent-ink);
+    --nbg-color-link-visited: var(--nbg-accent-ink);
+
+    --nbg-color-focus-ring: var(--nbg-accent);
+
+    /* Audience tokens — dark variants */
+    --nbg-color-audience-beginner-bg: hsl(155 60% 18%);
+    --nbg-color-audience-beginner-fg: var(--nbg-c-emerald-200);
+    --nbg-color-audience-advanced-bg: hsl(28 70% 18%);
+    --nbg-color-audience-advanced-fg: var(--nbg-c-amber-200);
+    --nbg-color-audience-both-bg:     hsl(210 60% 20%);
+    --nbg-color-audience-both-fg:     var(--nbg-c-sky-200);
+
+    /* Confidence tokens — dark variants */
+    --nbg-color-confidence-high-bg:   hsl(155 60% 18%);
+    --nbg-color-confidence-high-fg:   var(--nbg-c-emerald-200);
+    --nbg-color-confidence-medium-bg: hsl(28 70% 18%);
+    --nbg-color-confidence-medium-fg: var(--nbg-c-amber-200);
+    --nbg-color-confidence-low-bg:    hsl(350 55% 22%);
+    --nbg-color-confidence-low-fg:    var(--nbg-c-rose-200);
+
+    /* Status tokens — dark variants */
+    --nbg-color-status-success-bg: hsl(155 60% 12%);
+    --nbg-color-status-success-fg: var(--nbg-c-emerald-300);
+    --nbg-color-status-warning-bg: hsl(38 70% 12%);
+    --nbg-color-status-warning-fg: var(--nbg-c-amber-300);
+    --nbg-color-status-danger-bg:  hsl(350 55% 14%);
+    --nbg-color-status-danger-fg:  var(--nbg-c-rose-300);
+    --nbg-color-status-info-bg:    hsl(210 55% 14%);
+    --nbg-color-status-info-fg:    var(--nbg-c-sky-300);
+
+    /* Shadow dark variants */
+    --nbg-sh-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --nbg-sh-sm: 0 2px 4px rgba(0, 0, 0, 0.5),
+                 0 1px 2px rgba(0, 0, 0, 0.4);
+    --nbg-sh-md: var(--nbg-shadow-md);
+    --nbg-sh-lg: 0 12px 32px rgba(0, 0, 0, 0.55),
+                 0 4px 12px rgba(0, 0, 0, 0.4);
+    --nbg-sh-xl: 0 24px 60px rgba(0, 0, 0, 0.6),
+                 0 8px 24px rgba(0, 0, 0, 0.4);
+
+    color-scheme: dark;
+  }
+
+  /* ─── System-dark fallback ─────────────────────────────────────────
+   * When the user has not explicitly chosen a theme and the OS prefers
+   * dark, mirror the [data-theme='dark'] block. AgentNews uses this
+   * exact pattern (investigation §1).
+   */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --nbg-bg:           var(--nbg-c-slate-950);
+      --nbg-bg-2:         var(--nbg-c-slate-850);
+      --nbg-surface:      var(--nbg-c-slate-800);
+      --nbg-surface-2:    #1a2d38;
+      --nbg-ink:          #e6edf3;
+      --nbg-ink-2:        #c5d1dc;
+      --nbg-muted:        #8b9aab;
+      --nbg-muted-2:      #6b7a8c;
+      --nbg-border:       #243441;
+      --nbg-hairline:     #1c2b36;
+      --nbg-accent:       var(--nbg-c-teal-400);
+      --nbg-accent-ink:   #67e8f9;
+      --nbg-accent-soft:  var(--nbg-c-teal-800);
+      --nbg-header-bg:    rgba(11, 20, 25, 0.85);
+      --nbg-shadow-md:    0 4px 18px -8px rgba(0, 0, 0, 0.55),
+                          0 0 0 1px rgba(255, 255, 255, 0.04);
+
+      --nbg-color-bg-canvas:        var(--nbg-bg);
+      --nbg-color-bg-page:          var(--nbg-bg-2);
+      --nbg-color-bg-surface:       var(--nbg-surface);
+      --nbg-color-bg-surface-hover: var(--nbg-surface-2);
+      --nbg-color-bg-elevated:      var(--nbg-surface);
+      --nbg-color-fg-primary:       var(--nbg-ink);
+      --nbg-color-fg-secondary:     var(--nbg-ink-2);
+      --nbg-color-fg-muted:         var(--nbg-muted);
+      --nbg-color-fg-on-accent:     var(--nbg-ink);
+      --nbg-color-border-subtle:    var(--nbg-hairline);
+      --nbg-color-border-default:   var(--nbg-border);
+      --nbg-color-border-strong:    var(--nbg-muted);
+      --nbg-color-accent:           var(--nbg-accent);
+      --nbg-color-accent-hover:     var(--nbg-accent-ink);
+      --nbg-color-accent-bg:        var(--nbg-accent-soft);
+      --nbg-color-accent-fg:        var(--nbg-accent);
+      --nbg-color-link:             var(--nbg-accent);
+      --nbg-color-link-hover:       var(--nbg-accent-ink);
+
+      color-scheme: dark;
+    }
   }
 }

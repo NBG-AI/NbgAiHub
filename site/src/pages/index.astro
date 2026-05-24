@@ -2,62 +2,298 @@
 /**
  * / — Homepage.
  *
- * Composition: MarketingShell hero with editorial Display H1 + HomeStats
- * (build-time content counts) + NewsPanel (3 most recent items).
+ * AgentNews-aesthetic composition (2026-05-24):
+ * full-bleed marketing shell with editorial hero + three feed sections
+ * (News, Skills, Tips), terminating in a journey CTA.
  *
- * Why this is an .astro page and not an MDX page in content/docs/:
- *   Previously the homepage lived at src/content/docs/index.mdx with
- *   Starlight's splash template, and the MDX body embedded <MarketingShell>.
- *   That re-emitted a SECOND <StarlightPage> inside the first, producing
- *   duplicate chrome (two header bars, two theme selects, two empty h1#_top
- *   blocks). MarketingShell already wraps StarlightPage internally — so by
- *   moving the homepage into src/pages/ we get a single chrome render, the
- *   same way every other marketing surface (/skills, /tips, /glossary,
- *   /news) already works. Closes Issues - Pending Items.md #12.
+ * Composition contract: page body is raw AgentNews HTML classes
+ * (.hero, .section, .wrap, .grid-3, .card, .feature) consuming --nbg-*
+ * semantic tokens from agentnews-layout.css. No Container/Section
+ * primitive wrappers — MarketingShell is set to width='full' + hero='none'
+ * so we control the entire body markup.
  *
- * Related: project-design.md §S.13.6, §S.13.10.1.
+ * Related: project-design.md §S.13.16 (AgentNews aesthetic anchor).
+ * Backs AC6, AC7, AC8, AC9, AC10, AC15.
  */
+import { getCollection } from 'astro:content';
 import MarketingShell from '../components/MarketingShell.astro';
-import Section from '../components/primitives/Section.astro';
-import Split from '../components/primitives/Split.astro';
-import Stack from '../components/primitives/Stack.astro';
-import Cluster from '../components/primitives/Cluster.astro';
-import Eyebrow from '../components/primitives/Eyebrow.astro';
-import Display from '../components/primitives/Display.astro';
-import Lede from '../components/primitives/Lede.astro';
-import Button from '../components/primitives/Button.astro';
-import HomeStats from '../components/HomeStats.astro';
-import NewsPanel from '../components/NewsPanel.astro';
+import { getRecentNews } from '../lib/news';
+import { getNewsSection, NEWS_SECTION_TAGS } from '../lib/news-sections';
+
+const recentNews   = await getRecentNews(6);
+const skills       = await getCollection('skills');
+const tips         = await getCollection('tips');
+const glossary     = await getCollection('glossary');
+
+const featureNews  = recentNews[0] ?? null;
+const tailNews     = recentNews.slice(1, 4);
+
+// 6 most recent skills, 6 most recent tips
+const topSkills = skills.slice(0, 6);
+const topTips   = tips.slice(0, 6);
+
+function slugify(entryId: string): string {
+  return entryId;
+}
+
+function formatDate(authored: string): string {
+  // Already ISO YYYY-MM-DD
+  return `${authored} UTC`;
+}
 ---
 
 <MarketingShell
   title="NBG AI Hub"
   description="A field manual for newcomers to Claude Code — what I wish I knew a year ago."
   surfaceId="home"
-  width="wide"
+  width="full"
+  hero="none"
 >
-  <Split slot="hero" ratio="3/5" stack="md" gap="8">
-    <Stack slot="start" gap="5">
-      <Eyebrow tone="accent">Claude Code</Eyebrow>
-      <Display level={1} size="xl">What I wish I knew a year ago.</Display>
-      <Lede size="lg">
-        A curated Claude Code knowledge hub for bank colleagues.
-        Skills, tips, news, and onboarding paths — opinionated,
-        plainspoken, no AI-slop hedging.
-      </Lede>
-      <Cluster gap="3" align="center">
-        <Button variant="primary" size="lg" href="/start-here/day-1/">
-          Start Here → Day 1
-        </Button>
-        <Button variant="secondary" size="lg" href="/skills/">
-          Browse Skills
-        </Button>
-      </Cluster>
-    </Stack>
-    <HomeStats slot="end" />
-  </Split>
+  {/* ─── Hero ─────────────────────────────────────────────────────── */}
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero__intro">
+        <h1 class="hero__title">
+          What I wish I knew about <em>the agent stack.</em>
+        </h1>
+        <p class="hero__lede">
+          A curated Claude Code knowledge hub for bank colleagues.
+          <strong>Skills</strong>, <strong>tips</strong>,
+          <strong>news</strong>, and <strong>onboarding paths</strong> —
+          opinionated, plainspoken, no AI-slop hedging.
+          <small>Updated {new Date().toISOString().slice(0, 10)} UTC</small>
+          <small><a href="/start-here/day-1/">→ start with Day 1</a></small>
+        </p>
+      </div>
+    </div>
+  </section>
 
-  <Section spacing="default" tone="default" surfaceId="home-news">
-    <NewsPanel limit={3} />
-  </Section>
+  {/* ─── News feed (top 4) ────────────────────────────────────────── */}
+  {recentNews.length > 0 && (
+    <section class="section" id="news">
+      <div class="wrap">
+        <div class="section__head">
+          <h2>News</h2>
+          <span class="count">{recentNews.length} items</span>
+          <a href="/news/">All news →</a>
+        </div>
+
+        {featureNews && (
+          <div class="feature">
+            <a
+              href={`/news/${slugify(featureNews.id)}/`}
+              class="feature__art feature__art--placeholder"
+              aria-label={featureNews.data.title}
+            >
+              <div class="card__art__glyph">{NEWS_SECTION_TAGS[getNewsSection(featureNews)]}</div>
+            </a>
+            <div class="feature__body">
+              <div class="feature__meta">
+                <span class="tag tag--link">{NEWS_SECTION_TAGS[getNewsSection(featureNews)]}</span>
+                <span class={`tag tag--confidence-${featureNews.data.editor_confidence}`}>
+                  {featureNews.data.editor_confidence} confidence
+                </span>
+              </div>
+              <div class="dates">
+                <span class="date-item">
+                  <span class="date-label">Published</span>
+                  <span class="date-value">{formatDate(featureNews.data.authored)}</span>
+                </span>
+              </div>
+              <h3 class="feature__title">
+                <a href={`/news/${slugify(featureNews.id)}/`}>{featureNews.data.title}</a>
+              </h3>
+              {featureNews.data.ai_summary && (
+                <p class="feature__summary">{featureNews.data.ai_summary}</p>
+              )}
+              <a class="feature__cta" href={`/news/${slugify(featureNews.id)}/`}>
+                Read brief →
+              </a>
+            </div>
+          </div>
+        )}
+
+        {tailNews.length > 0 && (
+          <div class="grid-3" style="margin-top: 3.5rem;">
+            {tailNews.map((entry) => {
+              const section = getNewsSection(entry);
+              return (
+                <article class="card" data-audience={entry.data.audience}>
+                  <a
+                    href={`/news/${slugify(entry.id)}/`}
+                    class="card__art card__art--placeholder"
+                    aria-label={entry.data.title}
+                  >
+                    <span class="card__art__glyph">{NEWS_SECTION_TAGS[section]}</span>
+                  </a>
+                  <div class="card__body">
+                    <div class="card__meta">
+                      <span class="tag">{NEWS_SECTION_TAGS[section]}</span>
+                    </div>
+                    <div class="dates">
+                      <span class="date-item">
+                        <span class="date-label">Published</span>
+                        <span class="date-value">{formatDate(entry.data.authored)}</span>
+                      </span>
+                    </div>
+                    <h3 class="card__title">
+                      <a href={`/news/${slugify(entry.id)}/`}>{entry.data.title}</a>
+                    </h3>
+                    {entry.data.ai_summary && (
+                      <p class="card__summary">{entry.data.ai_summary}</p>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </section>
+  )}
+
+  {/* ─── Skills feed ──────────────────────────────────────────────── */}
+  <section class="section" id="skills">
+    <div class="wrap">
+      <div class="section__head">
+        <h2>Skills</h2>
+        <span class="count">{skills.length} entries</span>
+        <a href="/skills/">All skills →</a>
+      </div>
+      <div class="grid-3">
+        {topSkills.map((skill) => (
+          <article class="card card--text" data-audience={skill.data.audience}>
+            <div class="card__body">
+              <div class="card__meta">
+                <span class="eyebrow accent">Skill</span>
+              </div>
+              <h3 class="card__title">
+                <a href={`/skills/#${skill.id}`}>{skill.data.title}</a>
+              </h3>
+              {skill.data.ai_summary && (
+                <p class="card__summary">{skill.data.ai_summary}</p>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  {/* ─── Tips feed ───────────────────────────────────────────────── */}
+  <section class="section" id="tips">
+    <div class="wrap">
+      <div class="section__head">
+        <h2>Tips</h2>
+        <span class="count">{tips.length} entries</span>
+        <a href="/tips/">All tips →</a>
+      </div>
+      <div class="grid-3">
+        {topTips.map((tip) => (
+          <article class="card card--text" data-audience={tip.data.audience}>
+            <div class="card__body">
+              <div class="card__meta">
+                <span class="eyebrow accent">Tip</span>
+              </div>
+              <h3 class="card__title">
+                <a href={`/tips/#${tip.id}`}>{tip.data.title}</a>
+              </h3>
+              {tip.data.ai_summary && (
+                <p class="card__summary">{tip.data.ai_summary}</p>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  {/* ─── Start-Here CTA ──────────────────────────────────────────── */}
+  <section class="section" id="start-here">
+    <div class="wrap">
+      <div class="section__head">
+        <h2>Start here</h2>
+        <span class="count">2 paths</span>
+      </div>
+      <div class="grid-2">
+        <article class="card card--text">
+          <div class="card__body">
+            <div class="card__meta">
+              <span class="eyebrow accent">Journey</span>
+            </div>
+            <h3 class="card__title">
+              <a href="/start-here/day-1/">Day 1 → first session</a>
+            </h3>
+            <p class="card__summary">
+              Six steps: install Claude Code, run your first session, learn the
+              survival keys, write CLAUDE.md, browse the skills marketplace,
+              know where to go next.
+            </p>
+            <a class="feature__cta" href="/start-here/day-1/">Begin → Day 1</a>
+          </div>
+        </article>
+        <article class="card card--text">
+          <div class="card__body">
+            <div class="card__meta">
+              <span class="eyebrow accent">Journey</span>
+            </div>
+            <h3 class="card__title">
+              <a href="/start-here/week-1/">Week 1 → habits</a>
+            </h3>
+            <p class="card__summary">
+              Five days of practice: shipping habits, code review with Claude,
+              custom skills, MCP servers, retros. Roughly 30 min/day.
+            </p>
+            <a class="feature__cta" href="/start-here/week-1/">Plan → Week 1</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  {/* ─── Footer ──────────────────────────────────────────────────── */}
+  <footer class="site-footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div>
+          <h4>NBG AI Hub</h4>
+          <p>
+            A curated Claude Code knowledge hub for bank colleagues. Skills,
+            tips, news, onboarding paths.
+          </p>
+        </div>
+        <div>
+          <h4>Read</h4>
+          <ul>
+            <li><a href="/news/">News</a></li>
+            <li><a href="/skills/">Skills</a></li>
+            <li><a href="/tips/">Tips</a></li>
+            <li><a href="/glossary/">Glossary</a></li>
+            <li><a href="/reference/">Reference</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Start</h4>
+          <ul>
+            <li><a href="/start-here/day-1/">Day 1</a></li>
+            <li><a href="/start-here/week-1/">Week 1</a></li>
+            <li><a href="/contribute/">Contribute</a></li>
+            <li><a href="/submit-skill/">Submit a skill</a></li>
+            <li><a href="/my-pins/">My pins</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Connect</h4>
+          <ul>
+            <li><a href="https://github.com/chomovazuzana/NbgAiHub" target="_blank" rel="noopener">GitHub</a></li>
+            <li><span class="footer-link--disabled">Discord (soon)</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="site-footer__bottom">
+        <span>NBG AI HUB — A FIELD MANUAL</span>
+        <span>{glossary.length} glossary · {tips.length} tips · {skills.length} skills</span>
+      </div>
+    </div>
+  </footer>
 </MarketingShell>

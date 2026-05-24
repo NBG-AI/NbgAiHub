@@ -1,34 +1,19 @@
 ---
 /**
- * /skills — Editorial skills catalog landing.
+ * /skills — AgentNews-aesthetic skills catalog.
  *
- * Composition: MarketingShell hero (Eyebrow + Display + Lede + AudienceFilter)
- * + featured lead skill (Card variant="feature") + Grid of remaining skills
- * (Card variant="content"). The lead skill spans full width; the rest flow in
- * an auto-fit grid sized for readable cards (NOT the legacy 18rem grid).
+ * Single AgentNews section with grid-3 of skill cards. Lead skill shown as
+ * a .feature. AudienceFilter + PinButton preserved.
  *
- * Related: project-design.md §S.13.10.4, plan-004 §P4.F.
- * Backs: AC8 (visual variety), AC35 (AudienceFilter functional).
+ * Related: project-design.md §S.13.16, plan-005 phase 4 #3.
+ * Backs AC10, AC11, AC15.
  */
 import { getCollection } from 'astro:content';
 import MarketingShell from '../components/MarketingShell.astro';
 import AudienceFilter from '../components/AudienceFilter.astro';
 import PinButton from '../components/PinButton.astro';
-import Section from '../components/primitives/Section.astro';
-import Stack from '../components/primitives/Stack.astro';
-import Cluster from '../components/primitives/Cluster.astro';
-import Grid from '../components/primitives/Grid.astro';
-import Card from '../components/primitives/Card.astro';
-import Eyebrow from '../components/primitives/Eyebrow.astro';
-import Display from '../components/primitives/Display.astro';
-import Lede from '../components/primitives/Lede.astro';
-import Badge from '../components/primitives/Badge.astro';
-import Chip from '../components/primitives/Chip.astro';
-import Button from '../components/primitives/Button.astro';
-import MotionReveal from '../components/primitives/MotionReveal.astro';
 
 const items = await getCollection('skills');
-// Lead = freshest skill by `authored` desc (falls back to title sort if tied).
 const sorted = items.sort((a, b) => {
   const byDate = b.data.authored.localeCompare(a.data.authored);
   return byDate !== 0 ? byDate : a.data.title.localeCompare(b.data.title);
@@ -41,162 +26,95 @@ const rest = sorted.slice(1);
   title="Skills"
   description="The skills catalog — reusable Claude Code skills and plugins worth your attention."
   surfaceId="skills"
-  width="wide"
+  width="full"
+  hero="none"
 >
-  <Stack slot="hero" gap="6">
-    <Eyebrow tone="accent">{items.length} skills</Eyebrow>
-    <Display level={1} size="lg">Skills worth installing.</Display>
-    <Lede size="sm">
-      A curated catalog of Claude Code skills and plugins — the ones we keep
-      reaching for. Each entry tells you what the skill does, who it's for,
-      and how to install it.
-    </Lede>
-    <AudienceFilter scope=".skill-card[data-audience], [data-skill-card][data-audience]" />
-  </Stack>
-
-  {items.length === 0 ? (
-    <Section spacing="default">
-      <Card variant="content">
-        <p>
-          No items yet. See <a href="/contribute/">Contribute</a> for how to
-          add one.
+  <section class="hero hero--compact">
+    <div class="wrap">
+      <div class="hero__intro">
+        <h1 class="hero__title">Skills worth <em>installing.</em></h1>
+        <p class="hero__lede">
+          A curated catalog of Claude Code skills and plugins — the ones we
+          keep reaching for. Each entry tells you what the skill does,
+          who it's for, and how to install it.
+          <small>{items.length} entries</small>
         </p>
-      </Card>
-    </Section>
-  ) : (
-    <Stack gap="10">
-      {lead && (
-        <Section spacing="snug" surfaceId="skills-lead">
-          <MotionReveal>
-            <article
-              class="skill-card"
-              data-skill-card="lead"
-              data-audience={lead.data.audience}
-              data-topics={lead.data.topics.join(',')}
-            >
-              <Card variant="feature">
-                <Stack slot="header" gap="3">
-                  <Cluster gap="2" align="center">
-                    <Eyebrow tone="accent">Featured skill</Eyebrow>
-                    <Badge tone={lead.data.audience}>{lead.data.audience}</Badge>
-                  </Cluster>
-                  <Display level={2} size="md">
-                    {lead.data.external_link ? (
-                      <a href={lead.data.external_link}>{lead.data.title} ↗</a>
-                    ) : (
-                      lead.data.title
-                    )}
-                  </Display>
-                </Stack>
-                <p class="nbg-lede">{lead.data.ai_summary}</p>
-                {lead.data.topics.length > 0 && (
-                  <Cluster gap="2" align="center">
-                    {lead.data.topics.map((topic) => <Chip>{topic}</Chip>)}
-                  </Cluster>
-                )}
-                <Cluster slot="footer" gap="3" align="center" justify="between">
-                  <Cluster gap="2" align="center">
-                    {lead.data.external_link && (
-                      <Button
-                        variant="primary"
-                        size="md"
-                        href={lead.data.external_link}
-                        target="_blank"
-                        rel="noopener"
-                      >
-                        Install
-                      </Button>
-                    )}
-                    {lead.data.deeper_link && (
-                      <Button
-                        variant="secondary"
-                        size="md"
-                        href={lead.data.deeper_link}
-                        target="_blank"
-                        rel="noopener"
-                      >
-                        Read more
-                      </Button>
-                    )}
-                  </Cluster>
-                  <PinButton type="skill" slug={lead.id} />
-                </Cluster>
-              </Card>
-            </article>
-          </MotionReveal>
-        </Section>
-      )}
+      </div>
+      <div style="margin-top: 2rem;">
+        <AudienceFilter scope=".card[data-audience]" />
+      </div>
+    </div>
+  </section>
 
-      {rest.length > 0 && (
-        <Section spacing="snug" surfaceId="skills-grid">
-          <Grid columns="auto-fit" min="22rem" gap="6">
-            {rest.map((entry) => (
-              <article
-                class="skill-card"
-                data-skill-card="content"
-                data-audience={entry.data.audience}
-                data-topics={entry.data.topics.join(',')}
-              >
-                <Card variant="content">
-                  <Stack slot="header" gap="2">
-                    <Cluster gap="2" align="center">
-                      <Badge tone={entry.data.audience}>{entry.data.audience}</Badge>
-                    </Cluster>
-                    <h3 class="nbg-display" data-size="sm" data-weight="semibold">
-                      {entry.data.external_link ? (
-                        <a href={entry.data.external_link}>{entry.data.title} ↗</a>
-                      ) : (
-                        entry.data.title
-                      )}
-                    </h3>
-                  </Stack>
-                  <p class="nbg-summary">{entry.data.ai_summary}</p>
-                  {entry.data.topics.length > 0 && (
-                    <Cluster gap="2" align="center">
-                      {entry.data.topics.slice(0, 4).map((topic) => (
-                        <Chip>{topic}</Chip>
-                      ))}
-                    </Cluster>
+  {lead && (
+    <section class="section">
+      <div class="wrap">
+        <div class="section__head">
+          <h2>Featured skill</h2>
+          <span class="count">{lead.data.origin}</span>
+        </div>
+        <article class="feature card" data-audience={lead.data.audience}>
+          <div class="feature__art feature__art--placeholder">
+            <span class="eyebrow eyebrow--accent">/{lead.data.skill_id}</span>
+          </div>
+          <div class="feature__body">
+            <div class="feature__meta">
+              <span class="tag tag--link">{lead.data.category}</span>
+              <span class={`tag tag--audience-${lead.data.audience}`}>{lead.data.audience}</span>
+              <span class="tag">{lead.data.origin}</span>
+            </div>
+            <h3 class="feature__title">{lead.data.title}</h3>
+            <p class="feature__summary">{lead.data.ai_summary}</p>
+            <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+              {lead.data.external_link && (
+                <a class="feature__cta" href={lead.data.external_link} target="_blank" rel="noopener">
+                  View source →
+                </a>
+              )}
+              <PinButton type="skill" slug={lead.id} />
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  )}
+
+  {rest.length > 0 && (
+    <section class="section">
+      <div class="wrap">
+        <div class="section__head">
+          <h2>All skills</h2>
+          <span class="count">{rest.length} more</span>
+        </div>
+        <div class="grid-3">
+          {rest.map((entry) => (
+            <article class="card card--text" data-audience={entry.data.audience}>
+              <div class="card__body">
+                <div class="card__meta">
+                  <span class="tag tag--link">/{entry.data.skill_id}</span>
+                  <span class={`tag tag--audience-${entry.data.audience}`}>{entry.data.audience}</span>
+                </div>
+                <h3 class="card__title">{entry.data.title}</h3>
+                <p class="card__summary">{entry.data.ai_summary}</p>
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                  {entry.data.external_link && (
+                    <a class="external-host" href={entry.data.external_link} target="_blank" rel="noopener">
+                      <span>{entry.data.origin}</span>
+                    </a>
                   )}
-                  <Cluster slot="footer" gap="3" align="center" justify="between">
-                    <span class="nbg-skill-meta">{entry.data.category}</span>
-                    <PinButton type="skill" slug={entry.id} />
-                  </Cluster>
-                </Card>
-              </article>
-            ))}
-          </Grid>
-        </Section>
-      )}
-    </Stack>
+                  <PinButton type="skill" slug={entry.id} />
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
   )}
 </MarketingShell>
 
 <style>
   @layer nbg.components {
-    .skill-card a {
-      color: inherit;
-      text-decoration: none;
-    }
-    .skill-card a:hover {
-      color: var(--nbg-color-link);
-      text-decoration: underline;
-    }
-    .nbg-summary {
-      margin: 0;
-      color: var(--nbg-color-fg-secondary);
-      font-size: var(--nbg-fs-md);
-      line-height: var(--nbg-lh-base);
-    }
-    .nbg-skill-meta {
-      font-family: var(--nbg-type-mono);
-      font-size: var(--nbg-fs-xs);
-      color: var(--nbg-color-fg-muted);
-      text-transform: uppercase;
-      letter-spacing: var(--nbg-ls-wide);
-    }
-    .skill-card.audience-hidden {
-      display: none;
-    }
+    .card.audience-hidden { display: none; }
   }
 </style>

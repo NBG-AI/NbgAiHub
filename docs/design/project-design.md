@@ -5933,4 +5933,92 @@ Every AC has a backing design anchor. Phase 6 coders can pick up any phase P4.* 
 
 ---
 
+## §S.13.16 — AgentNews aesthetic anchor (2026-05-24)
+
+This is a **value-only retune** of the §S.13 token system to match the AgentNews design language captured in `docs/reference/investigation-agentnews-aesthetic.md`. The three-tier architecture (primitives → semantic → aliases), the portability gate (AC36/AC37 of the AgentNews refined spec), and the 16 primitives under `site/src/components/primitives/` are all preserved. Token *names* survive; token *values* change. A new layout-class CSS file (`site/src/styles/agentnews-layout.css`) is added to host AgentNews's `.site-header`, `.hero`, `.section`, `.feature`, `.card`, `.tag`, `.eyebrow`, `.dates`, `.empty`, `.theme-toggle` class APIs. The 11 marketing surface page bodies are rewritten to use these class APIs.
+
+### §S.13.16.1 — Anchor source
+
+The AgentNews homepage at `https://biks2013.github.io/AgentNews/` is the source of truth. Its entire design system fits in a single 13,636-byte inline `<style>` block (preserved at `docs/research/agentnews-source/home-inline-styles.css`) plus three Google Fonts (`IBM Plex Sans`, `IBM Plex Mono`, `Newsreader`). The full investigation is at `docs/reference/investigation-agentnews-aesthetic.md` — it captures the 14-token palette, 3-font type scale, full-bleed surface + contained `.wrap` layout, three-section card pattern, single transition motion budget, and `data-theme` toggle mechanism.
+
+### §S.13.16.2 — Palette (replaces §S.13.2)
+
+Light is the default theme on AgentNews. The retune flips the NbgAiHub default to light, matching AgentNews. Dark is opt-in via `:root[data-theme="dark"]` OR `prefers-color-scheme: dark` AND no explicit `data-theme="light"`. Persisted under `localStorage.starlight-theme` (sharing key with Starlight `ThemeSelect`).
+
+| Semantic token   | Light  | Dark   | Role |
+|------------------|--------|--------|------|
+| `--nbg-bg`       | `#f4f6f9` | `#0b1419` | App background |
+| `--nbg-bg-2`     | `#eef2f7` | `#0f1c24` | Subdued bg |
+| `--nbg-surface`  | `#ffffff` | `#14232c` | Card / panel base |
+| `--nbg-surface-2`| `#f8fafc` | `#1a2d38` | Card art bg, search-trigger bg |
+| `--nbg-ink`      | `#0b1e2e` | `#e6edf3` | Primary text |
+| `--nbg-ink-2`    | `#1a3148` | `#c5d1dc` | Secondary text |
+| `--nbg-muted`    | `#5b6b80` | `#8b9aab` | Muted text |
+| `--nbg-muted-2`  | `#8392a6` | `#6b7a8c` | Hairline icons |
+| `--nbg-border`   | `#dce3eb` | `#243441` | Solid borders |
+| `--nbg-hairline` | `#ebeff5` | `#1c2b36` | 1px dividers |
+| `--nbg-accent`   | `#007a8a` | `#2dd4bf` | Active nav / link hover / accents (teal) |
+| `--nbg-accent-ink`| `#00525c` | `#67e8f9` | High-emphasis accent |
+| `--nbg-accent-soft`| `#e0f2f4` | `#0a3a42` | Tag-as-link background |
+| `--nbg-header-bg`| `rgba(244,246,249,.82)` | `rgba(11,20,25,.85)` | Sticky-nav backdrop |
+
+Shadow (single token): `--nbg-shadow-md` carries AgentNews's compound (soft drop + 1px hairline outline).
+
+Radii: `--nbg-radius-sm 6px`, `--nbg-radius 10px`, `--nbg-radius-lg 16px`, `--nbg-radius-pill 999px`.
+
+### §S.13.16.3 — Type (replaces §S.13.3)
+
+Three families:
+- `--nbg-font-sans` = `'IBM Plex Sans', system-ui, -apple-system, sans-serif`
+- `--nbg-font-mono` = `'IBM Plex Mono', ui-monospace, monospace`
+- `--nbg-font-serif` = `'Newsreader', Georgia, serif` (NEW — display serif for hero / feature / empty-state titles)
+
+Full type scale documented in investigation §2. Hero: `clamp(40px, 5vw, 64px)` Newsreader 500. Feature title: `clamp(28px, 3vw, 40px)`. Card title: 22px. Mono eyebrows: 11px uppercase tracked `.12em`. Italic-em accent on hero is the signature flourish.
+
+### §S.13.16.4 — Layout (replaces §S.13.4)
+
+**Container `.wrap`:** `max-width: 1240px; margin: 0 auto; padding: 0 32px;`. Mobile (≤720px): `padding: 0 20px;`.
+
+**Full-bleed strategy:** the section elements span full viewport width with their background colour. The `.wrap` inside each section caps the content at 1240px. So "full-bleed surfaces, contained content" — NOT edge-to-edge content. AC6-AC9 satisfied by computed `getBoundingClientRect().width` on the outer section equalling the viewport width.
+
+**Grids:** `.grid-3` `repeat(3, 1fr)` → `1fr` at ≤880px. `.feature` `1.4fr 1fr` → `1fr`. `.hero__intro` `2fr 1fr` → `1fr`. `.footer-grid` `2fr repeat(3, 1fr)` → `1fr 1fr`.
+
+**Breakpoints in practice:** 720 / 880 / 920.
+
+### §S.13.16.5 — Layout class API (new file)
+
+`site/src/styles/agentnews-layout.css` hosts the AgentNews class APIs. Primitives under `site/src/components/primitives/` are **not** restructured — they continue to consume only `--nbg-*` tokens and remain Starlight-free (AC37). The new file is a parallel layer used by marketing-surface page bodies.
+
+Class API (14 named atoms + their modifiers): `.wrap`, `.site-header`, `.brand`, `.nav`, `.header-actions`, `.search-trigger`, `.theme-toggle`, `.hero`, `.hero__intro`, `.hero__title`, `.hero__lede`, `.section`, `.section__head`, `.feature` (+`.feature__art`, `.feature__body`, `.feature__title`, `.feature__cta`), `.grid-3`, `.card` (+`.card__art`, `.card__body`, `.card__meta`, `.card__title`, `.card__summary`), `.tag` (+`.tag--link`), `.eyebrow` (+`.eyebrow.accent`), `.dot`, `.dates` (+`.date-item`, `.date-label`, `.date-value`), `.external-host`, `.empty`, `.site-footer`, `.footer-grid`.
+
+### §S.13.16.6 — Theme switching (refines §S.13.8)
+
+AgentNews's `data-theme` + localStorage mechanism is structurally identical to Starlight's `ThemeSelect`. NbgAiHub delegates the marketing-surface theme-toggle button to the SAME `data-theme` attribute and the SAME `starlight-theme` localStorage key — no JS conflict, both surfaces honour the same persisted choice.
+
+**Default theme: `light`** (was `dark`). Intentional flip to match AgentNews. Accessibility floor remains WCAG AA in both modes.
+
+**No-flash early-applied script** in `MarketingShell` so initial paint carries the correct theme. AgentNews itself omits this; NbgAiHub improves on it.
+
+### §S.13.16.7 — Motion (refines §S.13.7)
+
+AgentNews has **no scroll-reveal motion**. Only three hover transitions exist, each 120-150ms. `MotionReveal` stays a no-op (closes pending #5).
+
+`prefers-reduced-motion: reduce` is honoured via a single `@media` block in `agentnews-layout.css` that collapses all transitions to 0.01ms.
+
+### §S.13.16.8 — News three-section pattern
+
+Render-time discrimination via a new pure-function helper `site/src/lib/news-sections.ts`. **No schema change** to `site/src/content.config.ts`. Heuristic: `source` starts `r/` → AI-News; `source` matches `youtube\.com|youtu\.be` → Deep Dives; otherwise → Articles.
+
+### §S.13.16.9 — Reference
+
+- Investigation: `docs/reference/investigation-agentnews-aesthetic.md`
+- Plan: `docs/design/plan-005-agentnews-aesthetic.md`
+- Refined request: `docs/refined-requests/agentnews-aesthetic-match.md`
+- AgentNews source HTML: `docs/research/agentnews-source/home.html`
+- AgentNews source CSS: `docs/research/agentnews-source/home-inline-styles.css`
+
+§S.13.16 supersedes §S.13.2 colour values, §S.13.3 type scale, §S.13.4 layout primitives, and §S.13.8 theme defaults for marketing surfaces.
+
+---
+
 *End of UI Redesign section.*

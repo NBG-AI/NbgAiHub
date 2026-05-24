@@ -143,6 +143,76 @@ const showHero    = hero === 'auto' && hasHeroSlot;
   .pagination-links {
     display: none !important;
   }
+
+  /* AgentNews vertical-rhythm override (2026-05-24).
+   * Starlight's <header> wraps the nbg-topnav with vertical padding
+   *   (.header { padding: var(--sl-nav-pad-y) var(--sl-nav-pad-x) })
+   * which produces ~12px of extra white space above + below the visible
+   * nav content. AgentNews's nav has zero wrapper padding — the nav's
+   * own .nbg-topnav__inner controls horizontal padding. We zero out the
+   * Starlight wrapper padding on marketing surfaces, and shrink the
+   * mobile-toc placeholder. */
+  body:has([data-marketing='true']) {
+    --sl-nav-pad-y: 0;
+    --sl-nav-pad-x: 0;
+    --sl-mobile-toc-height: 0;
+  }
+  /* Topnav inner max-width must match the AgentNews container (1240px)
+   * so the brand + nav links align with the .wrap inside each section. */
+  body:has([data-marketing='true']) .nbg-topnav__inner {
+    max-width: var(--nbg-container-max, 77.5rem) !important;
+    padding-inline: var(--nbg-container-pad-desktop, 2rem) !important;
+  }
+  @media (max-width: 45rem) {
+    body:has([data-marketing='true']) .nbg-topnav__inner {
+      padding-inline: var(--nbg-container-pad-mobile, 1.25rem) !important;
+    }
+  }
+
+  /* Visible nav/page division (matches AgentNews's .site-header bottom hairline).
+   * The topnav background is semi-transparent so when the page hasn't scrolled,
+   * nav-bg and hero-bg share the same colour. Add an explicit hairline at the
+   * bottom of the topnav AND a tiny shadow for depth — both consume tokens. */
+  body:has([data-marketing='true']) .nbg-topnav {
+    background: var(--nbg-header-bg, color-mix(in srgb, var(--nbg-bg, var(--nbg-color-bg-canvas)) 85%, transparent)) !important;
+    border-bottom: 1px solid var(--nbg-hairline, var(--nbg-color-border-subtle)) !important;
+    box-shadow: 0 1px 0 0 var(--nbg-hairline, var(--nbg-color-border-subtle));
+  }
+
+  /* AgentNews full-bleed override (2026-05-24).
+   * Starlight wraps the marketing body in
+   *   <main> > .content-panel > .sl-container > .sl-markdown-content
+   * each of which applies a max-width / padding. For AgentNews-style
+   * full-bleed layout we drop those constraints on marketing surfaces
+   * so the page body can span the viewport and the inner `.wrap` does
+   * the centering.
+   *
+   * Scoped via `body:has([data-marketing='true'])` so content-detail
+   * pages (which legitimately want the Starlight content gutter) are
+   * untouched. */
+  body:has([data-marketing='true']) .content-panel {
+    padding: 0 !important;
+  }
+  body:has([data-marketing='true']) .content-panel > .sl-container,
+  body:has([data-marketing='true']) .content-panel > .sl-container > .sl-markdown-content {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  /* Starlight's <main> sets max-width on splash pages too — undo. */
+  body:has([data-marketing='true']) .main-pane > main,
+  body:has([data-marketing='true']) .main-frame > main {
+    max-width: none !important;
+  }
+  /* The splash template ships .main-pane with a left-side rail width on
+   * larger viewports. Drop it on marketing surfaces. */
+  body:has([data-marketing='true']) .main-pane {
+    max-width: none !important;
+    width: 100% !important;
+  }
+  body:has([data-marketing='true']) .lg\:sl-flex {
+    max-width: none !important;
+  }
 </style>
 
 <style>

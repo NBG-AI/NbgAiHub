@@ -1,196 +1,133 @@
 ---
 /**
- * /tips — Thematically clustered tips, grouped by topic.
+ * /tips — AgentNews-aesthetic tips index.
  *
- * Composition: MarketingShell hero (Eyebrow + Display + Lede + AudienceFilter)
- * + four Section blocks, one per thematic cluster (prompting / survival /
- * context / compliance), each with an Eyebrow + Display heading and a Grid
- * of Card variant="link" items. NOT a uniform card grid — clusters give the
- * page rhythm.
+ * Thematic clustering: prompting / survival / context / compliance, derived
+ * from `topics` frontmatter with a small fallback table.
  *
- * Clustering is derived from the existing `topics` frontmatter on each tip,
- * with a small fallback table — no content edits required.
- *
- * Related: project-design.md §S.13.10.6, plan-004 §P4.F.
- * Backs: AC10 (visual clustering).
+ * Related: project-design.md §S.13.16, plan-005 phase 4 #4.
+ * Backs AC10, AC15.
  */
 import { getCollection } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
 import MarketingShell from '../components/MarketingShell.astro';
 import AudienceFilter from '../components/AudienceFilter.astro';
 import PinButton from '../components/PinButton.astro';
-import Section from '../components/primitives/Section.astro';
-import Stack from '../components/primitives/Stack.astro';
-import Cluster from '../components/primitives/Cluster.astro';
-import Grid from '../components/primitives/Grid.astro';
-import Card from '../components/primitives/Card.astro';
-import Eyebrow from '../components/primitives/Eyebrow.astro';
-import Display from '../components/primitives/Display.astro';
-import Lede from '../components/primitives/Lede.astro';
-import Badge from '../components/primitives/Badge.astro';
-import MotionReveal from '../components/primitives/MotionReveal.astro';
 
 type Tip = CollectionEntry<'tips'>;
 
-interface Cluster {
-  id: 'prompting' | 'survival' | 'context' | 'compliance';
-  eyebrow: string;
-  title: string;
-  lede: string;
-  match: (topics: string[]) => boolean;
-}
+const all = await getCollection('tips');
 
-const clusters: Cluster[] = [
-  {
-    id: 'prompting',
-    eyebrow: 'Prompting',
-    title: 'How to ask, and how to correct.',
-    lede: 'The six prompting rules and a worked bad-vs-good example. Get these into your hands and most other patterns fall into place.',
-    match: (topics) =>
-      topics.some((t) =>
-        ['prompting', 'fundamentals', 'examples', 'corrections'].includes(t),
-      ),
-  },
-  {
-    id: 'survival',
-    eyebrow: 'Survival keys',
-    title: 'When something goes wrong — stop, rewind, review.',
-    lede: 'The keys and habits that keep a session salvageable when Claude heads down the wrong path.',
-    match: (topics) =>
-      topics.some((t) =>
-        ['survival', 'safety', 'trust-model', 'basics'].includes(t),
-      ),
-  },
-  {
-    id: 'context',
-    eyebrow: 'Context discipline',
-    title: 'Manage the conversation, not just the prompt.',
-    lede: 'Compact, clear, scope. Cheap context discipline is the single biggest accuracy lever you have.',
-    match: (topics) => topics.some((t) => ['context'].includes(t)),
-  },
-  {
-    id: 'compliance',
-    eyebrow: 'Compliance',
-    title: 'Bank-safe Claude — the rules of the road.',
-    lede: 'Compliance is not optional. These are the patterns we use to stay inside policy without losing the leverage.',
-    match: (topics) =>
-      topics.some((t) =>
-        ['compliance', 'data-residency', 'llm-strategy'].includes(t),
-      ),
-  },
+// Cluster heuristic — derive from topics. Order matters (first match wins).
+const CLUSTERS: Array<{ key: string; label: string; tag: string; match: (t: Tip) => boolean }> = [
+  { key: 'prompting',  label: 'Prompting',  tag: 'Prompting',
+    match: (t) => t.data.topics.some((x: string) => /prompt|model|opus|sonnet/i.test(x)) },
+  { key: 'survival',   label: 'Survival keys', tag: 'Survival',
+    match: (t) => t.data.topics.some((x: string) => /survival|esc|compact|clear|keyboard/i.test(x)) },
+  { key: 'context',    label: 'Context discipline', tag: 'Context',
+    match: (t) => t.data.topics.some((x: string) => /context|memory|claudemd|claude\.md|file/i.test(x)) },
+  { key: 'compliance', label: 'Compliance + safety', tag: 'Compliance',
+    match: (t) => t.data.topics.some((x: string) => /compliance|safety|trust|review|azure|secrets/i.test(x)) },
 ];
 
-const items: Tip[] = await getCollection('tips');
-
-// Bucket each tip into the first matching cluster; tips that match none get
-// dropped into 'survival' so they still surface — visible everywhere is better
-// than invisible.
-const byCluster = new Map<Cluster['id'], Tip[]>();
-for (const c of clusters) byCluster.set(c.id, []);
-
-for (const tip of items) {
-  const target = clusters.find((c) => c.match(tip.data.topics));
-  const id: Cluster['id'] = target ? target.id : 'survival';
-  byCluster.get(id)!.push(tip);
+const buckets: Record<string, Tip[]> = Object.fromEntries(CLUSTERS.map((c) => [c.key, []]));
+const orphans: Tip[] = [];
+for (const tip of all) {
+  const cluster = CLUSTERS.find((c) => c.match(tip));
+  if (cluster) {
+    const bucket = buckets[cluster.key];
+    if (bucket) bucket.push(tip);
+  } else {
+    orphans.push(tip);
+  }
 }
 ---
 
 <MarketingShell
-  title="Tips & Tricks"
-  description="Hard-won lessons. Short, opinionated, no fluff."
+  title="Tips"
+  description="Tips, prompts, and gotchas — the patterns we keep reaching for."
   surfaceId="tips"
-  width="wide"
+  width="full"
+  hero="none"
 >
-  <Stack slot="hero" gap="6">
-    <Eyebrow tone="accent">{items.length} tips</Eyebrow>
-    <Display level={1} size="lg">Hard-won lessons.</Display>
-    <Lede size="sm">
-      Short, opinionated tips — grouped into the four themes we keep
-      coming back to. Read by cluster, not alphabetically.
-    </Lede>
-    <AudienceFilter scope=".tip-card[data-audience]" />
-  </Stack>
-
-  {items.length === 0 ? (
-    <Section spacing="default">
-      <Card variant="content">
-        <p>
-          No items yet. See <a href="/contribute/">Contribute</a> for how to
-          add one.
+  <section class="hero hero--compact">
+    <div class="wrap">
+      <div class="hero__intro">
+        <h1 class="hero__title">Patterns I keep <em>reaching for.</em></h1>
+        <p class="hero__lede">
+          Prompts, gotchas, and workflow recipes — clustered by theme so you
+          can skim the area you need. Opinionated and plainspoken.
+          <small>{all.length} entries</small>
         </p>
-      </Card>
-    </Section>
-  ) : (
-    <Stack gap="12">
-      {clusters.map((cluster) => {
-        const tips = byCluster.get(cluster.id) ?? [];
-        if (tips.length === 0) return null;
-        return (
-          <Section spacing="default" surfaceId={`tips-${cluster.id}`}>
-            <Stack gap="6">
-              <Stack gap="3">
-                <Eyebrow tone="accent">{cluster.eyebrow}</Eyebrow>
-                <Display level={2} size="sm">{cluster.title}</Display>
-                <Lede size="sm">{cluster.lede}</Lede>
-              </Stack>
-              <MotionReveal>
-                <Grid columns="auto-fit" min="20rem" gap="4">
-                  {tips.map((tip) => (
-                    <article
-                      class="tip-card"
-                      data-audience={tip.data.audience}
-                      data-topics={tip.data.topics.join(',')}
-                    >
-                      <Card variant="content">
-                        <Stack slot="header" gap="2">
-                          <Cluster gap="2" align="center">
-                            <Badge tone={tip.data.audience}>{tip.data.audience}</Badge>
-                          </Cluster>
-                          <h3 class="nbg-display" data-size="sm" data-weight="semibold">
-                            {tip.data.title}
-                          </h3>
-                        </Stack>
-                        <p class="tip-summary">{tip.data.ai_summary}</p>
-                        <Cluster slot="footer" gap="3" align="center" justify="between">
-                          {tip.data.deeper_link ? (
-                            <a class="tip-deeper" href={tip.data.deeper_link} target="_blank" rel="noopener">
-                              Read more →
-                            </a>
-                          ) : <span />}
-                          <PinButton type="tip" slug={tip.id} />
-                        </Cluster>
-                      </Card>
-                    </article>
-                  ))}
-                </Grid>
-              </MotionReveal>
-            </Stack>
-          </Section>
-        );
-      })}
-    </Stack>
+      </div>
+      <div style="margin-top: 2rem;">
+        <AudienceFilter scope=".card[data-audience]" />
+      </div>
+    </div>
+  </section>
+
+  {CLUSTERS.map((cluster) => {
+    const items = buckets[cluster.key] ?? [];
+    if (items.length === 0) return null;
+    return (
+      <section class="section" id={cluster.key}>
+        <div class="wrap">
+          <div class="section__head">
+            <h2>{cluster.label}</h2>
+            <span class="count">{items.length} {items.length === 1 ? 'tip' : 'tips'}</span>
+          </div>
+          <div class="grid-3">
+            {items.map((tip) => (
+              <article class="card card--text" data-audience={tip.data.audience}>
+                <div class="card__body">
+                  <div class="card__meta">
+                    <span class="tag tag--link">{cluster.tag}</span>
+                    <span class={`tag tag--audience-${tip.data.audience}`}>{tip.data.audience}</span>
+                  </div>
+                  <h3 class="card__title">{tip.data.title}</h3>
+                  <p class="card__summary">{tip.data.ai_summary}</p>
+                  <div style="margin-top: 0.5rem;">
+                    <PinButton type="tip" slug={tip.id} />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  })}
+
+  {orphans.length > 0 && (
+    <section class="section" id="other">
+      <div class="wrap">
+        <div class="section__head">
+          <h2>Other</h2>
+          <span class="count">{orphans.length} {orphans.length === 1 ? 'tip' : 'tips'}</span>
+        </div>
+        <div class="grid-3">
+          {orphans.map((tip) => (
+            <article class="card card--text" data-audience={tip.data.audience}>
+              <div class="card__body">
+                <div class="card__meta">
+                  <span class="tag">Misc</span>
+                </div>
+                <h3 class="card__title">{tip.data.title}</h3>
+                <p class="card__summary">{tip.data.ai_summary}</p>
+                <div style="margin-top: 0.5rem;">
+                  <PinButton type="tip" slug={tip.id} />
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
   )}
 </MarketingShell>
 
 <style>
   @layer nbg.components {
-    .tip-summary {
-      margin: 0;
-      color: var(--nbg-color-fg-secondary);
-      font-size: var(--nbg-fs-md);
-      line-height: var(--nbg-lh-base);
-    }
-    .tip-deeper {
-      font-family: var(--nbg-type-mono);
-      font-size: var(--nbg-fs-xs);
-      color: var(--nbg-color-link);
-      text-decoration: none;
-    }
-    .tip-deeper:hover {
-      text-decoration: underline;
-    }
-    .tip-card.audience-hidden {
-      display: none;
-    }
+    .card.audience-hidden { display: none; }
   }
 </style>

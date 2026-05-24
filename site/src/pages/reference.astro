@@ -1,29 +1,16 @@
 ---
 /**
- * /reference — Reference cheatsheet placeholder + category preview.
+ * /reference — AgentNews-aesthetic reference cheatsheet.
  *
- * Composition: MarketingShell hero (Eyebrow + Display + Lede) + three
- * Section blocks for the future reference categories. Each category renders
- * a Display heading + a Grid of Card variant="link" items in a greyed-out
- * disabled state — previewing the shape of content that will land next.
+ * Same data buckets as before (slashCommands, filePatterns, triageShortcuts,
+ * plannedSkillsIndex, plannedPluginRef). Visual chrome retuned to AgentNews
+ * .section + .grid-3 + .card. Disabled "planned" items use the .footer-link--disabled
+ * tone.
  *
- * Existing copy from the prior page (slash commands, file patterns, triage
- * shortcuts) is preserved as the first category so the page is useful today.
- *
- * Related: project-design.md §S.13.10.8, plan-004 §P4.F.
- * Backs: AC12.
+ * Related: project-design.md §S.13.16, plan-005 phase 4 #6.
+ * Backs AC10, AC15.
  */
 import MarketingShell from '../components/MarketingShell.astro';
-import Section from '../components/primitives/Section.astro';
-import Stack from '../components/primitives/Stack.astro';
-import Cluster from '../components/primitives/Cluster.astro';
-import Grid from '../components/primitives/Grid.astro';
-import Card from '../components/primitives/Card.astro';
-import Eyebrow from '../components/primitives/Eyebrow.astro';
-import Display from '../components/primitives/Display.astro';
-import Lede from '../components/primitives/Lede.astro';
-import Badge from '../components/primitives/Badge.astro';
-import Kbd from '../components/primitives/Kbd.astro';
 
 interface PreviewItem {
   title: string;
@@ -33,90 +20,40 @@ interface PreviewItem {
 }
 
 const slashCommands: PreviewItem[] = [
-  {
-    title: '/clear',
-    body: 'Wipes the conversation. Use it between unrelated tasks. Cheap context = better answers.',
-    status: 'live',
-  },
-  {
-    title: '/init',
-    body: 'Generates a starter CLAUDE.md for the current repo. Don\'t skip the human pass — Claude\'s first draft is rarely what you want long-term.',
-    status: 'live',
-  },
-  {
-    title: '/cost',
-    body: 'Shows your token usage for the session. Watch this when you\'re iterating on a big plan.',
-    status: 'live',
-  },
-  {
-    title: '/agents',
-    body: 'Manage subagents. Subagents = fresh context window for a sub-task. Huge for long sessions.',
-    status: 'live',
-  },
+  { title: '/clear', body: 'Wipes the conversation. Use it between unrelated tasks. Cheap context = better answers.', status: 'live' },
+  { title: '/init',  body: 'Generates a starter CLAUDE.md for the current repo. Don\'t skip the human pass.', status: 'live' },
+  { title: '/cost',  body: 'Shows your token usage for the session. Watch this when you\'re iterating on a big plan.', status: 'live' },
+  { title: '/agents',body: 'Manage subagents. Subagents = fresh context window for a sub-task. Huge for long sessions.', status: 'live' },
 ];
 
 const filePatterns: PreviewItem[] = [
-  {
-    title: 'CLAUDE.md (project + global)',
-    body: 'One CLAUDE.md per repo, plus a global ~/.claude/CLAUDE.md. Project rules go in the repo; personal preferences in global.',
-    status: 'live',
-  },
-  {
-    title: 'Issues - Pending Items.md',
-    body: 'A project-root file where Claude logs unresolved questions. Saves you from "wait, what did I decide about X?" three weeks later.',
-    status: 'live',
-  },
-  {
-    title: 'Plan files (docs/design/plan-*.md)',
-    body: 'Write the plan before the code. Reviewing a plan is 10× cheaper than reviewing a diff.',
-    status: 'live',
-  },
+  { title: 'CLAUDE.md (project + global)', body: 'One CLAUDE.md per repo, plus a global ~/.claude/CLAUDE.md. Project rules in the repo; personal preferences global.', status: 'live' },
+  { title: 'Issues - Pending Items.md',     body: 'Project-root file where Claude logs unresolved questions.', status: 'live' },
+  { title: 'Plan files (docs/design/plan-*.md)', body: 'Write the plan before the code. Reviewing a plan is 10× cheaper than reviewing a diff.', status: 'live' },
 ];
 
 const triageShortcuts: PreviewItem[] = [
-  {
-    title: '"Don\'t write code yet — just outline."',
-    body: 'Use this every time a feature touches more than one file.',
-    status: 'live',
-  },
-  {
-    title: '"List your assumptions before proceeding."',
-    body: 'Catches the AI\'s drift earlier than reading 200 lines of code.',
-    status: 'live',
-  },
-  {
-    title: '"What\'s the smallest change that makes this work?"',
-    body: 'Antidote to gold-plating.',
-    status: 'live',
-  },
+  { title: '"Don\'t write code yet — just outline."',     body: 'Use this every time a feature touches more than one file.', status: 'live' },
+  { title: '"List your assumptions before proceeding."', body: 'Catches the AI\'s drift earlier than reading 200 lines of code.', status: 'live' },
+  { title: '"What\'s the smallest change that makes this work?"', body: 'Antidote to gold-plating.', status: 'live' },
 ];
 
 const plannedSkillsIndex: PreviewItem[] = [
-  {
-    title: 'team@556LowCodeNoCode-skills',
-    body: 'Where the team\'s curated skills live. Index will list each by id, audience, and category.',
-    href: 'https://github.com/556LowCodeNoCode/Skills',
-    status: 'planned',
-  },
-  {
-    title: 'nbg-ai-hub@nbg-ai-hub-marketplace',
-    body: 'This hub installable as a plugin. Index will surface the eleven /hub-* commands.',
-    status: 'planned',
-  },
+  { title: 'team@556LowCodeNoCode-skills', body: 'Where the team\'s curated skills live.', href: 'https://github.com/556LowCodeNoCode/Skills', status: 'planned' },
+  { title: 'nbg-ai-hub@nbg-ai-hub-marketplace', body: 'This hub installable as a plugin.', status: 'planned' },
 ];
 
 const plannedPluginRef: PreviewItem[] = [
-  {
-    title: 'Commands',
-    body: 'A flat index of every /hub-* command with one-line descriptions. Source of truth: plugin/commands/ on GitHub.',
-    href: 'https://github.com/chomovazuzana/NbgAiHub/tree/main/plugin/commands',
-    status: 'planned',
-  },
-  {
-    title: 'Manifest',
-    body: 'plugin.json schema — what fields are required, what the marketplace expects.',
-    status: 'planned',
-  },
+  { title: 'Commands', body: 'A flat index of every /hub-* command. Source: plugin/commands/ on GitHub.', href: 'https://github.com/chomovazuzana/NbgAiHub/tree/main/plugin/commands', status: 'planned' },
+  { title: 'Manifest', body: 'plugin.json schema — what fields are required, what the marketplace expects.', status: 'planned' },
+];
+
+const sections = [
+  { id: 'slash-commands', label: 'Slash commands', sub: 'Live · 4 entries', items: slashCommands },
+  { id: 'file-patterns',  label: 'File patterns',  sub: 'Live · 3 entries', items: filePatterns },
+  { id: 'triage',         label: 'Triage shortcuts', sub: 'Live · 3 entries', items: triageShortcuts },
+  { id: 'skills-index',   label: 'Skills indices',   sub: 'Planned · 2 entries', items: plannedSkillsIndex },
+  { id: 'plugin-ref',     label: 'Plugin reference', sub: 'Planned · 2 entries', items: plannedPluginRef },
 ];
 ---
 
@@ -124,177 +61,57 @@ const plannedPluginRef: PreviewItem[] = [
   title="Reference"
   description="A tight cheatsheet. The things you keep needing to look up."
   surfaceId="reference"
-  width="wide"
+  width="full"
+  hero="none"
 >
-  <Stack slot="hero" gap="6">
-    <Eyebrow tone="accent">Coming soon</Eyebrow>
-    <Display level={1} size="lg">Reference.</Display>
-    <Lede size="sm">
-      A tight cheatsheet. The things you keep needing to look up — opinionated,
-      "what I wish I knew a year ago." Slash commands first; the deeper indices
-      land as the hub grows.
-    </Lede>
-  </Stack>
+  <section class="hero hero--compact">
+    <div class="wrap">
+      <div class="hero__intro">
+        <h1 class="hero__title">A tight <em>cheatsheet.</em></h1>
+        <p class="hero__lede">
+          The things you keep needing to look up. Slash commands first;
+          the deeper indices land as the hub grows.
+          <small>14 entries</small>
+        </p>
+      </div>
+    </div>
+  </section>
 
-  <Stack gap="12">
-    <Section spacing="default" surfaceId="reference-slash-commands">
-      <Stack gap="6">
-        <Stack gap="3">
-          <Eyebrow tone="accent">Live</Eyebrow>
-          <Display level={2} size="sm">Slash commands worth knowing.</Display>
-          <Lede size="sm">
-            Four commands that pay off in the first week.
-          </Lede>
-        </Stack>
-        <Grid columns="auto-fit" min="20rem" gap="4">
-          {slashCommands.map((item) => (
-            <Card variant="content">
-              <Stack slot="header" gap="2">
-                <Cluster gap="2" align="center">
-                  <Kbd>{item.title}</Kbd>
-                </Cluster>
-              </Stack>
-              <p class="ref-body">{item.body}</p>
-            </Card>
+  {sections.map((section) => (
+    <section class="section" id={section.id}>
+      <div class="wrap">
+        <div class="section__head">
+          <h2>{section.label}</h2>
+          <span class="count">{section.sub}</span>
+        </div>
+        <div class="grid-3">
+          {section.items.map((item) => (
+            <article class={`card card--text ${item.status === 'planned' ? 'card--planned' : ''}`}>
+              <div class="card__body">
+                <div class="card__meta">
+                  <span class={`tag ${item.status === 'live' ? 'tag--link' : ''}`}>{item.status}</span>
+                </div>
+                <h3 class="card__title">
+                  {item.href ? (
+                    <a href={item.href} target="_blank" rel="noopener">{item.title}</a>
+                  ) : (
+                    item.title
+                  )}
+                </h3>
+                <p class="card__summary">{item.body}</p>
+              </div>
+            </article>
           ))}
-        </Grid>
-      </Stack>
-    </Section>
-
-    <Section spacing="default" surfaceId="reference-file-patterns">
-      <Stack gap="6">
-        <Stack gap="3">
-          <Eyebrow tone="accent">Live</Eyebrow>
-          <Display level={2} size="sm">File patterns that pay off.</Display>
-          <Lede size="sm">
-            Three files we keep coming back to.
-          </Lede>
-        </Stack>
-        <Grid columns="auto-fit" min="20rem" gap="4">
-          {filePatterns.map((item) => (
-            <Card variant="content">
-              <Stack slot="header" gap="2">
-                <h3 class="nbg-display" data-size="sm" data-weight="semibold">{item.title}</h3>
-              </Stack>
-              <p class="ref-body">{item.body}</p>
-            </Card>
-          ))}
-        </Grid>
-      </Stack>
-    </Section>
-
-    <Section spacing="default" surfaceId="reference-triage">
-      <Stack gap="6">
-        <Stack gap="3">
-          <Eyebrow tone="accent">Live</Eyebrow>
-          <Display level={2} size="sm">Triage shortcuts.</Display>
-          <Lede size="sm">
-            Three phrases that pull Claude out of a tailspin.
-          </Lede>
-        </Stack>
-        <Grid columns="auto-fit" min="20rem" gap="4">
-          {triageShortcuts.map((item) => (
-            <Card variant="content">
-              <Stack slot="header" gap="2">
-                <h3 class="nbg-display" data-size="sm" data-weight="semibold">{item.title}</h3>
-              </Stack>
-              <p class="ref-body">{item.body}</p>
-            </Card>
-          ))}
-        </Grid>
-      </Stack>
-    </Section>
-
-    <Section spacing="default" surfaceId="reference-skills-index" tone="subtle">
-      <Stack gap="6">
-        <Stack gap="3">
-          <Cluster gap="2" align="center">
-            <Eyebrow tone="default">Planned</Eyebrow>
-            <Badge tone="warning">coming soon</Badge>
-          </Cluster>
-          <Display level={2} size="sm">Skills index.</Display>
-          <Lede size="sm">
-            A flat, sortable index of every skill the team installs. Will live
-            here once the catalog stabilises.
-          </Lede>
-        </Stack>
-        <Grid columns="auto-fit" min="22rem" gap="4">
-          {plannedSkillsIndex.map((item) => (
-            <Card variant="link" href={item.href} target={item.href ? '_blank' : undefined} rel={item.href ? 'noopener' : undefined}>
-              <Stack slot="header" gap="2">
-                <Cluster gap="2" align="center">
-                  <Eyebrow tone="default">Planned</Eyebrow>
-                </Cluster>
-                <h3 class="nbg-display ref-planned-title" data-size="sm" data-weight="semibold">{item.title}</h3>
-              </Stack>
-              <p class="ref-body">{item.body}</p>
-            </Card>
-          ))}
-        </Grid>
-      </Stack>
-    </Section>
-
-    <Section spacing="default" surfaceId="reference-plugin" tone="subtle">
-      <Stack gap="6">
-        <Stack gap="3">
-          <Cluster gap="2" align="center">
-            <Eyebrow tone="default">Planned</Eyebrow>
-            <Badge tone="warning">coming soon</Badge>
-          </Cluster>
-          <Display level={2} size="sm">Plugin reference.</Display>
-          <Lede size="sm">
-            The eleven /hub-* commands, the manifest schema, the snapshot
-            shape. Right now this lives in source — it'll live here next.
-          </Lede>
-        </Stack>
-        <Grid columns="auto-fit" min="22rem" gap="4">
-          {plannedPluginRef.map((item) => (
-            <Card variant="link" href={item.href} target={item.href ? '_blank' : undefined} rel={item.href ? 'noopener' : undefined}>
-              <Stack slot="header" gap="2">
-                <Cluster gap="2" align="center">
-                  <Eyebrow tone="default">Planned</Eyebrow>
-                </Cluster>
-                <h3 class="nbg-display ref-planned-title" data-size="sm" data-weight="semibold">{item.title}</h3>
-              </Stack>
-              <p class="ref-body">{item.body}</p>
-            </Card>
-          ))}
-        </Grid>
-      </Stack>
-    </Section>
-
-    <Section spacing="snug" surfaceId="reference-next">
-      <Stack gap="3">
-        <Eyebrow tone="accent">Where to go next</Eyebrow>
-        <Cluster gap="3" align="center">
-          <a class="ref-link" href="/start-here/day-1/">Start Here → Day 1</a>
-          <a class="ref-link" href="/glossary/">Glossary</a>
-          <a class="ref-link" href="/contribute/">Contribute</a>
-        </Cluster>
-      </Stack>
-    </Section>
-  </Stack>
+        </div>
+      </div>
+    </section>
+  ))}
 </MarketingShell>
 
 <style>
   @layer nbg.components {
-    .ref-body {
-      margin: 0;
-      color: var(--nbg-color-fg-secondary);
-      font-size: var(--nbg-fs-md);
-      line-height: var(--nbg-lh-base);
-    }
-    .ref-planned-title {
-      color: var(--nbg-color-fg-muted);
-    }
-    .ref-link {
-      font-family: var(--nbg-type-body);
-      font-size: var(--nbg-fs-md);
-      color: var(--nbg-color-link);
-      text-decoration: none;
-    }
-    .ref-link:hover {
-      text-decoration: underline;
+    .card--planned {
+      opacity: 0.6;
     }
   }
 </style>

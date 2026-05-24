@@ -15,3 +15,6 @@
 @import './semantic.css';
 @import './aliases.css';
 @import './legacy.css';
+/* AgentNews layout class API — consumed by body.nbg-marketing pages.
+ * Order matters: after aliases.css so layer cascade lands consistently. */
+@import '../agentnews-layout.css';

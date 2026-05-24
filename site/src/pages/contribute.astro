@@ -1,28 +1,11 @@
 ---
 /**
- * /contribute — Two-path CTA: submit-skill flow + GitHub PR flow.
+ * /contribute — AgentNews-aesthetic two-path CTA.
  *
- * Composition: MarketingShell hero (Eyebrow + Display + Lede) + a Split
- * primitive putting the two paths side-by-side on desktop, stacking on mobile.
- * Below the split, a small editorial section about required frontmatter and
- * tone preserves the previous page's useful copy.
- *
- * Related: project-design.md §S.13.10.9, plan-004 §P4.F.
- * Backs: AC13.
+ * Related: project-design.md §S.13.16, plan-005 phase 4 #7.
+ * Backs AC10, AC15.
  */
 import MarketingShell from '../components/MarketingShell.astro';
-import Section from '../components/primitives/Section.astro';
-import Stack from '../components/primitives/Stack.astro';
-import Cluster from '../components/primitives/Cluster.astro';
-import Split from '../components/primitives/Split.astro';
-import Card from '../components/primitives/Card.astro';
-import Grid from '../components/primitives/Grid.astro';
-import Eyebrow from '../components/primitives/Eyebrow.astro';
-import Display from '../components/primitives/Display.astro';
-import Lede from '../components/primitives/Lede.astro';
-import Button from '../components/primitives/Button.astro';
-import Kbd from '../components/primitives/Kbd.astro';
-import Chip from '../components/primitives/Chip.astro';
 
 interface FrontmatterKey {
   key: string;
@@ -47,161 +30,112 @@ const sharedKeys: FrontmatterKey[] = [
   title="Contribute"
   description="Two paths to ship a change to the hub — the form, or the pull request."
   surfaceId="contribute"
-  width="wide"
+  width="full"
+  hero="none"
 >
-  <Stack slot="hero" gap="6">
-    <Eyebrow tone="accent">Contribute</Eyebrow>
-    <Display level={1} size="lg">Two paths in.</Display>
-    <Lede size="sm">
-      The hub is a git repo. Everything you see lives as markdown under
-      <code>news/</code>, <code>skills/</code>, <code>tips/</code>,
-      <code>glossary/</code>, or <code>journeys/</code>. Pick a lane — the
-      web form, or a direct PR.
-    </Lede>
-  </Stack>
+  <section class="hero hero--compact">
+    <div class="wrap">
+      <div class="hero__intro">
+        <h1 class="hero__title">Two <em>paths in.</em></h1>
+        <p class="hero__lede">
+          The hub is a git repo. Everything you see lives as markdown under
+          <code>news/</code>, <code>skills/</code>, <code>tips/</code>,
+          <code>glossary/</code>, or <code>journeys/</code>. Pick a lane.
+        </p>
+      </div>
+    </div>
+  </section>
 
-  <Stack gap="12">
-    <Section spacing="default" surfaceId="contribute-paths">
-      <Split ratio="1/2" stack="md" gap="8">
-        <div slot="start">
-          <Card variant="feature">
-            <Stack slot="header" gap="3">
-              <Eyebrow tone="accent">The fast path</Eyebrow>
-              <Display level={2} size="sm">Submit a skill via the form.</Display>
-            </Stack>
-            <Lede size="sm">
-              Fill in the fields, watch the validator agree as you type, click
-              submit, and you land on GitHub's editor with the file pre-filled.
-              No fork required, no markdown required, no waiting.
-            </Lede>
-            <p class="contrib-meta">
-              For: anyone, including newcomers. The validator runs the same
-              17 rules our CI runs, so you'll never push a broken submission.
+  <section class="section" id="paths">
+    <div class="wrap">
+      <div class="section__head">
+        <h2>Pick a path</h2>
+        <span class="count">2 ways</span>
+      </div>
+      <div class="feature">
+        <div class="feature__art feature__art--placeholder">
+          <span class="eyebrow eyebrow--accent">The fast path</span>
+        </div>
+        <div class="feature__body">
+          <div class="feature__meta">
+            <span class="tag tag--link">Web form</span>
+          </div>
+          <h3 class="feature__title">Submit a skill via the form.</h3>
+          <p class="feature__summary">
+            The submit-skill page is anonymous-accessible. Fill in the form,
+            it validates against the 17-rule contract, and redirects you to
+            GitHub's editor with the file pre-filled. Open the resulting PR
+            from there — no local setup needed.
+          </p>
+          <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+            <a class="feature__cta" href="/submit-skill/">Open the form →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="pr-path">
+    <div class="wrap">
+      <div class="section__head">
+        <h2>The PR path</h2>
+        <span class="count">For anything else</span>
+      </div>
+      <div class="grid-2">
+        <article class="card card--text">
+          <div class="card__body">
+            <div class="card__meta">
+              <span class="tag">News · Tip · Glossary · Journey</span>
+            </div>
+            <h3 class="card__title">Fork → edit → PR.</h3>
+            <p class="card__summary">
+              For news items, tips, glossary terms, or onboarding journey
+              edits, the simplest path is GitHub's web editor. Find the
+              file, hit the pencil, write your change, and open a PR.
             </p>
-            <Cluster slot="footer" gap="3" align="center">
-              <Button variant="primary" size="lg" href="/submit-skill/">
-                Open the form
-              </Button>
-              <a class="contrib-secondary" href="/skills/">Browse existing skills →</a>
-            </Cluster>
-          </Card>
-        </div>
-        <div slot="end">
-          <Card variant="content">
-            <Stack slot="header" gap="3">
-              <Eyebrow>The deep path</Eyebrow>
-              <Display level={2} size="sm">Open a pull request directly.</Display>
-            </Stack>
-            <Lede size="sm">
-              For tips, glossary terms, journey edits, or anything more complex
-              than a single skill. Fork, edit, PR.
-            </Lede>
-            <ol class="contrib-steps">
-              <li>Fork or clone the repo.</li>
-              <li>
-                Drop a new markdown file in the appropriate folder. Frontmatter
-                must satisfy the Zod schema — see existing entries for working
-                examples.
-              </li>
-              <li>
-                Run <code>cd site && npm run check</code> locally. If your
-                frontmatter is wrong, this will tell you exactly which field
-                on which file is off.
-              </li>
-              <li>Open a PR. Keep it small. One topic per PR.</li>
-            </ol>
-            <Cluster slot="footer" gap="3" align="center">
-              <Cluster gap="1" align="center">
-                <Kbd>gh</Kbd>
-                <Kbd>pr</Kbd>
-                <Kbd>create</Kbd>
-              </Cluster>
-              <Button
-                variant="secondary"
-                size="md"
-                href="https://github.com/chomovazuzana/NbgAiHub"
-                target="_blank"
-                rel="noopener"
-              >
-                Open repo on GitHub ↗
-              </Button>
-            </Cluster>
-          </Card>
-        </div>
-      </Split>
-    </Section>
+            <a class="feature__cta" href="https://github.com/chomovazuzana/NbgAiHub" target="_blank" rel="noopener">
+              Open the repo →
+            </a>
+          </div>
+        </article>
+        <article class="card card--text">
+          <div class="card__body">
+            <div class="card__meta">
+              <span class="tag">Repo conventions</span>
+            </div>
+            <h3 class="card__title">Honour the conventions.</h3>
+            <p class="card__summary">
+              CLAUDE.md (root + global) covers naming, file layout,
+              versioning. Take a minute before opening a PR — the bar is
+              "opinionated, plainspoken, what I wish I knew a year ago."
+            </p>
+            <a class="feature__cta" href="https://github.com/chomovazuzana/NbgAiHub/blob/main/CLAUDE.md" target="_blank" rel="noopener">
+              Read CLAUDE.md →
+            </a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
 
-    <Section spacing="default" surfaceId="contribute-frontmatter" tone="subtle">
-      <Stack gap="6">
-        <Stack gap="3">
-          <Eyebrow tone="accent">Frontmatter contract</Eyebrow>
-          <Display level={2} size="sm">The 10 keys every content file needs.</Display>
-          <Lede size="sm">
-            News adds three more — <code>editor_confidence</code>,
-            <code>source</code>, and <code>fingerprint</code> — but the AI
-            triage pipeline fills those in for you.
-          </Lede>
-        </Stack>
-        <Grid columns="auto-fit" min="22rem" gap="3">
-          {sharedKeys.map((item) => (
-            <Card variant="content">
-              <Stack slot="header" gap="2">
-                <Cluster gap="2" align="center">
-                  <Chip><code>{item.key}</code></Chip>
-                </Cluster>
-              </Stack>
-              <p class="contrib-key-desc">{item.description}</p>
-            </Card>
-          ))}
-        </Grid>
-      </Stack>
-    </Section>
-
-    <Section spacing="snug" surfaceId="contribute-tone">
-      <Stack gap="3">
-        <Eyebrow tone="accent">Tone</Eyebrow>
-        <Display level={2} size="sm">"What I wish I knew a year ago."</Display>
-        <Lede size="sm">
-          Opinionated. Plainspoken. No marketing voice. No AI-slop hedging.
-          Assume the reader is a smart colleague new to Claude Code.
-        </Lede>
-      </Stack>
-    </Section>
-  </Stack>
+  <section class="section" id="frontmatter">
+    <div class="wrap">
+      <div class="section__head">
+        <h2>Shared frontmatter</h2>
+        <span class="count">{sharedKeys.length} keys</span>
+      </div>
+      <div class="grid-3">
+        {sharedKeys.map((key) => (
+          <article class="card card--text">
+            <div class="card__body">
+              <div class="card__meta">
+                <span class="tag" style="font-family: var(--nbg-ff-mono);">{key.key}</span>
+              </div>
+              <p class="card__summary">{key.description}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
 </MarketingShell>
-
-<style>
-  @layer nbg.components {
-    .contrib-meta {
-      margin: 0;
-      color: var(--nbg-color-fg-muted);
-      font-size: var(--nbg-fs-sm);
-      line-height: var(--nbg-lh-base);
-    }
-    .contrib-secondary {
-      font-family: var(--nbg-type-mono);
-      font-size: var(--nbg-fs-sm);
-      color: var(--nbg-color-link);
-      text-decoration: none;
-    }
-    .contrib-secondary:hover {
-      text-decoration: underline;
-    }
-    .contrib-steps {
-      margin: 0;
-      padding-left: var(--nbg-sp-5);
-      color: var(--nbg-color-fg-secondary);
-      font-size: var(--nbg-fs-md);
-      line-height: var(--nbg-lh-relaxed);
-    }
-    .contrib-steps li + li {
-      margin-top: var(--nbg-sp-2);
-    }
-    .contrib-key-desc {
-      margin: 0;
-      color: var(--nbg-color-fg-secondary);
-      font-size: var(--nbg-fs-sm);
-      line-height: var(--nbg-lh-base);
-    }
-  }
-</style>
