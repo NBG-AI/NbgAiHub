@@ -57,6 +57,20 @@ export default defineConfig({
         },
       ],
     ],
+    // Shiki defaults to `github-dark` which made every fenced code block on
+    // light-themed pages render as a near-black slab with hard-to-read
+    // syntax tokens (UAT image #14 — `claude --dangerously-skip-permissions`
+    // was nearly invisible). Dual themes so dark-mode visitors still get a
+    // dark code block; light-mode gets the matching light variant. The
+    // surrounding <pre> background is also restyled to our --nbg-surface-2
+    // token via content-prose.css so the block sits on the page like a
+    // muted callout, not a black hole.
+    shikiConfig: {
+      themes: {
+        light: 'github-light',
+        dark: 'github-dark',
+      },
+    },
   },
 
   // P4.B — Astro Fonts API. Stable since Astro 6.0.0 (we are on 6.3.5).
