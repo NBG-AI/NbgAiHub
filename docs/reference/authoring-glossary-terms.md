@@ -120,19 +120,40 @@ Returns the list of pages that contain at least one button for your term. If emp
 ### Inspect the manifest
 On any page, View Source and search for `id="nbg-glossary-data"`. The inlined JSON should contain `"<your-slug>": {"title": "…", "tldr": "…"}`. If yes, the build is aware of the term; auto-linking only fails to fire if no page's prose contains a matching token.
 
-## Where the auto-linking *will* fire vs *won't*
+## How auto-linking reaches every surface — two paths, one index
+
+Two complementary code paths share **one** glossary index (built once at server start, memoised per absolute directory). Adding a term + restarting the dev server feeds both paths automatically.
+
+| Path | Runs on | Mechanism |
+|---|---|---|
+| **Path A — `remark-glossary-link` plugin** | Markdown bodies rendered through Astro's markdown pipeline (`<Content />`) or an explicit `createMarkdownProcessor()` | The plugin walks mdast nodes and rewrites text nodes containing variant matches into raw `<button>` HTML triggers. Wired globally in `site/astro.config.mjs` (`markdown.remarkPlugins`) and re-wired manually in the three pages that segment markdown by hand (`glossary.astro`, `start-here/foundations.astro`, `start-here/day-1.astro`) per §S.14.5. |
+| **Path B — `linkGlossaryTerms()` helper** | Plain frontmatter strings rendered directly in JSX (`ai_summary`, hero ledes, static prose) — anything that bypasses the markdown pipeline | `site/src/lib/glossary-link-string.ts` imports the plugin's named `getGlossaryIndex()` export and emits the **exact same** `<button class="nbg-glossary-trigger" data-glossary-slug>` HTML. Wired into `index.astro`, `skills.astro`, `tips.astro`, `contribute.astro`, plus the hero ledes / empty-state copy / cross-link cards on `start-here/foundations.astro` and `start-here/day-1.astro`. Use `<p set:html={linkGlossaryTerms(str)} />` or `<Fragment set:html={...} />` inside an existing element. |
+
+Both paths share `getGlossaryIndex(glossaryDir)` (named export from the plugin file), which is memoised per absolute-resolved directory. **Single source of truth, single restart point.**
 
 **Will auto-link on:**
-- Journey pages (`/start-here/foundations/`, `/start-here/day-1/`) — segmented markdown rendered via explicit `createMarkdownProcessor`
-- Glossary catalog (`/glossary/`) — per-entry body via the same pattern, with self-page skip preserved (an entry doesn't link its own term in its own body)
+- Journey pages (`/start-here/foundations/`, `/start-here/day-1/`) — segmented step bodies (Path A) + hero lede / cross-link cards / empty-state copy (Path B)
+- Glossary catalog (`/glossary/`) — per-entry body via Path A with self-page skip preserved
+- Catalog pages (`/skills/`, `/tips/`) — frontmatter `ai_summary` strings on each card + hero ledes (Path B)
+- Homepage (`/`) — hero lede + both router-card bodies + skill / tip card summaries (Path B)
+- `/contribute/` — featured-path summary + each card summary (Path B)
 - Any future tip / skill per-slug page that uses `<Content />` from the project's markdown pipeline OR explicitly wires the plugin into a manual `createMarkdownProcessor()`
 
 **Won't auto-link on:**
-- Catalog pages that show only frontmatter cards (`/tips/`, `/skills/`, the homepage) — no markdown body is rendered
 - `news/published/` — explicit `excludePaths` skip per the 2026-05-25 nav rework (news redirects externally)
-- Code blocks, inline code, headings (h1–h6), existing markdown links, Starlight `:::tip` / `:::note` / `:::caution` / `:::danger` asides — always skipped by design
+- Code blocks, inline code, headings (h1–h6), existing markdown links, Starlight `:::tip` / `:::note` / `:::caution` / `:::danger` asides — always skipped by Path A's design (Path B operates on short plain strings where these contexts don't arise)
 - The term's own glossary page — the `agent` entry's body won't link "agent" to itself (`§S.14.7` self-page skip)
-- The **same term repeated** in the same file — only the **first occurrence** wraps; subsequent mentions are plain text by design (matches Wikipedia convention; prevents visual noise)
+- The **same term repeated** in the same markdown unit / same helper call — only the **first occurrence** wraps; subsequent mentions are plain text by design (matches Wikipedia convention; prevents visual noise)
+
+## Adding a new term — does it really show up everywhere?
+
+Yes, provided you restart the dev server. Concretely, when you drop `glossary/<slug>.md`:
+
+1. The plugin's factory re-reads `glossary/` at next dev-server startup → Path A picks up the new term on every markdown body
+2. `linkGlossaryTerms()`'s memoised cache is cleared too (process-scoped) → Path B picks up the new term on every frontmatter / static prose string it's wired to
+3. The auto-link styling + tooltip behavior is identical because both paths emit the same `<button data-glossary-slug>` HTML
+
+If you author a new content surface (e.g. a new page that renders frontmatter strings in JSX) and the term doesn't link there, that surface hasn't been wired into Path B yet — add `import { linkGlossaryTerms } from '../lib/glossary-link-string';` and wrap each plain string with `<p set:html={linkGlossaryTerms(str)} />`.
 
 ## Common pitfalls
 

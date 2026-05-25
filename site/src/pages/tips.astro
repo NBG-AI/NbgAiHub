@@ -13,6 +13,7 @@ import type { CollectionEntry } from 'astro:content';
 import MarketingShell from '../components/MarketingShell.astro';
 import AudienceFilter from '../components/AudienceFilter.astro';
 import PinButton from '../components/PinButton.astro';
+import { linkGlossaryTerms } from '../lib/glossary-link-string';
 
 type Tip = CollectionEntry<'tips'>;
 
@@ -55,8 +56,7 @@ for (const tip of all) {
       <div class="hero__intro">
         <h1 class="hero__title">Patterns I keep <em>reaching for.</em></h1>
         <p class="hero__lede">
-          Prompts, gotchas, and workflow recipes — clustered by theme so you
-          can skim the area you need. Opinionated and plainspoken.
+          <Fragment set:html={linkGlossaryTerms("Prompts, gotchas, and workflow recipes — clustered by theme so you can skim the area you need. Opinionated and plainspoken.")} />
           <small>{all.length} entries</small>
         </p>
       </div>
@@ -85,7 +85,7 @@ for (const tip of all) {
                     <span class={`tag tag--audience-${tip.data.audience}`}>{tip.data.audience}</span>
                   </div>
                   <h3 class="card__title">{tip.data.title}</h3>
-                  <p class="card__summary">{tip.data.ai_summary}</p>
+                  <p class="card__summary" set:html={linkGlossaryTerms(tip.data.ai_summary)} />
                   <div style="margin-top: 0.5rem;">
                     <PinButton type="tip" slug={tip.id} />
                   </div>

@@ -12,6 +12,7 @@ import { getCollection } from 'astro:content';
 import MarketingShell from '../components/MarketingShell.astro';
 import AudienceFilter from '../components/AudienceFilter.astro';
 import PinButton from '../components/PinButton.astro';
+import { linkGlossaryTerms } from '../lib/glossary-link-string';
 
 const items = await getCollection('skills');
 const sorted = items.sort((a, b) => {
@@ -34,9 +35,7 @@ const rest = sorted.slice(1);
       <div class="hero__intro">
         <h1 class="hero__title">Skills worth <em>installing.</em></h1>
         <p class="hero__lede">
-          A curated catalog of Claude Code skills and plugins — the ones we
-          keep reaching for. Each entry tells you what the skill does,
-          who it's for, and how to install it.
+          <Fragment set:html={linkGlossaryTerms("A curated catalog of Claude Code skills and plugins — the ones we keep reaching for. Each entry tells you what the skill does, who it's for, and how to install it.")} />
           <small>{items.length} entries</small>
         </p>
       </div>
@@ -64,7 +63,7 @@ const rest = sorted.slice(1);
               <span class="tag">{lead.data.origin}</span>
             </div>
             <h3 class="feature__title">{lead.data.title}</h3>
-            <p class="feature__summary">{lead.data.ai_summary}</p>
+            <p class="feature__summary" set:html={linkGlossaryTerms(lead.data.ai_summary)} />
             <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
               {lead.data.external_link && (
                 <a class="feature__cta" href={lead.data.external_link} target="_blank" rel="noopener">
@@ -95,7 +94,7 @@ const rest = sorted.slice(1);
                   <span class={`tag tag--audience-${entry.data.audience}`}>{entry.data.audience}</span>
                 </div>
                 <h3 class="card__title">{entry.data.title}</h3>
-                <p class="card__summary">{entry.data.ai_summary}</p>
+                <p class="card__summary" set:html={linkGlossaryTerms(entry.data.ai_summary)} />
                 <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
                   {entry.data.external_link && (
                     <a class="external-host" href={entry.data.external_link} target="_blank" rel="noopener">

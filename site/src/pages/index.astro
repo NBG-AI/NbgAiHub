@@ -18,6 +18,7 @@
  */
 import { getCollection } from 'astro:content';
 import MarketingShell from '../components/MarketingShell.astro';
+import { linkGlossaryTerms } from '../lib/glossary-link-string';
 
 const skills   = await getCollection('skills');
 const tips     = await getCollection('tips');
@@ -62,20 +63,14 @@ const AGENTNEWS_URL = 'https://biks2013.github.io/AgentNews/';
         <h1 class="hero__title">
           What I wish I knew sooner about <em>Claude Code.</em>
         </h1>
-        <p class="hero__lede">
-          A practical guide to Claude Code at NBG — for anyone just starting out
-          and anyone already using it daily.
-        </p>
+        <p class="hero__lede" set:html={linkGlossaryTerms('A practical guide to Claude Code at NBG — for anyone just starting out and anyone already using it daily.')} />
       </div>
 
       <div class="router-grid">
         <article class="router-card router-card--newcomer">
           <div class="router-card__badge">New to Claude Code</div>
           <h2 class="router-card__title">Start with Foundations</h2>
-          <p class="router-card__body">
-            What makes Claude Code different from ChatGPT or Gemini, why we
-            chose it at NBG, and how to get it running on your machine.
-          </p>
+          <p class="router-card__body" set:html={linkGlossaryTerms('What makes Claude Code different from ChatGPT or Gemini, why we chose it at NBG, and how to get it running on your machine.')} />
           <div class="router-card__actions">
             <a class="router-card__cta router-card__cta--primary" href="/start-here/foundations/">
               → Open Foundations
@@ -89,10 +84,7 @@ const AGENTNEWS_URL = 'https://biks2013.github.io/AgentNews/';
         <article class="router-card router-card--experienced">
           <div class="router-card__badge">Already using it</div>
           <h2 class="router-card__title">Jump straight in</h2>
-          <p class="router-card__body">
-            Skip the intro and go straight to what you need — the skills catalog,
-            tips and tricks, glossary lookups, or the curated News feed.
-          </p>
+          <p class="router-card__body" set:html={linkGlossaryTerms('Skip the intro and go straight to what you need — the skills catalog, tips and tricks, glossary lookups, or the curated News feed.')} />
           <div class="router-card__actions router-card__actions--grid">
             <a class="router-pill" href="/skills/">Skills</a>
             <a class="router-pill" href="/tips/">Tips &amp; Tricks</a>
@@ -126,7 +118,7 @@ const AGENTNEWS_URL = 'https://biks2013.github.io/AgentNews/';
                 </h3>
                 <p class="card__command"><code>{command}</code></p>
                 {skill.data.ai_summary && (
-                  <p class="card__summary">{skill.data.ai_summary}</p>
+                  <p class="card__summary" set:html={linkGlossaryTerms(skill.data.ai_summary)} />
                 )}
               </div>
             </article>
@@ -155,7 +147,7 @@ const AGENTNEWS_URL = 'https://biks2013.github.io/AgentNews/';
                 <a href={`/tips/#${tip.id}`}>{tip.data.title}</a>
               </h3>
               {tip.data.ai_summary && (
-                <p class="card__summary">{tip.data.ai_summary}</p>
+                <p class="card__summary" set:html={linkGlossaryTerms(tip.data.ai_summary)} />
               )}
             </div>
           </article>

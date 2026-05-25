@@ -30,6 +30,7 @@
  * Portability: zero Starlight imports — AC36/AC37 gate.
  */
 import { getCollection } from 'astro:content';
+import { linkGlossaryTerms } from '../../lib/glossary-link-string';
 
 interface Props {
   /**
@@ -57,10 +58,19 @@ if (glossary.length === 0) {
   );
 }
 
+// Each tldr is pre-linked at build time so glossary terms inside tooltips
+// become tooltip triggers themselves — enables "hover inside hover" (the
+// API tooltip pops when you hover "APIs" inside the agent tooltip's tldr).
+// `linkGlossaryTerms` emits the same `<button data-glossary-slug>` HTML the
+// plugin emits, so the wire() routine below can hydrate nested buttons
+// with their own popovers via recursive re-wiring.
 const manifest = Object.fromEntries(
   glossary.map((entry) => [
     entry.id,
-    { title: entry.data.title, tldr: entry.data.tldr },
+    {
+      title: entry.data.title,
+      tldrHtml: linkGlossaryTerms(entry.data.tldr),
+    },
   ]),
 );
 
@@ -86,10 +96,11 @@ const manifestJson = JSON.stringify(manifest)
   // DOMContentLoaded re-fires (Astro view-transitions) via the
   // `data-nbg-glossary-wired` marker on each button.
   (function () {
-    function wire() {
+    function wire(scope?: ParentNode) {
+      var root: ParentNode = scope || document;
       var dataEl = document.getElementById('nbg-glossary-data');
       if (!dataEl || !dataEl.textContent) return;
-      var data: Record<string, { title: string; tldr: string }> = {};
+      var data: Record<string, { title: string; tldrHtml: string }> = {};
       try {
         data = JSON.parse(dataEl.textContent);
       } catch (err) {
@@ -97,9 +108,10 @@ const manifestJson = JSON.stringify(manifest)
         return;
       }
 
-      var triggers = document.querySelectorAll<HTMLButtonElement>(
+      var triggers = root.querySelectorAll<HTMLButtonElement>(
         'button[data-glossary-slug]:not([data-nbg-glossary-wired])',
       );
+      if (triggers.length === 0) return;
 
       triggers.forEach(function (btn) {
         var slug = btn.getAttribute('data-glossary-slug') || '';
@@ -133,12 +145,18 @@ const manifestJson = JSON.stringify(manifest)
         pop.setAttribute('popover', 'auto');
         pop.setAttribute('role', 'tooltip');
         pop.className = 'nbg-glossary-popover';
+        // entry.tldrHtml is pre-linked HTML from the build-time
+        // linkGlossaryTerms() pass. It is HTML-safe by construction: every
+        // plain segment is escaped and every inserted button uses escaped
+        // attribute values + text. Injected via innerHTML so the nested
+        // <button data-glossary-slug> triggers become live DOM that the
+        // recursive wire() call below will hydrate.
         pop.innerHTML =
           '<strong class="nbg-glossary-popover__title">' +
           escapeHtml(entry.title) +
           '</strong>' +
           '<span class="nbg-glossary-popover__tldr">' +
-          escapeHtml(entry.tldr) +
+          entry.tldrHtml +
           '</span>' +
           '<a class="nbg-glossary-popover__more" href="/glossary/#' +
           encodeURIComponent(slug) +
@@ -193,12 +211,25 @@ const manifestJson = JSON.stringify(manifest)
         // prevent flicker on cursor passing through.
         var showT: ReturnType<typeof setTimeout> | null = null;
         var hideT: ReturnType<typeof setTimeout> | null = null;
+        var nestedWired = false; // gate the lazy nested wire
         var clearShow = function () { if (showT) { clearTimeout(showT); showT = null; } };
         var clearHide = function () { if (hideT) { clearTimeout(hideT); hideT = null; } };
         var show = function () {
           clearHide();
           showT = setTimeout(function () {
             try {
+              // Lazy nested wiring: the first time THIS popover opens, scan
+              // its tldr for nested glossary triggers and wire them with
+              // their own popovers. One level per show — no eager fan-out
+              // explosion (the previous eager-recursive approach generated
+              // O(N²) popovers + scroll/resize listeners and locked the
+              // page). Each nested popover repeats the lazy wire when it
+              // is itself opened, so deep chains still work — they're just
+              // built on demand.
+              if (!nestedWired) {
+                wire(pop);
+                nestedWired = true;
+              }
               positionAt(); // estimate-based; refined below after layout
               (pop as HTMLElement & { showPopover: () => void }).showPopover();
               // Re-measure with the popover actually laid out so a content
@@ -241,6 +272,11 @@ const manifestJson = JSON.stringify(manifest)
           }
         });
       });
+
+      // No eager recursion here. Nested popovers are wired lazily when
+      // each parent popover is first shown — see `nestedWired` + the
+      // `wire(pop)` call inside show() above. This keeps page-load O(N)
+      // in distinct on-page triggers, not O(N²) in cross-references.
     }
 
     function escapeHtml(s: string): string {

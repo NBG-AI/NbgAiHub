@@ -87,10 +87,12 @@ const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
     </section>
   ) : (
     <>
-      {/* Filter + A-Z strip */}
-      <section class="section" id="glossary-rail" style="padding-block: 1.5rem;">
+      {/* Filter rail + terms list — single section so the sticky rail
+          can stick across the full terms-list scroll, not just within its
+          own (formerly short) section's containing block. */}
+      <section class="section" id="glossary-list">
         <div class="wrap">
-          <div class="glossary-rail">
+          <div class="glossary-rail" id="glossary-rail">
             <input
               type="search"
               data-glossary-filter
@@ -117,12 +119,7 @@ const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
               })}
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Terms */}
-      <section class="section" id="glossary-list">
-        <div class="wrap">
           <div class="section__head">
             <h2>Terms</h2>
             <span class="count">{rendered.length} entries</span>
@@ -163,14 +160,32 @@ const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
       display: flex;
       flex-direction: column;
       gap: 1rem;
+      /* Sticky now works because the containing block is the wrap that also
+         holds the long terms list — the rail stays pinned to top: 4.5rem
+         (clearing the topnav) for the entire scroll through the terms. */
       position: sticky;
       top: 4.5rem;
-      z-index: 1;
+      z-index: 5;
+      margin-bottom: 2rem;
       padding: 1.25rem 1.5rem;
-      background: var(--nbg-surface);
+      background: var(--nbg-bg);
       border: 1px solid var(--nbg-hairline);
       border-radius: var(--nbg-r-lg);
-      box-shadow: var(--nbg-shadow-md);
+      box-shadow: 0 6px 24px -16px color-mix(in srgb, var(--nbg-ink, #1a2030) 30%, transparent);
+    }
+
+    /* When the user clicks a term link from another page (`/glossary#cli`),
+       a letter pill in the alphabet rail (`#letter-c`), or anywhere else
+       that jumps via hash, the browser scrolls so the target's top edge is
+       flush with the viewport top — which puts the term BEHIND the sticky
+       rail. `scroll-margin-top` tells the browser to reserve that much
+       space above the target during scroll-into-view, putting the term
+       just below the rail instead.
+
+       Value: 4.5rem topnav offset + ~7.5rem rail height + small buffer. */
+    .glossary-term,
+    .glossary-anchor {
+      scroll-margin-top: 13rem;
     }
     .glossary-filter-input {
       width: 100%;

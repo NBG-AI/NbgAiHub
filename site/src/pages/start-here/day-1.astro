@@ -13,6 +13,7 @@ import { getEntry } from 'astro:content';
 import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import MarketingShell from '../../components/MarketingShell.astro';
 import remarkGlossaryLink from '../../plugins/remark-glossary-link.ts';
+import { linkGlossaryTerms } from '../../lib/glossary-link-string';
 
 const entry = await getEntry('journeys', 'day-1');
 if (!entry) {
@@ -114,7 +115,7 @@ const heroSummary = entry.data.ai_summary;
       <div class="hero__intro">
         <h1 class="hero__title">Day 1 — <em>what I wish I knew.</em></h1>
         <p class="hero__lede">
-          {heroSummary}
+          <Fragment set:html={linkGlossaryTerms(heroSummary)} />
           <small>Audience: {entry.data.audience} · ~30 min</small>
         </p>
       </div>
@@ -159,30 +160,21 @@ const heroSummary = entry.data.ai_summary;
           <div class="card__body">
             <div class="card__meta"><span class="eyebrow eyebrow--accent">Skills</span></div>
             <h3 class="card__title"><a href="/skills/">Browse the catalog</a></h3>
-            <p class="card__summary">
-              Nine team-curated skills, each with a one-line install and a
-              "what it actually does" summary.
-            </p>
+            <p class="card__summary" set:html={linkGlossaryTerms('Nine team-curated skills, each with a one-line install and a "what it actually does" summary.')} />
           </div>
         </article>
         <article class="card card--text">
           <div class="card__body">
             <div class="card__meta"><span class="eyebrow eyebrow--accent">Tips</span></div>
             <h3 class="card__title"><a href="/tips/">Tips &amp; tricks</a></h3>
-            <p class="card__summary">
-              Prompting patterns, survival keys, context discipline — the
-              small habits that compound.
-            </p>
+            <p class="card__summary" set:html={linkGlossaryTerms('Prompting patterns, survival keys, context discipline — the small habits that compound.')} />
           </div>
         </article>
         <article class="card card--text">
           <div class="card__body">
             <div class="card__meta"><span class="eyebrow eyebrow--accent">Glossary</span></div>
             <h3 class="card__title"><a href="/glossary/">Look up terms</a></h3>
-            <p class="card__summary">
-              Twenty-eight terms in plain English — what they mean, when
-              they matter. Use it as a reference, not a reading list.
-            </p>
+            <p class="card__summary" set:html={linkGlossaryTerms('Twenty-eight terms in plain English — what they mean, when they matter. Use it as a reference, not a reading list.')} />
           </div>
         </article>
       </div>

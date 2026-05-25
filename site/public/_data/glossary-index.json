@@ -22,6 +22,15 @@
       ]
     },
     {
+      "slug": "api",
+      "title": "API (application programming interface)",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "tools"
+      ]
+    },
+    {
       "slug": "branch",
       "title": "Branch",
       "audience": "beginner",
@@ -147,6 +156,15 @@
         "automation",
         "customization",
         "claude-code"
+      ]
+    },
+    {
+      "slug": "http",
+      "title": "HTTP",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "web"
       ]
     },
     {

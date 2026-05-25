@@ -6,6 +6,7 @@
  * Backs AC10, AC15.
  */
 import MarketingShell from '../components/MarketingShell.astro';
+import { linkGlossaryTerms } from '../lib/glossary-link-string';
 
 interface FrontmatterKey {
   key: string;
@@ -61,12 +62,7 @@ const sharedKeys: FrontmatterKey[] = [
             <span class="tag tag--link">Web form</span>
           </div>
           <h3 class="feature__title">Submit a skill via the form.</h3>
-          <p class="feature__summary">
-            The submit-skill page is anonymous-accessible. Fill in the form,
-            it validates against the 17-rule contract, and redirects you to
-            GitHub's editor with the file pre-filled. Open the resulting PR
-            from there — no local setup needed.
-          </p>
+          <p class="feature__summary" set:html={linkGlossaryTerms("The submit-skill page is anonymous-accessible. Fill in the form, it validates against the 17-rule contract, and redirects you to GitHub's editor with the file pre-filled. Open the resulting PR from there — no local setup needed.")} />
           <div style="display:flex; gap:1rem; flex-wrap:wrap;">
             <a class="feature__cta" href="/submit-skill/">Open the form →</a>
           </div>
@@ -88,11 +84,7 @@ const sharedKeys: FrontmatterKey[] = [
               <span class="tag">News · Tip · Glossary · Journey</span>
             </div>
             <h3 class="card__title">Fork → edit → PR.</h3>
-            <p class="card__summary">
-              For news items, tips, glossary terms, or onboarding journey
-              edits, the simplest path is GitHub's web editor. Find the
-              file, hit the pencil, write your change, and open a PR.
-            </p>
+            <p class="card__summary" set:html={linkGlossaryTerms("For news items, tips, glossary terms, or onboarding journey edits, the simplest path is GitHub's web editor. Find the file, hit the pencil, write your change, and open a PR.")} />
             <a class="feature__cta" href="https://github.com/chomovazuzana/NbgAiHub" target="_blank" rel="noopener">
               Open the repo →
             </a>
@@ -104,11 +96,7 @@ const sharedKeys: FrontmatterKey[] = [
               <span class="tag">Repo conventions</span>
             </div>
             <h3 class="card__title">Honour the conventions.</h3>
-            <p class="card__summary">
-              CLAUDE.md (root + global) covers naming, file layout,
-              versioning. Take a minute before opening a PR — the bar is
-              "opinionated, plainspoken, what I wish I knew a year ago."
-            </p>
+            <p class="card__summary" set:html={linkGlossaryTerms('CLAUDE.md (root + global) covers naming, file layout, versioning. Take a minute before opening a PR — the bar is "opinionated, plainspoken, what I wish I knew a year ago."')} />
             <a class="feature__cta" href="https://github.com/chomovazuzana/NbgAiHub/blob/main/CLAUDE.md" target="_blank" rel="noopener">
               Read CLAUDE.md →
             </a>

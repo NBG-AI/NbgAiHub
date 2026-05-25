@@ -362,6 +362,242 @@
         "claudemd",
         "field-report"
       ]
+    },
+    {
+      "slug": "after-3-months-of-switching-between-claude-sonnet-4-6-gpt-5",
+      "title": "After 3 months of switching between Claude Sonnet 4.6, GPT-5.5, and Gemini 3.1 daily — here's my actual routing",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "model-selection",
+        "field-report"
+      ]
+    },
+    {
+      "slug": "anthropic-officially-launched-13-free-ai-courses-with",
+      "title": "Anthropic officially launched 13+ FREE AI courses with certificates (Including Agentic AI and Claude Code!)",
+      "audience": "both",
+      "topics": [
+        "training",
+        "claudecode",
+        "agentic-ai",
+        "mcp",
+        "api",
+        "cloud-architecture",
+        "productivity"
+      ]
+    },
+    {
+      "slug": "claude-code-dropped-workflows",
+      "title": "Claude Code dropped /workflows",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "multi-agent-systems",
+        "claudecode",
+        "platform-news"
+      ]
+    },
+    {
+      "slug": "claude-status-update-elevated-error-rate-on-2026-05-22t04",
+      "title": "Claude Status Update : Elevated error rate on 2026-05-22T04:16:42.000Z",
+      "audience": "both",
+      "topics": [
+        "platform-news",
+        "outage",
+        "status-update"
+      ]
+    },
+    {
+      "slug": "deepseek-makes-the-v4-pro-price-discount-permanent",
+      "title": "DeepSeek makes the V4 Pro price discount permanent",
+      "audience": "both",
+      "topics": [
+        "model-launch",
+        "pricing",
+        "platform-news"
+      ]
+    },
+    {
+      "slug": "do-you-actually-use-hooks-in-claude-code",
+      "title": "Do you actually use hooks in Claude Code?",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "hooks",
+        "automation",
+        "claudecode"
+      ]
+    },
+    {
+      "slug": "domain-camouflaged-injection-attacks-evade-detection-in",
+      "title": "Domain-Camouflaged Injection Attacks Evade Detection in Multi-Agent LLM Systems",
+      "audience": "advanced",
+      "topics": [
+        "security",
+        "llm-systems",
+        "injection-attacks",
+        "field-report"
+      ]
+    },
+    {
+      "slug": "i-see-a-lot-of-claude-design-hate-here-lately-but-for",
+      "title": "I see a lot of claude design hate here lately. but for animated slide videos it's actually really good",
+      "audience": "both",
+      "topics": [
+        "workflow",
+        "claude-design",
+        "prompt-engineering",
+        "video-production"
+      ]
+    },
+    {
+      "slug": "my-experience-using-claude-code-with-local-llm-and-full",
+      "title": "My experience using Claude code with Local Llm, and full guide on how to set it up",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "local-llm",
+        "field-report",
+        "performance-tuning"
+      ]
+    },
+    {
+      "slug": "project-glasswing-an-initial-update",
+      "title": "Project Glasswing: An Initial Update",
+      "audience": "advanced",
+      "topics": [
+        "model-launch",
+        "research-update",
+        "anthropic"
+      ]
+    },
+    {
+      "slug": "round-3-claude-opus-4-7-1m-vs-opus-4-7-vs-opus-4-6-legacy",
+      "title": "Round 3: Claude Opus 4.7 1M vs Opus 4.7 vs Opus 4.6 Legacy vs Sonnet 4.6 across effort levels on the same real React feature-build task",
+      "audience": "advanced",
+      "topics": [
+        "model-comparison",
+        "workflow",
+        "field-report",
+        "claudecode",
+        "performance-benchmark"
+      ]
+    },
+    {
+      "slug": "deterministic-multi-subagent-orchestration-what-s-new-in-cc",
+      "title": "Deterministic multi-subagent orchestration - what's new in CC 2.1.146 (+4,755 tokens)",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "multi-agent-orchestration",
+        "agent-prompting",
+        "structured-output",
+        "token-budgeting",
+        "concurrency",
+        "plan-mode"
+      ]
+    },
+    {
+      "slug": "my-experience-using-claude-code-with-local-llm-and-full",
+      "title": "My experience using Claude code with Local Llm, and full guide on how to set it up",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "local-llm",
+        "field-report",
+        "setup",
+        "claudecode"
+      ]
+    },
+    {
+      "slug": "usage-limit-reached-but-it-s-not",
+      "title": "Usage Limit Reached...but it's not?",
+      "audience": "both",
+      "topics": [
+        "platform-news",
+        "usage-limits",
+        "bug-report"
+      ]
+    },
+    {
+      "slug": "cache-miss-in-claude-code-costs-12-5-more-than-a-hit-here",
+      "title": "Cache miss in Claude Code costs 12.5× more than a hit. Here are 5 things you do mid session that quietly trigger it",
+      "audience": "advanced",
+      "topics": [
+        "prompt-caching",
+        "cost-optimization",
+        "workflow",
+        "cache-invalidation",
+        "claudecode"
+      ]
+    },
+    {
+      "slug": "claude-code-v2-1-150-now-allows-anthropic-to-perform-remote",
+      "title": "Claude Code v2.1.150 now allows Anthropic to perform remote system prompt injection",
+      "audience": "advanced",
+      "topics": [
+        "security",
+        "system-prompt-injection",
+        "platform-news",
+        "claudecode"
+      ]
+    },
+    {
+      "slug": "constraint-decay-the-fragility-of-llm-agents-in-back-end",
+      "title": "Constraint Decay: The Fragility of LLM Agents in Back End Code Generation",
+      "audience": "advanced",
+      "topics": [
+        "field-report",
+        "model-behavior",
+        "code-generation",
+        "llm-agents"
+      ]
+    },
+    {
+      "slug": "deepseek-to-make-permanent-75-discount-on-flagship-ai-model",
+      "title": "DeepSeek to Make Permanent 75% Discount on Flagship AI Model",
+      "audience": "both",
+      "topics": [
+        "model-launch",
+        "pricing",
+        "platform-news"
+      ]
+    },
+    {
+      "slug": "how-i-ran-a-9-hour-autonomous-goal-session-with-claude-code",
+      "title": "How I ran a 9-hour autonomous /goal session with Claude Code and what it taught me about AI agents",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "field-report",
+        "autonomous-agents",
+        "goal-command",
+        "claudecode"
+      ]
+    },
+    {
+      "slug": "mythos-is-being-prepared-for-a-release-on-claude-code-and",
+      "title": "Mythos is being prepared for a release on Claude Code and Claude Security.",
+      "audience": "both",
+      "topics": [
+        "model-launch",
+        "claudecode",
+        "claudesecurity",
+        "platform-news"
+      ]
+    },
+    {
+      "slug": "skills-for-small-businesses-officially-released-by-anthropic",
+      "title": "🚀 Skills for small businesses, officially released by Anthropic",
+      "audience": "both",
+      "topics": [
+        "skills",
+        "workflow",
+        "automation",
+        "setup",
+        "enterprise-use"
+      ]
     }
   ]
 }

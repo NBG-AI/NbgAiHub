@@ -17,6 +17,7 @@ import { getEntry } from 'astro:content';
 import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import MarketingShell from '../../components/MarketingShell.astro';
 import remarkGlossaryLink from '../../plugins/remark-glossary-link.ts';
+import { linkGlossaryTerms } from '../../lib/glossary-link-string';
 
 const entry = await getEntry('journeys', 'foundations');
 if (!entry) {
@@ -204,7 +205,7 @@ function resourceKindTone(kind: Resource['kind']): string {
       <div class="hero__intro">
         <h1 class="hero__title">Foundations — <em>start here if it's all new.</em></h1>
         <p class="hero__lede">
-          {heroSummary}
+          <Fragment set:html={linkGlossaryTerms(heroSummary)} />
           <small>Audience: complete beginner · ~20 min read · 16 curated external resources</small>
           <small><a href="/start-here/day-1/">→ ready to install? Skip to Day 1</a></small>
         </p>
@@ -279,10 +280,7 @@ function resourceKindTone(kind: Resource['kind']): string {
       <div class="empty">
         <p class="empty__eyebrow">Next up</p>
         <h2 class="empty__title">Day 1 — your first session.</h2>
-        <p class="empty__body">
-          You've got the mental models. Now install Claude Code and run your first session.
-          Six steps, about thirty minutes, you'll be productive by the end of it.
-        </p>
+        <p class="empty__body" set:html={linkGlossaryTerms("You've got the mental models. Now install Claude Code and run your first session. Six steps, about thirty minutes, you'll be productive by the end of it.")} />
         <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
           <a class="feature__cta" href="/start-here/day-1/">Begin → Day 1</a>
           <a class="feature__cta" href="/glossary/">Or: browse the glossary →</a>
