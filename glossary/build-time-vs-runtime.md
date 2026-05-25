@@ -9,6 +9,8 @@ last_reviewed: "2026-05-19"
 external_link: null
 deeper_link: "https://556lowcodenocode.github.io/Onboarding/"
 ai_summary: Two ways to use an LLM — at build time (Claude helps you create a tool once, then the tool runs without an LLM) versus runtime (the tool calls an LLM on every execution). Picking the right one matters for cost and data residency.
+tldr: "Two ways to use an LLM: at build time (Claude helps create a tool once, then it runs without an LLM) or runtime (the tool calls an LLM each run)."
+aliases: []
 ---
 
 **Build time** — Claude Code helps you write a script, define a workflow, or scaffold a project. Once it's built, it runs on its own. No LLM in the loop at runtime. Predictable cost. Deterministic behaviour.

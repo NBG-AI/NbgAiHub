@@ -4,11 +4,21 @@
   "items": [
     {
       "slug": "agent",
-      "title": "Agent",
-      "audience": "both",
+      "title": "Agent (vs chatbot, plus subagents)",
+      "audience": "beginner",
       "topics": [
+        "foundations",
         "agents",
         "orchestration"
+      ]
+    },
+    {
+      "slug": "anthropic",
+      "title": "Anthropic",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "vendors"
       ]
     },
     {
@@ -39,12 +49,30 @@
       ]
     },
     {
+      "slug": "claude-vs-chatgpt-vs-gemini",
+      "title": "Claude vs ChatGPT vs Gemini vs Grok",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "disambiguation"
+      ]
+    },
+    {
       "slug": "claudemd",
       "title": "CLAUDE.md",
       "audience": "beginner",
       "topics": [
         "conventions",
         "setup"
+      ]
+    },
+    {
+      "slug": "cli",
+      "title": "CLI (command-line interface)",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "tools"
       ]
     },
     {
@@ -66,6 +94,15 @@
       ]
     },
     {
+      "slug": "frontmatter",
+      "title": "Frontmatter",
+      "audience": "beginner",
+      "topics": [
+        "authoring",
+        "conventions"
+      ]
+    },
+    {
       "slug": "gh",
       "title": "gh (GitHub CLI)",
       "audience": "beginner",
@@ -84,12 +121,59 @@
       ]
     },
     {
+      "slug": "gui",
+      "title": "GUI (graphical user interface)",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "tools"
+      ]
+    },
+    {
+      "slug": "hallucination",
+      "title": "Hallucination",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "ai-basics",
+        "safety"
+      ]
+    },
+    {
+      "slug": "hook",
+      "title": "Hook",
+      "audience": "advanced",
+      "topics": [
+        "automation",
+        "customization",
+        "claude-code"
+      ]
+    },
+    {
       "slug": "issue",
       "title": "Issue",
       "audience": "beginner",
       "topics": [
         "github",
         "fundamentals"
+      ]
+    },
+    {
+      "slug": "large-language-model",
+      "title": "Large language model (LLM)",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "ai-basics"
+      ]
+    },
+    {
+      "slug": "markdown",
+      "title": "Markdown",
+      "audience": "beginner",
+      "topics": [
+        "authoring",
+        "formats"
       ]
     },
     {
@@ -102,12 +186,30 @@
       ]
     },
     {
+      "slug": "model",
+      "title": "Model",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "claude-code"
+      ]
+    },
+    {
       "slug": "plugin",
       "title": "Plugin",
       "audience": "advanced",
       "topics": [
         "extensibility",
         "marketplace"
+      ]
+    },
+    {
+      "slug": "prompt",
+      "title": "Prompt",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "prompting"
       ]
     },
     {
@@ -129,12 +231,67 @@
       ]
     },
     {
+      "slug": "rss",
+      "title": "RSS (Really Simple Syndication)",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "news",
+        "content-pipeline"
+      ]
+    },
+    {
+      "slug": "shell-commands",
+      "title": "Shell commands",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "tools"
+      ]
+    },
+    {
       "slug": "skill",
       "title": "Skill",
       "audience": "both",
       "topics": [
         "skills",
         "automation"
+      ]
+    },
+    {
+      "slug": "terminal",
+      "title": "Terminal",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "tools"
+      ]
+    },
+    {
+      "slug": "token",
+      "title": "Token",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "ai-basics"
+      ]
+    },
+    {
+      "slug": "tool-use",
+      "title": "Tool use",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "agents"
+      ]
+    },
+    {
+      "slug": "yaml",
+      "title": "YAML",
+      "audience": "beginner",
+      "topics": [
+        "config",
+        "formats"
       ]
     }
   ]

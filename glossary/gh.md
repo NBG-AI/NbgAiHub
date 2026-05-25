@@ -9,6 +9,8 @@ last_reviewed: "2026-05-19"
 external_link: "https://cli.github.com/"
 deeper_link: "https://556lowcodenocode.github.io/Onboarding/"
 ai_summary: The official GitHub command-line tool. Claude Code uses `gh` to clone repos, create issues, open PRs, and check workflow status — you describe what you want in plain English, Claude calls `gh`.
+tldr: "GitHub's official command-line tool. Claude Code uses gh to clone repos, create issues, open PRs, and check workflow status."
+aliases: []
 ---
 
 `gh` is GitHub's CLI. You don't talk to GitHub directly — Claude does it for you via `gh` when you ask in plain English ("show me the open issues", "open a PR with these changes").

@@ -133,9 +133,22 @@ const tips = defineCollection({
 });
 
 // ─── glossary ──────────────────────────────────────────────────────────
+// Extends `baseShape('glossary')` with two fields driving the build-time
+// auto-link + hover tooltip feature (project-design.md §S.14):
+//   - `tldr`: required ≤160-char plain-text summary rendered inside the
+//     popover. No silent fallback if missing — Zod fails the build.
+//   - `aliases`: optional list of alternative spellings the remark plugin
+//     also matches (e.g. plurals, abbreviations). Empty by default.
 const glossary = defineCollection({
   loader: glob({ pattern: '*.md', base: '../glossary' }),
-  schema: z.object(baseShape('glossary')),
+  schema: z.object({
+    ...baseShape('glossary'),
+    tldr: z
+      .string()
+      .min(1, { message: 'tldr is required (≤160 chars, plain text)' })
+      .max(160, { message: 'tldr must be ≤160 characters' }),
+    aliases: z.array(z.string().min(1, { message: 'alias must be a non-empty string' })).default([]),
+  }),
 });
 
 // ─── journeys ──────────────────────────────────────────────────────────

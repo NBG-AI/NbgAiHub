@@ -26,3 +26,6 @@ yarn-error.log*
 
 # OS
 Thumbs.db
+
+# Claude Code — per-developer overrides (settings.json IS committed if it exists)
+.claude/settings.local.json

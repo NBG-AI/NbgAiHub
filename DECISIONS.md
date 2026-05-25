@@ -4,6 +4,23 @@ Append-only. Each entry permanent. When a decision is superseded, add a new entr
 
 ---
 
+## 2026-05-25 — Publish site to GitHub Pages under chomovazuzana
+
+**Decision:** Host the static Astro build on GitHub Pages at `https://chomovazuzana.github.io/NbgAiHub/`. Resolves the long-standing "Hosting" open question in SCOPE.md. Configured `site` + `base: '/NbgAiHub'` + `trailingSlash: 'always'` in `site/astro.config.mjs`; added a postbuild script `site/scripts/rewrite-base-paths.mjs` that prefixes the nine top-level routes (glossary, skills, tips, news, start-here, my-pins, submit-skill, contribute, 404) inside built HTML — handles both the 22 hardcoded `<a href="/…">` in .astro files AND the 16 markdown anchor links in glossary/tips/journey bodies, in one centralised pass. Pages workflow at `.github/workflows/deploy-pages.yml` builds the `site/` workspace and uploads `site/dist/` as the Pages artifact on push to `main` (paths-filtered to site + content directories) and on manual dispatch.
+
+**Why:** Free hosting that's already part of the GitHub flow the team uses. No new vendor relationships, no separate auth, deploy-on-push matches the "GitHub repo as CMS" architecture established 2026-05-18. Considered Vercel/Netlify/Cloudflare (all free, all support private repos — but introduce a second vendor and the project doesn't need their dynamic features) and the 556LowCodeNoCode org (originally proposed; reverted because the repo isn't on the org and transferring isn't worth the friction for an MVP).
+
+**Constraint surfaced:** GitHub Pages on the free plan requires the repo to be public. The repo is currently private. Three paths from here: (a) flip to public, (b) upgrade to Pro $4/mo, (c) host elsewhere. Decision deferred to operator — config supports any of the three.
+
+**Alternatives considered:**
+- *556LowCodeNoCode org project page* (initial direction; rejected because the repo lives on the personal account and transferring it would require org admin + permission cleanup — not justified for MVP).
+- *Custom domain on Pages* (rejected for MVP; reversible — add CNAME file later if/when we want `aihub.example.com`).
+- *Vercel / Netlify / Cloudflare Pages* (rejected because they introduce a second vendor with no offsetting feature need; revisit if private hosting becomes a hard requirement and we don't want to pay for Pro).
+
+**Status:** accepted (code-side).
+
+---
+
 ## 2026-05-18 — Reframe "marketplace" → "hub" / "field manual"
 
 **Decision:** The project is conceptually a *hub* (or *field manual*), not a *marketplace*.
@@ -769,4 +786,111 @@ Rather than burn more time on captcha forensics, we revert to the proven path: R
 - `SECRETS.md`'s new §1 entries for the Reddit secrets stay; future-operator setup guide is now in the repo. §5 description of the OAuth flow stays — accurate when the path is reactivated.
 
 **Status:** accepted; in-session implementation 2026-05-21. The pipeline is functional again with the same Reddit behavior as before this session, plus the cron shift to 22:00 UTC. If OAuth becomes accessible later, the flip-back is two URLs + two `type` values.
+
+---
+
+## 2026-05-25 — Navigation rework: two-door landing, News redirects externally, Reference + Contribute removed from nav
+
+**Decision:** Restructure the site navigation around two visible audiences (newcomers / experienced users) and an externally-hosted news feed. Concretely:
+
+1. **Sidebar (and top-nav) flattened to one entry per pillar:** Home · Foundations · Day 1 · Skills · Tips & Tricks · Glossary · News ↗ · My Pins. Removed: the `Start Here` group (collapsed into top-level `Foundations` and `Day 1`), the `Reference` entry, and the `Contribute` group (containing How to contribute / Submit a Skill).
+2. **News surface now redirects externally** to `https://biks2013.github.io/AgentNews/` — a colleague's curated AI-news site. Implemented as `redirects: { '/news/': '<external>' }` in `astro.config.mjs`; the `site/src/pages/news/` directory was deleted entirely (both `index.astro` and `[slug].astro`). Pill, top-nav, sidebar, and footer all use `target="_blank" rel="noopener"` so users don't lose the hub's navigation context.
+3. **Landing page (`site/src/pages/index.astro`) rewritten as a two-door traffic router** above the fold. Hero composition: title → single-line lede → two side-by-side cards. Newcomer card (`router-card--newcomer`, teal-soft `--nbg-accent-soft` background, teal border): badge "NEW TO CLAUDE CODE" / title "Start with Foundations" / body explaining LLM-provider differences + why Claude Code at NBG + setup / two buttons (Open Foundations primary, Day 1 setup secondary). Experienced card (white, grey border): badge "ALREADY USING IT" / title "Jump straight in" / body / 4-pill row (Skills · Tips & Tricks · Glossary · News ↗). Below the fold: Skills feed (top 6) + Tips feed (top 6). News feed removed from the homepage since the destination moved.
+4. **`/reference/` deleted entirely.** The 14 entries it held were either redundant with Tips and Glossary (slash-commands belong in Glossary; triage-prompt patterns are Tips) or were `status: "planned"` placeholders. Cleaner to consolidate into the two surfaces people actually visit.
+5. **`/contribute/`, `/submit-skill/`, `/start-here/day-1/`, `/start-here/week-1/` left as orphan routes** (page files still in the repo, just unlinked from sidebar / top-nav). Reversible: flip back on by adding the entries to `astro.config.mjs#sidebar` and `SplashAwareHeader.astro#navLinks`. `submit-skill` kept as a deliberate "hide functionality for now" per user direction; the page renders and the CI validator still runs on `skills/**/*.md` PRs, but no UI surface points at it.
+6. **Branding rule: "News" everywhere in the UI, never "AgentNews".** The URL still points at AgentNews and the destination retains its own name — but every link / label on this hub reads "News". Applies to sidebar, top-nav, landing-page pill, and footer.
+
+**Why:** User feedback from the demo session — *"a lot of information that is well hidden all around the subpages"* and *"the visible part of the screen should be the key screen where the user should immediately understand where he is, why is he here, and where he can dig into."* The two-door landing makes the audience split explicit instead of forcing the user to pick from eight equal sidebar entries. The News redirect kills the duplication with a colleague's better-maintained feed and removes ~33 published news items from the site's content surface (the underlying `news/published/` directory + RSS pipeline still operate — they're now orphaned data, see Issues #14).
+
+**Alternatives considered:**
+
+- *News as a launcher page on the hub* (one-screen card with "Visit AgentNews →" button) instead of hard redirect — rejected: hard redirect is one click less, and the launcher would require maintenance of yet another page that adds zero unique value over what AgentNews already provides.
+- *Keep Reference and reshape it as a true cheatsheet* — rejected: 2 of 5 buckets were `status: "planned"` (i.e. empty), and the remaining 3 buckets duplicated content from Tips and Glossary at different granularity. The deletion is cheaper than the maintenance.
+- *Delete the orphaned page files (`contribute.astro`, `submit-skill.astro`, `day-1.astro`, `week-1.astro`) rather than unlink them* — rejected: the user explicitly said "hide functionality" for submit-skill, and the journey pages (`day-1`, `week-1`) carry real content that may be rewired into Foundations later. Keeping them as orphan routes is reversible at zero cost.
+- *Stack the newcomer card's two buttons vertically to match the right card's 2×2 pill grid height* — abandoned mid-iteration in favor of collapsing the pills to a single row of 4. The 4-pill row reads more like a nav strip than a button cluster, and matches the left card's single button row in height — symmetry achieved structurally rather than by content stretch.
+
+**Where the code lives:**
+
+- New / rewritten: `site/src/pages/index.astro` (full rewrite — two-door hero, removed news section, footer simplified).
+- Changed: `site/astro.config.mjs` — `redirects: { '/news/': '<external>' }` added; sidebar reduced from 13 entries (across 3 groups) to 8 flat entries; News entry uses `attrs: { target: '_blank', rel: 'noopener' }`.
+- Changed: `site/src/components/SplashAwareHeader.astro` — `navLinks` reshaped; `external: boolean` per link so AgentNews opens in a new tab; rendered `<a>` conditionally emits `target="_blank" rel="noopener"`.
+- Changed: `site/src/pages/glossary.astro` — empty-state CTA no longer points at `/contribute/`.
+- Changed: `site/tests/build-output.test.ts` — `marketingPages` arrays no longer reference deleted routes (`/news/`, `/reference/`) and now include `/start-here/foundations/`. 4 obsolete tests removed; suite 237 → 232 still passing.
+- Deleted: `site/src/pages/reference.astro`, `site/src/pages/news/index.astro`, `site/src/pages/news/[slug].astro`.
+- Page-content edits (copy): hero lede rewritten ("A practical guide to Claude Code at NBG — for anyone just starting out and anyone already using it daily."); newcomer body rewritten (LLM-provider differentiation + why Claude Code + setup); experienced body rewritten (skills / tips / glossary / news without entry counts).
+
+**Layout pitfall discovered along the way:** the cards live inside Starlight's `.sl-markdown-content` wrapper, which ships a global vertical-rhythm rule — `.sl-markdown-content :not(a, strong, em, ...) + :not(a, strong, em, ...) { margin-top: var(--sl-content-gap-y); }`. This added `margin-top: 16px` silently to the second `<article>`, offsetting it down by 16px relative to the first. Eight iterations of CSS tweaking in the editing window never surfaced this — it lives in a Starlight stylesheet, not ours. Found via Puppeteer + Chrome DevTools Protocol (`CSS.getMatchedStylesForNode`). Override: `.router-grid > * + * { margin-top: 0 }`. Documented as a hard-won learning in (a) Issues #15 below (project-specific gotcha) and (b) a new "Visual verification for UI work — don't iterate blind" section in **global** `~/.claude/CLAUDE.md` to prevent the same blind-iteration pattern across all future projects.
+
+**Status:** accepted; in-session implementation 2026-05-25. Site builds clean, 232/232 site tests pass. Demo session feedback was the trigger; sign-off pending on the live site review.
+
+---
+
+## 2026-05-25 — Glossary auto-link + hover tooltips: build-time linking, first-occurrence-only, HTML popover, `tldr` as hard build requirement
+
+**Decision:** Make the glossary load-bearing across every content surface by auto-linking glossary terms (+ explicit aliases) on **first occurrence per page**, build-time, via a custom remark plugin (`site/src/plugins/remark-glossary-link.ts`) wired through `site/astro.config.mjs#markdown.remarkPlugins`. The plugin walks the markdown AST, matches case-insensitively with word-boundary awareness against an index of glossary slugs + aliases built once at plugin-factory time, skips fenced code / inline code / headings / existing links / Starlight asides / the term's own glossary page / files under `news/published/`, and replaces the first match with a plain HTML node `<button data-glossary-slug="…" data-glossary-display="…">…source-cased text…</button>`. A single-instance Astro primitive `site/src/components/primitives/GlossaryTerm.astro` (zero `@astrojs/starlight` imports — AC36/AC37 portability gate) injects a JSON manifest (`{slug: {title, tldr}}`) plus a small client-side wiring script (≤80 LOC, no framework deps) that, on `DOMContentLoaded`, finds every `[data-glossary-slug]`, generates a unique id, creates a sibling `<span popover="auto" role="tooltip">` next to the button (with title + tldr + "Read more →" anchor), wires hover/focus to call `showPopover()` / `hidePopover()` (with a ~150ms close delay), and respects `prefers-reduced-motion: reduce`. ESC dismissal is native to the HTML `popover` attribute.
+
+Five sub-decisions captured in this single entry per AC25 of `docs/refined-requests/glossary-tooltips.md`:
+
+1. **Build-time auto-link, not author-side annotation.** Authors write plain prose; the system does the linking. The alternative — manually wrapping every "CLI" / "skill" / "PR" in markdown — was rejected because: (a) it puts maintenance burden on every content author forever, (b) the day a glossary slug renames, every manual link silently rots, (c) the only authoritative source for "which glossary terms exist" is the glossary collection itself. Build-time linking has exactly one source of truth.
+2. **First occurrence per page only.** Wikipedia convention. Per-file `Set<string>` keyed by canonical slug, scoped to `file.path`. Rejected the all-occurrences variant for visual noise — once the reader has seen the tooltip on this page, they have the concept. Subsequent occurrences pass through as plain text.
+3. **HTML `popover` attribute, not a headless-UI library.** The platform attribute (Chromium 114+, Safari 17+, Firefox 125+) gives native ESC dismissal, focus management, and click-outside-to-close — for free, with zero JS runtime. We add ~80 LOC of hover/focus wiring on top. Rejected: Floating UI / Headless UI / Popover.js — they all carry runtime weight, ship their own ARIA semantics (often conflicting with our `aria-describedby`), and would require us to ship a JS framework just for this primitive. The HTML attribute does the same job with no dependencies.
+4. **Primitive placement under `site/src/components/primitives/` (AC36/AC37 portability gate).** Hard rule: zero `@astrojs/starlight` imports in `GlossaryTerm.astro`. Asserted by `glossary-term-component.test.ts` (greps the file source for `from '@astrojs/starlight`). Reason: the primitive must work in any Astro project, not just the one running Starlight chrome. Same rule already established for the other 16 primitives (Container, Section, Card, etc. — see §S.13 + §S.13.16).
+5. **`tldr` is a hard build requirement — no fallback.** Per global CLAUDE.md "Never create fallback values for missing configuration". Zod field is `z.string().min(1).max(160)`. A glossary MD missing `tldr`, or with `tldr.length > 160`, causes `npm run build` to exit non-zero with a clear Zod error citing the field. The popover must never silently render an empty surface — if a term made it into the index without a tldr, the build is broken.
+
+**Why each, briefly:**
+
+- **Why a remark plugin, not a rehype plugin or a custom Astro integration**: remark operates on the markdown AST before HTML conversion, which lets us still distinguish heading / code / link / aside nodes by type (rehype gives you only the final HTML, after structural information has flattened). The skip rules (especially "skip headings h1–h6", "skip aside callouts") are trivial in remark and ugly in rehype.
+- **Why plain HTML `<button>` output, not a `<GlossaryTerm/>` JSX/MDX element**: emitting an MDX/JSX node would require every content file (.md and .mdx) to import `<GlossaryTerm/>` (or for the plugin to inject the import), and would tie the plugin output to MDX availability. Emitting `type: 'html'` text nodes with `<button data-glossary-slug="…">` is plain-text portable, works identically in .md and .mdx, and decouples the plugin from the component's import surface. The price: a single page-level registry component (`GlossaryTerm.astro`) wires up popovers at runtime via a small DOM-scan script. Net: simpler plugin, more robust to Starlight pipeline changes.
+- **Why `<span popover>` not `<div popover>`**: the trigger button is emitted inside prose, often inside `<p>`. A `<div>` inside `<p>` causes the browser to auto-close the `<p>` at the first block child — corrupting the document tree. `<span>` is inline-valid in any context. The `popover` attribute is a global HTML attribute valid on any element. (`§S.14.10 R-4`.)
+- **Why `aliases` as an explicit list, not stemming**: stemming silently picks aliases the author never sanctioned (`commits` → `commit` is fine, but `commitment` → `commit` is wrong). Explicit alias lists are reviewable in PRs, greppable, and stable. The contract: `pull-request` → `["PR", "PRs", "pull request", "pull requests"]`; `large-language-model` → `["LLM", "LLMs"]`; etc. — full list in `docs/refined-requests/glossary-tooltips.md` §Requirements §3.
+
+**Scope decisions captured during the in-session work:**
+
+- **Skip `news/published/` from auto-linking** (OQ1 resolved 2026-05-25). News surface is hard-redirected externally per the prior 2026-05-25 nav rework entry — auto-linking news pages would generate work that's invisible to users. The plugin explicitly checks `file.path.includes('/news/published/')` and returns early.
+- **Audit script output is date-stamped**, not rolling (OQ2 resolved 2026-05-25). Output path: `docs/reference/glossary-audit-YYYY-MM-DD.md`. Multiple audits accumulate so triage decisions remain traceable. The script is read-only on `glossary/` — does not auto-add discovered terms (audit feeds human triage).
+- **Popover surface is minimal**: title + tldr + "Read more →" link to the full entry. No audience badge in the popover (OQ3 resolved 2026-05-25). Detail page is one click away if needed.
+
+**Defect surfaced during planning — `hook` glossary entry.** The user's original request listed "hooks" as a term newcomers don't know, and the refined-spec alias-contract example included `hook → ["hooks"]`, but no `hook.md` existed in the glossary at the start of this work. Caught by the planner. **The mandatory-new-terms count was bumped from 6 to 7**: `cli`, `frontmatter`, `yaml`, `markdown`, `rss`, `model`, **`hook`**. Glossary count after this entry: **21 + 7 = 28**. AUTO-block sync via `node scripts/sync-doc-counts.mjs` enforces the count in `CLAUDE.md` and `SCOPE.md`.
+
+**Alternatives considered:**
+
+- *Author-side annotation of links* — rejected for the reasons above (maintenance burden + silent rot).
+- *All-occurrences linking* — rejected for visual noise.
+- *Tippy.js / Floating UI for the popover* — rejected for runtime weight; the native HTML attribute does the job.
+- *`<dialog>` for the popover surface* — rejected: `<dialog>` is modal by default, traps focus, and dismisses on click-outside in a less forgiving way than `popover="auto"`. The HTML popover attribute is the right primitive for a non-modal tooltip.
+- *Embed full glossary body in tooltip* — rejected: entries are full markdown pages, often with tables and code. The hover surface needs to be one-line / one-paragraph. Hence the `tldr` field.
+- *Auto-add audit-discovered terms* — rejected: auto-adding glossary entries would mean publishing definitions the team hasn't reviewed. Audit produces a triage report; humans decide.
+
+**Where the code lives:**
+
+- New: `site/src/plugins/remark-glossary-link.ts` — the remark plugin (build-time auto-linker).
+- New: `site/src/components/primitives/GlossaryTerm.astro` — the page-level registry + wiring script.
+- New: `scripts/audit-glossary-candidates.mjs` — the audit script (ESM Node, stdlib only).
+- New: `docs/reference/glossary-audit-2026-05-25.md` — first audit run output.
+- New: `docs/reference/integration-verification-glossary-tooltips.md` — Phase D verification report.
+- New: 7 glossary entries — `glossary/{cli,frontmatter,yaml,markdown,rss,model,hook}.md`.
+- Changed: `site/src/content.config.ts` — glossary schema extended with `tldr` (required ≤160) + `aliases` (default `[]`).
+- Changed: 21 existing glossary entries — each backfilled with `tldr` + `aliases` per the alias contract.
+- Changed: `site/astro.config.mjs` — `markdown.remarkPlugins` array now includes the glossary linker with options `{ glossaryDir: '../glossary', excludePaths: ['/news/published/'] }`.
+- Changed: layout wrapper (`MarketingShell.astro` + content-page chrome) — single `<GlossaryTerm />` invocation per page.
+- Changed: `CLAUDE.md` + `SCOPE.md` — AUTO content-count blocks updated via `node scripts/sync-doc-counts.mjs` (Glossary: 21 → 28).
+
+**Status:** accepted; in-session implementation 2026-05-25. Phased ship: A (schema + content) → B (plugin + component + wiring) → C (audit) → D (visual verification + integration-verification doc). See `docs/design/plan-006-glossary-tooltips.md` for the AC coverage table and `docs/design/project-design.md` §S.14 for the design contract.
+
+**Post-review follow-ons (same session, after Phase 7 code review landed PASS verdict):**
+
+1. **IM-1 / XSS-safe JSON manifest** — `JSON.stringify(manifest)` inlined inside `<script type="application/json">` doesn't escape `</script>` sequences. If any future glossary `title` or `tldr` contains the literal substring `</script>` (or `<!--`) the HTML parser would terminate the host script tag prematurely and inject the remainder as live HTML. Applied a post-stringify escape: `< → <`, `> → >`, plus U+2028 / U+2029 line-separator escapes (json-string-safe but HTML-script-parser-hostile). Verified in `dist/index.html` — `<` appears in the inlined manifest.
+2. **IM-2 / alias schema `.min(1)`** — design `§S.14.1` specified `aliases: z.array(z.string().min(1)).default([])`; initial implementation dropped the per-element `.min(1)`. Empty-string aliases would have passed Zod and become matcher noise (the plugin's `parseFrontmatter` filtered them as defence-in-depth, but Zod is meant to be the authoritative gate). One-line schema fix; tests still green.
+3. **Issue #17 / `/glossary/` catalog rewrite** — caught during build-output verification (NOT covered by Phase D's visual pass — Phase D's "74 inline triggers on /glossary/" count was wrong; the actual built page had 0 buttons in entry bodies). Root cause: Astro 6's content-collection `render(entry)` path uses a markdown processor that does NOT inherit the project-level `markdown.remarkPlugins` configured in `astro.config.mjs`. Fix: rewrote `site/src/pages/glossary.astro` to use `createMarkdownProcessor({ remarkPlugins: [[remarkGlossaryLink, …]] })` per entry, with a synthesised `fileURL` so the plugin's self-page skip still derives `currentSlug` correctly. After the rewrite: 74 actual buttons on `/glossary/`, self-page skip verified (the `agent` entry's body links `model`, `claude-code`, `context-window`, `prompt`, `token` — but NOT "agent" itself). Documented as a general pattern in `Issues - Pending Items.md` #15 — every future page that bypasses the project markdown config must explicitly re-wire the plugin.
+4. **Popover positioning anchored at trigger bottom-right** — initial component rendered the popover using the user-agent default `inset: 0; margin: auto;` which centres the popover in the top layer. User feedback during dev-server review: popover should anchor to the trigger so the reader's eye doesn't have to travel. Implemented JS positioning in the wiring script: before each `showPopover()`, set inline `position: fixed; top/left/right: auto; bottom: auto; margin: 0;` using `getBoundingClientRect()` of the trigger; anchor top-left of popover at trigger's `right, bottom + 6px`. Viewport-edge clamping: shift left if right-edge overflow; flip above the trigger if bottom-edge overflow; re-position on scroll / resize while open. Re-measure once per show via `requestAnimationFrame` to refine the estimate after layout. Documented at `§S.14.4` "Positioning" subsection. No flicker (estimate-first).
+5. **Two bug-fixes captured here are NOT in the original §S.14 design contract** — they were emergent from running the feature in dev. Both have been folded into §S.14 (the wiring section gained an "Implementation discovery" callout listing the 3 manual-processor sites; §S.14.4 gained a "Positioning" subsection). The original §S.14 remains the authoritative reference; the additions are explicitly dated 2026-05-25 for archaeology.
+
+**Where the additional code lives:**
+
+- Changed: `site/src/components/primitives/GlossaryTerm.astro` — added the `positionAt()` helper inside the wiring closure (≈40 LOC); added `window` scroll/resize listeners gated on `:popover-open`; added the JSON manifest escape (5 lines).
+- Changed: `site/src/content.config.ts` — alias element now `z.string().min(1)`.
+- Changed: `site/src/pages/glossary.astro` — replaced `await render(entry)` + `<Content />` with `createMarkdownProcessor` + `set:html={html}` pattern. Drops the `Content` symbol from imports.
+- Changed: `docs/design/project-design.md` §S.14.4 + §S.14.5 — added the positioning + multi-wiring-site subsections.
+- Issue #17 was moved from Pending to Completed in `Issues - Pending Items.md`.
+- New: `docs/reference/authoring-glossary-terms.md` — workflow doc for "how to add a new term and confirm it auto-links throughout."
 

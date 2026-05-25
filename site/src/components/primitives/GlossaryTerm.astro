@@ -1,0 +1,367 @@
+---
+/**
+ * GlossaryTerm.astro — Page-level glossary tooltip registry.
+ *
+ * Purpose: One-shot wiring primitive for the build-time glossary auto-linker
+ * (Phase B of §S.14). The remark plugin emits inert
+ * `<button data-glossary-slug="…">term</button>` markers inside markdown;
+ * this component runs once per page and:
+ *   1. Inlines the glossary lookup as `<script type="application/json"
+ *      id="nbg-glossary-data">{…}</script>` (build-time `getCollection`).
+ *   2. Runs an idempotent client-side wiring script that, for every
+ *      `[data-glossary-slug]` button, creates a sibling `<span popover="auto">`
+ *      with title / tldr / "Read more →" and attaches hover + focus + ESC
+ *      handlers.
+ *
+ * DOM contract (frozen — coder B.P1 depends on this exactly):
+ *   button[data-glossary-slug][data-glossary-display]
+ *     → gains popovertarget, aria-describedby, type='button',
+ *       data-nbg-glossary-wired='true'
+ *   span[popover='auto'][role='tooltip'].nbg-glossary-popover (inserted after)
+ *     → <strong> title, <span> tldr, <a> Read more →
+ *
+ * Why `<span popover>` not `<div popover>` (§S.14.10 R-4):
+ *   the button typically lives inside a `<p>` — a block-level `<div>` child
+ *   would auto-close the surrounding `<p>` and corrupt the document tree.
+ *   The `popover` attribute is a global HTML attribute valid on any element.
+ *
+ * Related: docs/design/project-design.md §S.14.4 (component API),
+ *          §S.14.7 (error handling), §S.14.8 (token map), §S.14.10 R-4.
+ * Portability: zero Starlight imports — AC36/AC37 gate.
+ */
+import { getCollection } from 'astro:content';
+
+interface Props {
+  /**
+   * Mode of operation. Phase B ships registry only; inline reserved for
+   * future content-author use (single hand-placed tooltip inside an aside).
+   */
+  mode?: 'registry' | 'inline';
+}
+
+const { mode = 'registry' } = Astro.props;
+
+if (mode === 'inline') {
+  throw new Error(
+    'GlossaryTerm: inline mode is reserved for a later phase. Use mode="registry" (the default).',
+  );
+}
+
+const glossary = await getCollection('glossary');
+
+// Per global rule: no silent fallbacks for missing config. An empty glossary
+// while the registry is included indicates a misconfiguration — fail loudly.
+if (glossary.length === 0) {
+  throw new Error(
+    'GlossaryTerm: glossary collection is empty. Add entries under glossary/*.md or remove the registry from the layout.',
+  );
+}
+
+const manifest = Object.fromEntries(
+  glossary.map((entry) => [
+    entry.id,
+    { title: entry.data.title, tldr: entry.data.tldr },
+  ]),
+);
+
+// Inlined JSON inside <script type="application/json"> is HTML-context-safe
+// for `<` and `&` *only if* we escape `</script>` and angle brackets that could
+// terminate the host script element prematurely. Standard JSON encoders don't.
+// (Review IM-1 — the placeholder `<name>` already appears in model.md's tldr,
+// proving authors do embed angle brackets in plain text.)
+const manifestJson = JSON.stringify(manifest)
+  .replace(/</g, '\\u003c')
+  .replace(/>/g, '\\u003e')
+  .replace(/\u2028/g, '\\u2028')
+  .replace(/\u2029/g, '\\u2029');
+---
+<script
+  type="application/json"
+  id="nbg-glossary-data"
+  set:html={manifestJson}
+/>
+
+<script>
+  // Client-side wiring. Pure DOM, no framework. Idempotent across
+  // DOMContentLoaded re-fires (Astro view-transitions) via the
+  // `data-nbg-glossary-wired` marker on each button.
+  (function () {
+    function wire() {
+      var dataEl = document.getElementById('nbg-glossary-data');
+      if (!dataEl || !dataEl.textContent) return;
+      var data: Record<string, { title: string; tldr: string }> = {};
+      try {
+        data = JSON.parse(dataEl.textContent);
+      } catch (err) {
+        console.warn('GlossaryTerm: failed to parse manifest JSON', err);
+        return;
+      }
+
+      var triggers = document.querySelectorAll<HTMLButtonElement>(
+        'button[data-glossary-slug]:not([data-nbg-glossary-wired])',
+      );
+
+      triggers.forEach(function (btn) {
+        var slug = btn.getAttribute('data-glossary-slug') || '';
+        var entry = data[slug];
+        if (!entry) {
+          // §S.14.7 says throw; per Phase B coder instructions we warn
+          // and leave the button intact so a single stale slug doesn't
+          // break the whole page.
+          console.warn(
+            'GlossaryTerm: no glossary entry for slug "' + slug + '".',
+          );
+          btn.setAttribute('data-nbg-glossary-wired', 'true');
+          return;
+        }
+
+        // Unique id per trigger. crypto.randomUUID is available in all
+        // modern browsers; fall back to a counter only if absent.
+        var id = 'gloss-' + (
+          typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID().slice(0, 8)
+            : String(Math.floor(Math.random() * 1e8))
+        );
+
+        btn.setAttribute('popovertarget', id);
+        btn.setAttribute('aria-describedby', id);
+        btn.setAttribute('type', 'button');
+        btn.setAttribute('data-nbg-glossary-wired', 'true');
+
+        var pop = document.createElement('span');
+        pop.id = id;
+        pop.setAttribute('popover', 'auto');
+        pop.setAttribute('role', 'tooltip');
+        pop.className = 'nbg-glossary-popover';
+        pop.innerHTML =
+          '<strong class="nbg-glossary-popover__title">' +
+          escapeHtml(entry.title) +
+          '</strong>' +
+          '<span class="nbg-glossary-popover__tldr">' +
+          escapeHtml(entry.tldr) +
+          '</span>' +
+          '<a class="nbg-glossary-popover__more" href="/glossary/#' +
+          encodeURIComponent(slug) +
+          '">Read more →</a>';
+        btn.insertAdjacentElement('afterend', pop);
+
+        // Position the popover anchored to the trigger's BOTTOM-RIGHT.
+        // The HTML `popover` attribute puts the element in the top layer,
+        // which is effectively `position: fixed` (viewport coordinates).
+        // We override the user-agent default centring by setting inline
+        // top/left/right/bottom right before `showPopover()`.
+        //
+        // Clamping: if the popover would overflow the right viewport edge,
+        // shift it left. If it would overflow the bottom edge, flip it
+        // above the trigger.
+        var positionAt = function () {
+          var r = btn.getBoundingClientRect();
+          var GAP = 6;       // gap between trigger and popover
+          var GUTTER = 8;    // min distance from viewport edge
+          // Width estimate when the popover hasn't been measured yet
+          // (offsetWidth is 0 until first show). 320px = max-width.
+          var popW = pop.offsetWidth || Math.min(320, window.innerWidth - GUTTER * 2);
+          var popH = pop.offsetHeight || 120;
+
+          // Anchor pop's top-left at the trigger's bottom-right corner.
+          var top = r.bottom + GAP;
+          var left = r.right;
+
+          // Clamp horizontal
+          if (left + popW > window.innerWidth - GUTTER) {
+            left = window.innerWidth - popW - GUTTER;
+          }
+          if (left < GUTTER) left = GUTTER;
+
+          // Flip vertical if bottom would overflow
+          if (top + popH > window.innerHeight - GUTTER) {
+            var flipped = r.top - popH - GAP;
+            if (flipped >= GUTTER) top = flipped;
+            else top = Math.max(GUTTER, window.innerHeight - popH - GUTTER);
+          }
+
+          pop.style.position = 'fixed';
+          pop.style.top = top + 'px';
+          pop.style.left = left + 'px';
+          pop.style.right = 'auto';
+          pop.style.bottom = 'auto';
+          pop.style.margin = '0';
+        };
+
+        // Hover-to-show. The native `popover` attribute is click-toggle
+        // only; we layer hover + focus on top. Small debounce timers
+        // prevent flicker on cursor passing through.
+        var showT: ReturnType<typeof setTimeout> | null = null;
+        var hideT: ReturnType<typeof setTimeout> | null = null;
+        var clearShow = function () { if (showT) { clearTimeout(showT); showT = null; } };
+        var clearHide = function () { if (hideT) { clearTimeout(hideT); hideT = null; } };
+        var show = function () {
+          clearHide();
+          showT = setTimeout(function () {
+            try {
+              positionAt(); // estimate-based; refined below after layout
+              (pop as HTMLElement & { showPopover: () => void }).showPopover();
+              // Re-measure with the popover actually laid out so a content
+              // shorter than 320px (or wrapping different from estimate)
+              // doesn't leave a stale offset. Single rAF — no visible flicker.
+              requestAnimationFrame(positionAt);
+            } catch (_e) { /* already open or unsupported */ }
+          }, 80);
+        };
+        var hide = function () {
+          clearShow();
+          hideT = setTimeout(function () {
+            try { (pop as HTMLElement & { hidePopover: () => void }).hidePopover(); }
+            catch (_e) { /* already closed */ }
+          }, 120);
+        };
+
+        btn.addEventListener('mouseenter', show);
+        btn.addEventListener('mouseleave', hide);
+        btn.addEventListener('focus', show);
+        btn.addEventListener('blur', hide);
+        pop.addEventListener('mouseenter', clearHide);
+        pop.addEventListener('mouseleave', hide);
+
+        // Reposition on viewport changes while open.
+        window.addEventListener('resize', function () {
+          if (pop.matches(':popover-open')) positionAt();
+        });
+        window.addEventListener('scroll', function () {
+          if (pop.matches(':popover-open')) positionAt();
+        }, { passive: true });
+
+        // Belt-and-braces ESC: native popover already closes on Escape,
+        // but we also return focus to the trigger button.
+        btn.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && pop.matches(':popover-open')) {
+            try { (pop as HTMLElement & { hidePopover: () => void }).hidePopover(); }
+            catch (_e) { /* no-op */ }
+            btn.focus();
+          }
+        });
+      });
+    }
+
+    function escapeHtml(s: string): string {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        } as Record<string, string>)[c] || c;
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', wire);
+    } else {
+      wire();
+    }
+    // Astro view transitions re-fire after navigation.
+    document.addEventListener('astro:page-load', wire);
+  })();
+</script>
+
+<style is:global>
+  /* `is:global` is required: the trigger `<button>` is injected by the
+   * remark plugin (not authored in this Astro component), and the
+   * `<span popover>` surface is created at runtime by the wiring script
+   * above. Neither carries Astro's scoped-style hash, so we style them
+   * with global selectors keyed off the stable `data-glossary-slug`
+   * attribute and the `.nbg-glossary-popover` class.
+   *
+   * Token usage map: §S.14.8. Zero hex/rgb/hsl literals. */
+  @layer nbg.primitives {
+    button[data-glossary-slug] {
+      background: transparent;
+      border: 0;
+      padding: 0;
+      margin: 0;
+      font: inherit;
+      color: inherit;
+      cursor: help;
+      text-decoration: underline dotted var(--nbg-color-accent);
+      text-underline-offset: 3px;
+      text-decoration-thickness: 1px;
+      transition:
+        text-decoration-color var(--nbg-dur-fast) var(--nbg-ease-out),
+        color                  var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+
+    button[data-glossary-slug]:hover,
+    button[data-glossary-slug]:focus-visible {
+      text-decoration-color: var(--nbg-color-accent-hover);
+      color: var(--nbg-color-accent-hover);
+    }
+
+    button[data-glossary-slug]:focus-visible {
+      outline: none;
+      border-radius: var(--nbg-r-xs);
+      box-shadow:
+        0 0 0 2px var(--nbg-color-bg-canvas),
+        0 0 0 4px var(--nbg-color-focus-ring);
+    }
+
+    .nbg-glossary-popover {
+      /* Native popover positioning: default top-layer placement is centred.
+       * We reset the user-agent margin so the popover can sit flush. */
+      margin: 0;
+      padding: var(--nbg-sp-3) var(--nbg-sp-4);
+      max-width: min(320px, calc(100vw - var(--nbg-sp-8)));
+      background: var(--nbg-color-bg-elevated);
+      color: var(--nbg-color-fg-primary);
+      border: 1px solid var(--nbg-color-border-default);
+      border-radius: var(--nbg-r-md);
+      box-shadow: var(--nbg-sh-lg);
+      font-family: var(--nbg-type-body);
+      /* Reset inline children to block stacking so a <span popover> with
+       * three inline children still presents as three lines (§S.14.10 R-4). */
+    }
+
+    .nbg-glossary-popover__title,
+    .nbg-glossary-popover__tldr,
+    .nbg-glossary-popover__more {
+      display: block;
+    }
+
+    .nbg-glossary-popover__title {
+      color: var(--nbg-color-fg-primary);
+      font-family: var(--nbg-type-body);
+      font-size: var(--nbg-fs-md);
+      font-weight: var(--nbg-fw-semibold);
+      line-height: 1.3;
+    }
+
+    .nbg-glossary-popover__tldr {
+      margin: var(--nbg-sp-2) 0 var(--nbg-sp-3);
+      color: var(--nbg-color-fg-secondary);
+      font-size: var(--nbg-fs-sm-2);
+      line-height: 1.45;
+    }
+
+    .nbg-glossary-popover__more {
+      color: var(--nbg-color-link);
+      font-size: var(--nbg-fs-sm);
+      font-weight: var(--nbg-fw-medium);
+      text-decoration: none;
+      transition: color var(--nbg-dur-fast) var(--nbg-ease-out);
+    }
+    .nbg-glossary-popover__more:hover,
+    .nbg-glossary-popover__more:focus-visible {
+      color: var(--nbg-color-link-hover);
+      text-decoration: underline;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      button[data-glossary-slug],
+      .nbg-glossary-popover,
+      .nbg-glossary-popover__more {
+        transition: none !important;
+        animation: none !important;
+      }
+    }
+  }
+</style>

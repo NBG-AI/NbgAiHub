@@ -62,15 +62,16 @@ const shouldRenderSearch =
 // Mirrors astro.config.mjs sidebar but is intentionally flatter — splash
 // pages need a horizontal nav, not a tree. Order ranks by how often
 // newcomers reach for them.
+// `external: true` swaps the rendered <a> to target="_blank" so AgentNews
+// opens in a new tab and the user keeps the hub's navigation context.
 const navLinks = [
-  { label: 'Start Here', href: '/start-here/day-1/' },
-  { label: 'Skills',     href: '/skills/' },
-  { label: 'Tips',       href: '/tips/' },
-  { label: 'News',       href: '/news/' },
-  { label: 'Glossary',   href: '/glossary/' },
-  { label: 'Reference',  href: '/reference/' },
-  { label: 'My Pins',    href: '/my-pins/' },
-  { label: 'Contribute', href: '/contribute/' },
+  { label: 'Foundations', href: '/start-here/foundations/', external: false },
+  { label: 'Day 1',       href: '/start-here/day-1/',       external: false },
+  { label: 'Skills',      href: '/skills/',                 external: false },
+  { label: 'Tips',        href: '/tips/',                   external: false },
+  { label: 'Glossary',    href: '/glossary/',               external: false },
+  { label: 'News ↗',      href: 'https://biks2013.github.io/AgentNews/', external: true },
+  { label: 'My Pins',     href: '/my-pins/',                external: false },
 ] as const;
 
 const currentPath = Astro.url.pathname;
@@ -113,8 +114,10 @@ function isCurrent(href: string): boolean {
           <li>
             <a
               href={link.href}
-              data-current={isCurrent(link.href) ? 'true' : undefined}
-              aria-current={isCurrent(link.href) ? 'page' : undefined}
+              target={link.external ? '_blank' : undefined}
+              rel={link.external ? 'noopener' : undefined}
+              data-current={!link.external && isCurrent(link.href) ? 'true' : undefined}
+              aria-current={!link.external && isCurrent(link.href) ? 'page' : undefined}
             >
               {link.label}
             </a>
@@ -161,8 +164,10 @@ function isCurrent(href: string): boolean {
           <li>
             <a
               href={link.href}
-              data-current={isCurrent(link.href) ? 'true' : undefined}
-              aria-current={isCurrent(link.href) ? 'page' : undefined}
+              target={link.external ? '_blank' : undefined}
+              rel={link.external ? 'noopener' : undefined}
+              data-current={!link.external && isCurrent(link.href) ? 'true' : undefined}
+              aria-current={!link.external && isCurrent(link.href) ? 'page' : undefined}
             >
               {link.label}
             </a>

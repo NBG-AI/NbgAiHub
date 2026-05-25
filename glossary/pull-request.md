@@ -9,6 +9,8 @@ last_reviewed: "2026-05-19"
 external_link: null
 deeper_link: "https://556lowcodenocode.github.io/Onboarding/"
 ai_summary: A proposal to merge a branch back into `main`. The PR is where review, discussion, CI checks, and the final approval happen — it's the conversation, not just the code.
+tldr: "A proposal to merge a branch back into main. The PR is where review, discussion, CI checks, and the final approval happen."
+aliases: ["PR", "PRs", "pull request", "pull requests"]
 ---
 
 A Pull Request (PR) is how proposed changes enter the team's main code line. You push your branch, open a PR, and the rest of the team can read the diff, comment on lines, request changes, approve, and merge.

@@ -1,0 +1,391 @@
+---
+/**
+ * /start-here/foundations — AgentNews-aesthetic foundations layer.
+ *
+ * Renders the journeys/foundations.md markdown via segment splitting on
+ * `## Step N — Title` headings (same pattern as day-1.astro), interleaved
+ * with curated external-resource panels per section.
+ *
+ * The resource list is co-located in this file — each item has a title,
+ * author/channel, kind, duration, URL, and a one-line "why" string.
+ * Resources are matched to step numbers; rendered in a sub-section after
+ * each step's body.
+ *
+ * Related: docs/refined-requests/beginner-foundations.md.
+ */
+import { getEntry } from 'astro:content';
+import { createMarkdownProcessor } from '@astrojs/markdown-remark';
+import MarketingShell from '../../components/MarketingShell.astro';
+import remarkGlossaryLink from '../../plugins/remark-glossary-link.ts';
+
+const entry = await getEntry('journeys', 'foundations');
+if (!entry) {
+  throw new Error(
+    "Missing journeys collection entry 'foundations' — expected at /journeys/foundations.md",
+  );
+}
+
+const rawBody: string | undefined = entry.body;
+if (typeof rawBody !== 'string' || rawBody.trim().length === 0) {
+  throw new Error(
+    'journeys/foundations.md has an empty body — expected `## Step N` segmented content.',
+  );
+}
+
+interface ParsedStep {
+  n: number;
+  title: string;
+  bodyMd: string;
+}
+
+function splitSteps(body: string): { intro: string; steps: ParsedStep[] } {
+  const lines = body.split('\n');
+  const headingRe = /^##\s+Step\s+(\d+)\s*[—\-]\s*(.+?)\s*$/;
+  const introLines: string[] = [];
+  const steps: ParsedStep[] = [];
+  let current: ParsedStep | null = null;
+  for (const line of lines) {
+    const match = line.match(headingRe);
+    if (match && match[1] && match[2]) {
+      if (current) steps.push(current);
+      current = { n: Number.parseInt(match[1], 10), title: match[2], bodyMd: '' };
+      continue;
+    }
+    if (current) {
+      current.bodyMd += (current.bodyMd ? '\n' : '') + line;
+    } else {
+      introLines.push(line);
+    }
+  }
+  if (current) steps.push(current);
+  for (const step of steps) {
+    step.bodyMd = step.bodyMd.replace(/\n---\s*\n?\s*$/, '\n').trim();
+  }
+  return { intro: introLines.join('\n').trim(), steps };
+}
+
+const { intro, steps } = splitSteps(rawBody);
+
+// §S.14.5 — pass the glossary auto-link plugin into the manual processor
+// so segmented steps go through the same auto-linking pipeline as the
+// content-collection render() path. Cast: `createMarkdownProcessor`'s
+// `remarkPlugins` is typed against unified's generic Plugin shape, while
+// our factory returns the narrower `Plugin<[], Root, Root>` — the runtime
+// contract is identical, the type widening here is purely a TS workaround.
+// §S.14.5 — pass the glossary auto-link plugin into the manual processor
+// so segmented steps go through the same auto-linking pipeline as the
+// content-collection render() path. Cast: `createMarkdownProcessor`'s
+// `remarkPlugins` is typed against unified's generic Plugin shape, while
+// our factory returns the narrower `Plugin<[RemarkGlossaryLinkOptions], Root, Root>`.
+const processor = await createMarkdownProcessor({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  remarkPlugins: [
+    [
+      remarkGlossaryLink as any,
+      { glossaryDir: '../glossary', excludePaths: ['/news/published/'] },
+    ],
+  ],
+});
+const renderedSteps = await Promise.all(
+  steps.map(async (step) => {
+    const result = await processor.render(step.bodyMd);
+    return { ...step, html: result.code };
+  }),
+);
+const introHtml = intro.length > 0 ? (await processor.render(intro)).code : '';
+
+// ─── Curated resources ────────────────────────────────────────────────
+// One bucket per step. Each resource hand-picked + verified live as of
+// 2026-05-24. Authors/durations as published at fetch time.
+
+interface Resource {
+  step: number;
+  title: string;
+  author: string;
+  kind: 'video' | 'article' | 'course' | 'docs';
+  duration?: string;
+  url: string;
+  why: string;
+}
+
+const resources: Resource[] = [
+  // F1 — What is Claude Code?
+  { step: 1, kind: 'course', title: 'Claude Code 101', author: 'Anthropic (official)',
+    url: 'https://anthropic.skilljar.com/claude-code-101',
+    why: 'Anthropic\'s own beginner course — installation through advanced customisation. The most authoritative starting point. Free.' },
+  { step: 1, kind: 'video', title: 'Claude Code — Full Tutorial for Beginners', author: 'Tech with Tim', duration: '~45 min',
+    url: 'https://www.youtube.com/watch?v=ntDIxaeo3Wg',
+    why: 'Hands-on walkthrough of the actual CLI experience. Watch this before you install if you want to see what you\'re signing up for.' },
+  { step: 1, kind: 'video', title: 'How Anthropic Employees ACTUALLY Use Claude Code', author: 'Anthropic', duration: '~25 min',
+    url: 'https://www.youtube.com/watch?v=pRfIWmddRsE',
+    why: 'Non-technical Anthropic staff showing real workflows. Useful for non-developers who want to see the breadth of use cases.' },
+
+  // F2 — Claude product disambiguation
+  { step: 2, kind: 'article', title: 'Claude, Claude API, and Claude Code: What\'s the Difference?', author: '16x.engineer',
+    url: 'https://eval.16x.engineer/blog/claude-vs-claude-api-vs-claude-code',
+    why: 'Clearest single-page disambiguation of the three surfaces. Read this if the names are blurring together.' },
+  { step: 2, kind: 'article', title: '5 Claude Products: Which One Do You Actually Need?', author: 'RSL/A',
+    url: 'https://rsla.io/blog/anthropic-claude-products-guide',
+    why: 'Covers the full product family including Desktop and Cowork. Decision-tree shaped — match your job to the right surface.' },
+
+  // F3 — What is an LLM
+  { step: 3, kind: 'video', title: 'Large Language Models Explained Briefly', author: '3Blue1Brown', duration: '~10 min',
+    url: 'https://www.youtube.com/watch?v=LPZh9BOjkQs',
+    why: 'The single best 10-minute explainer ever produced. Visual, accurate, no jargon. If you only watch one thing on this page, watch this.' },
+  { step: 3, kind: 'video', title: '[1hr Talk] Intro to Large Language Models', author: 'Andrej Karpathy', duration: '~60 min',
+    url: 'https://www.youtube.com/watch?v=zjkBMFhNj_g',
+    why: 'Andrej Karpathy was at OpenAI and Tesla. This is the deeper version. Covers what LLMs are, where they\'re going, security implications. Generally considered required watching in the field.' },
+  { step: 3, kind: 'article', title: 'Transformers, the tech behind LLMs — Chapter 5', author: '3Blue1Brown',
+    url: 'https://www.3blue1brown.com/lessons/gpt/',
+    why: 'If the 10-minute version left you wanting more — this is the visual deep-dive into how transformers actually work.' },
+
+  // F4 — Context windows
+  { step: 4, kind: 'docs', title: 'What is a context window?', author: 'IBM Think',
+    url: 'https://www.ibm.com/think/topics/context-window',
+    why: 'Vendor-neutral, technically careful explanation. Defines the term, explains the trade-offs, links to deeper reading.' },
+  { step: 4, kind: 'article', title: 'Context Window Limits: Why Your LLM Still Hallucinates', author: 'Perivitta Rajendran',
+    url: 'https://pr-peri.github.io/llm/2026/02/13/why-hallucination-happens.html',
+    why: 'Connects the context-window mechanic directly to hallucination behaviour — the practical "why does Claude start making things up?" answer.' },
+  { step: 4, kind: 'article', title: 'When More Becomes Less — Why LLMs Hallucinate in Long Contexts', author: 'Rishabh Bhandari (Bootcamp / Medium)',
+    url: 'https://medium.com/design-bootcamp/when-more-becomes-less-why-llms-hallucinate-in-long-contexts-fc903be6f025',
+    why: 'Covers the "lost in the middle" phenomenon — why even large context windows don\'t solve forgetting cleanly.' },
+
+  // F5 — Agent vs chatbot
+  { step: 5, kind: 'article', title: 'What Is An AI Agent? And Is It the Same as a Chatbot?', author: 'Forethought',
+    url: 'https://forethought.ai/blog/what-is-an-ai-agent',
+    why: 'Plain-English breakdown of agent autonomy + tool use vs scripted chatbot decision trees. Good for non-technical readers.' },
+  { step: 5, kind: 'article', title: 'What Is the Claude Agent SDK? How It Differs from the Claude API', author: 'MindStudio',
+    url: 'https://www.mindstudio.ai/blog/what-is-claude-agent-sdk-vs-claude-api',
+    why: 'Maps the agent-loop concept onto Anthropic\'s specific products. Explains why Claude Code "feels different" from calling the API yourself.' },
+
+  // F6 — Why Claude Code specifically
+  { step: 6, kind: 'article', title: 'Every AI Coding CLI in 2026: The Complete Map (30+ Tools Compared)', author: 'DEV Community',
+    url: 'https://dev.to/soulentheo/every-ai-coding-cli-in-2026-the-complete-map-30-tools-compared-4gob',
+    why: 'Most comprehensive 2026 landscape overview. Useful for understanding *what else exists* before deciding Claude Code is right.' },
+  { step: 6, kind: 'article', title: 'Claude Code vs Cursor: What to Choose in 2026', author: 'Builder.io',
+    url: 'https://www.builder.io/blog/cursor-vs-claude-code',
+    why: 'Head-to-head with the closest competitor. Honest about where Cursor wins (visual editing) and where Claude Code wins (autonomous multi-file work).' },
+  { step: 6, kind: 'article', title: 'Coding Agents Comparison — independent benchmarks', author: 'Artificial Analysis',
+    url: 'https://artificialanalysis.ai/agents/coding',
+    why: 'Third-party benchmark numbers — not vendor marketing. Useful for "is the hype real" questions.' },
+];
+
+const heroTitle = entry.data.title ?? 'Foundations';
+const heroSummary = entry.data.ai_summary;
+
+function resourceKindLabel(kind: Resource['kind']): string {
+  switch (kind) {
+    case 'video':   return 'Video';
+    case 'article': return 'Article';
+    case 'course':  return 'Course';
+    case 'docs':    return 'Docs';
+  }
+}
+function resourceKindTone(kind: Resource['kind']): string {
+  switch (kind) {
+    case 'video':   return 'tag--link';
+    case 'article': return '';
+    case 'course':  return 'tag--audience-beginner';
+    case 'docs':    return 'tag--audience-both';
+  }
+}
+---
+
+<MarketingShell
+  title={heroTitle}
+  description={heroSummary}
+  surfaceId="foundations"
+  width="full"
+  hero="none"
+  mode="reader"
+>
+  <section class="hero hero--stack">
+    <div class="wrap">
+      <div class="hero__intro">
+        <h1 class="hero__title">Foundations — <em>start here if it's all new.</em></h1>
+        <p class="hero__lede">
+          {heroSummary}
+          <small>Audience: complete beginner · ~20 min read · 16 curated external resources</small>
+          <small><a href="/start-here/day-1/">→ ready to install? Skip to Day 1</a></small>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  {introHtml.length > 0 && (
+    <section class="section" id="intro" style="padding-block: 2rem;">
+      <div class="wrap">
+        <div class="journey-intro sl-markdown-content" set:html={introHtml} />
+      </div>
+    </section>
+  )}
+
+  {renderedSteps.map((step) => {
+    const stepResources = resources.filter((r) => r.step === step.n);
+    return (
+      <section
+        class="section"
+        id={`f${step.n}`}
+        data-step={step.n}
+        aria-label={`Foundation ${step.n}: ${step.title}`}
+      >
+        <div class="wrap">
+          <div class="section__head">
+            <h2>F{step.n} / {renderedSteps.length}</h2>
+            <span class="count">{step.title}</span>
+          </div>
+
+          <div class="foundation-step">
+            <h3 class="foundation-step__title">{step.title}</h3>
+            <div class="foundation-step__body sl-markdown-content" set:html={step.html} />
+          </div>
+
+          {stepResources.length > 0 && (
+            <div class="foundation-resources">
+              <div class="foundation-resources__head">
+                <span class="eyebrow eyebrow--accent">Watch / read</span>
+                <span class="count">{stepResources.length} curated</span>
+              </div>
+              <div class="grid-3">
+                {stepResources.map((r) => (
+                  <article class="card card--text">
+                    <div class="card__body">
+                      <div class="card__meta">
+                        <span class={`tag ${resourceKindTone(r.kind)}`}>{resourceKindLabel(r.kind)}</span>
+                        {r.duration && <span class="external-host">{r.duration}</span>}
+                      </div>
+                      <h4 class="card__title">
+                        <a href={r.url} target="_blank" rel="noopener noreferrer">
+                          {r.title}
+                        </a>
+                      </h4>
+                      <p class="card__summary"><strong>{r.author}</strong> — {r.why}</p>
+                      <a class="feature__cta" href={r.url} target="_blank" rel="noopener noreferrer">
+                        Open →
+                      </a>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  })}
+
+  <section class="section" id="next">
+    <div class="wrap">
+      <div class="empty">
+        <p class="empty__eyebrow">Next up</p>
+        <h2 class="empty__title">Day 1 — your first session.</h2>
+        <p class="empty__body">
+          You've got the mental models. Now install Claude Code and run your first session.
+          Six steps, about thirty minutes, you'll be productive by the end of it.
+        </p>
+        <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+          <a class="feature__cta" href="/start-here/day-1/">Begin → Day 1</a>
+          <a class="feature__cta" href="/glossary/">Or: browse the glossary →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</MarketingShell>
+
+<style>
+  @layer nbg.components {
+    .journey-intro {
+      color: var(--nbg-ink-2);
+      font-size: 1.125rem;
+      line-height: 1.7;
+    }
+    .journey-intro :global(p) {
+      margin: 0 0 1rem 0;
+    }
+    .foundation-step {
+      max-width: 56rem;
+      scroll-margin-top: 5rem;
+    }
+    .foundation-step__title {
+      font-family: var(--nbg-ff-serif);
+      font-weight: 500;
+      font-size: var(--nbg-fs-feature);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      color: var(--nbg-ink);
+      margin: 0 0 1rem 0;
+    }
+    .foundation-step__body {
+      color: var(--nbg-ink);
+      font-size: 1rem;
+      line-height: 1.7;
+    }
+    .foundation-step__body :global(p) {
+      margin: 0 0 1rem 0;
+    }
+    .foundation-step__body :global(p:last-child) {
+      margin-bottom: 0;
+    }
+    .foundation-step__body :global(ul),
+    .foundation-step__body :global(ol) {
+      margin: 0 0 1rem 0;
+      padding-left: 1.5rem;
+    }
+    .foundation-step__body :global(li) {
+      margin-bottom: 0.5rem;
+    }
+    .foundation-step__body :global(code) {
+      font-family: var(--nbg-ff-mono);
+      font-size: 0.95em;
+      background: var(--nbg-surface-2);
+      padding: 0.1em 0.35em;
+      border-radius: var(--nbg-r-sm);
+    }
+    .foundation-step__body :global(pre) {
+      background: var(--nbg-surface-2);
+      border: 1px solid var(--nbg-hairline);
+      border-radius: var(--nbg-r-md);
+      padding: 1rem;
+      overflow-x: auto;
+    }
+    .foundation-step__body :global(table) {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9375rem;
+    }
+    .foundation-step__body :global(th),
+    .foundation-step__body :global(td) {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--nbg-hairline);
+      vertical-align: top;
+    }
+    .foundation-step__body :global(th) {
+      font-family: var(--nbg-ff-mono);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--nbg-muted);
+      font-weight: 500;
+      border-bottom: 1px solid var(--nbg-border);
+    }
+    .foundation-step__body :global(strong) {
+      color: var(--nbg-ink);
+      font-weight: 600;
+    }
+    .foundation-resources {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--nbg-hairline);
+    }
+    .foundation-resources__head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+  }
+</style>

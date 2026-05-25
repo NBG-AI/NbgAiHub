@@ -10,6 +10,16 @@
         "onboarding",
         "getting-started"
       ]
+    },
+    {
+      "slug": "foundations",
+      "title": "Foundations — what is Claude Code, and why should I care?",
+      "audience": "beginner",
+      "topics": [
+        "foundations",
+        "onboarding",
+        "mental-models"
+      ]
     }
   ]
 }

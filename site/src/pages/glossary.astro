@@ -9,21 +9,43 @@
  * Related: project-design.md §S.13.16, plan-005 phase 4 #5.
  * Backs AC10, AC15. Preserves filter test floor.
  */
-import { getCollection, render } from 'astro:content';
+import { getCollection } from 'astro:content';
+import { createMarkdownProcessor } from '@astrojs/markdown-remark';
 import MarketingShell from '../components/MarketingShell.astro';
 import PinButton from '../components/PinButton.astro';
+import remarkGlossaryLink from '../plugins/remark-glossary-link.ts';
 
 const items = await getCollection('glossary');
 const sorted = items.sort((a, b) =>
   a.data.title.localeCompare(b.data.title),
 );
 
+// §S.14.5 + Issue #17 — Astro's content-collection `render()` path bypasses
+// the project-level `markdown.remarkPlugins`, so the glossary auto-link
+// plugin never fires on entry bodies rendered via `<Content />`. We invoke
+// the markdown processor manually with the plugin attached, same pattern
+// as the journey pages (foundations.astro / day-1.astro). The plugin's
+// self-page skip uses `file.path` to skip a term inside its own entry —
+// we synthesise the path as `glossary/<slug>.md` so the skip still works.
+const processor = await createMarkdownProcessor({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  remarkPlugins: [
+    [
+      remarkGlossaryLink as any,
+      { glossaryDir: '../glossary', excludePaths: ['/news/published/'] },
+    ],
+  ],
+});
+
 const rendered = await Promise.all(
   sorted.map(async (entry) => {
-    const { Content } = await render(entry);
+    const body = entry.body ?? '';
+    const result = await processor.render(body, {
+      fileURL: new URL(`file:///glossary/${entry.id}.md`),
+    });
     const label = entry.data.title.toLowerCase();
     const firstLetter = label.charAt(0);
-    return { entry, Content, label, firstLetter };
+    return { entry, html: result.code, label, firstLetter };
   }),
 );
 
@@ -58,7 +80,7 @@ const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
           <p class="empty__eyebrow">No items yet</p>
           <h2 class="empty__title">The glossary is empty.</h2>
           <p class="empty__body">
-            See <a href="/contribute/">Contribute</a> for how to add one.
+            Add terms by opening a PR against <code>glossary/</code>.
           </p>
         </div>
       </div>
@@ -106,7 +128,7 @@ const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
             <span class="count">{rendered.length} entries</span>
           </div>
           <div class="glossary-terms">
-            {rendered.map(({ entry, Content, label, firstLetter }) => (
+            {rendered.map(({ entry, html, label, firstLetter }) => (
               <article
                 id={entry.id}
                 data-term
@@ -122,9 +144,7 @@ const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
                     </a>
                   </h3>
                 </div>
-                <div class="glossary-body sl-markdown-content">
-                  <Content />
-                </div>
+                <div class="glossary-body sl-markdown-content" set:html={html} />
                 <div class="glossary-term__footer">
                   <PinButton type="glossary" slug={entry.id} />
                 </div>

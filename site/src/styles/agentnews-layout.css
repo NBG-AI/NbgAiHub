@@ -265,6 +265,40 @@
   .hero__lede small a:hover {
     border-bottom-color: var(--nbg-accent);
   }
+
+  /* .hero--stack — content-page variant that mirrors the homepage's
+     stacked hero. Title spans full width; lede sits directly below it
+     (not in a right-column rail). Metadata + CTA flow as their own
+     rows beneath the lede instead of being squeezed into a 22.5rem
+     column. Use on Foundations / Day 1 / Skills / Tips / Glossary
+     content-entry heroes. The homepage uses its own .hero--router
+     override (in index.astro) and is unaffected. */
+  .hero--stack .hero__intro {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+  .hero--stack .hero__lede {
+    max-width: none; /* flow to full .wrap width per design call 2026-05-25 */
+    font-size: 1.125rem; /* 18px — lede deserves more presence as a standalone row */
+    color: var(--nbg-ink-2);
+    line-height: 1.55;
+  }
+  /* First <small> on a stacked lede is the metadata strip (AUDIENCE · TIME · …).
+     Gets a hairline separator above + a small breath of space so it reads
+     as a byline footer rather than a continuation of the prose. */
+  .hero--stack .hero__lede small {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--nbg-hairline);
+    max-width: none;
+  }
+  /* Any subsequent <small> (typically the CTA link) sits tight under
+     the metadata — no second divider. */
+  .hero--stack .hero__lede small + small {
+    margin-top: 0.5rem;
+    padding-top: 0;
+    border-top: 0;
+  }
   @media (max-width: 55rem) {
     .hero__intro {
       grid-template-columns: 1fr;
@@ -470,6 +504,19 @@
   }
   .card__title a:hover {
     color: var(--nbg-accent);
+  }
+  .card__command {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.3;
+  }
+  .card__command code {
+    font-family: var(--nbg-ff-mono);
+    color: var(--nbg-accent);
+    background: transparent;
+    padding: 0;
+    font-size: 0.9375rem;
+    font-weight: 500;
   }
   .card__summary {
     color: var(--nbg-muted);
@@ -708,6 +755,165 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       scroll-behavior: auto !important;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+   * Reader mode — `<MarketingShell mode="reader">` emits
+   * `[data-mode="reader"]` on the page <main>. These overrides give
+   * long-scroll content pages (Foundations, Day 1, future role-based
+   * journeys) a calmer, single-rhythm treatment.
+   *
+   * Five guiding rules — see DECISIONS 2026-05-25:
+   *   1. One title per step (drop duplicate label in .section__head)
+   *   2. Two serif moments per page (hero + step title; nothing else)
+   *   3. Resources are a quiet aside (list rows, not a feature grid)
+   *   4. One rule pattern — keep the hairline above the resources block
+   *      as the single "now: where to go next" signal. Drop section borders.
+   *   5. One vertical rhythm token (--reader-step-gap) used by every step.
+   * ═══════════════════════════════════════════════════════════════════ */
+  [data-mode='reader'] {
+    --reader-gap: 2.5rem;       /* 40px — between blocks within a step */
+    --reader-step-gap: 4.5rem;  /* 72px — between adjacent steps */
+  }
+
+  /* Drop per-section hairlines — too many horizontal stops in a long scroll. */
+  [data-mode='reader'] .section {
+    border-bottom: 0;
+    padding: var(--reader-step-gap) 0;
+  }
+  /* The intro section sits between hero and the first step. The pages
+     ship an inline `style="padding-block: 2rem"` on this section which
+     leaves ~64px of dead space surrounding what is often only 2-3 lines
+     of intro prose. Reader mode collapses that padding so the intro reads
+     as a tight prelude to the first step rather than a stranded paragraph
+     in a sea of whitespace. !important is required to beat the inline
+     declaration on the page markup. */
+  [data-mode='reader'] .section#intro {
+    padding-block: 0 !important;
+  }
+
+  /* Section head — currently "F1 / 6" + duplicate step title in mono.
+     Hide the duplicate; keep the F1/6 counter as a quiet eyebrow. */
+  [data-mode='reader'] .section__head {
+    margin-bottom: 1.25rem;
+  }
+  [data-mode='reader'] .section__head .count {
+    display: none;
+  }
+  [data-mode='reader'] .section__head h2 {
+    font-size: 0.6875rem;
+    letter-spacing: 0.18em;
+  }
+
+  /* Readable measure — body prose stays ~75ch wide regardless of viewport.
+     Long-form retention drops sharply past 80ch (every typography reference
+     ever — Bringhurst, Butterick, etc.). The whitespace on the right is
+     the column doing its job. Applied as a reader-mode invariant so every
+     reader-mode page reads the same. */
+  [data-mode='reader'] .foundation-step,
+  [data-mode='reader'] .journey-step {
+    max-width: 56rem;
+  }
+
+  /* Step title — the primary landmark for each step. Restrained serif.
+     Matches both Foundations (.foundation-step__title) and Day 1
+     (.journey-step__title). Other reader-mode pages can either reuse one
+     of these class names or be added here. */
+  [data-mode='reader'] .foundation-step__title,
+  [data-mode='reader'] .journey-step__title {
+    font-size: clamp(1.75rem, 2.5vw, 2.25rem);
+    margin-bottom: 1.5rem;
+  }
+
+  /* Resources block — drop the "feature grid" treatment and make it
+     read as a quiet "further reading" list. One hairline above it
+     signals "step content ends; resources begin". */
+  [data-mode='reader'] .foundation-resources {
+    margin-top: var(--reader-gap);
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--nbg-hairline);
+  }
+  [data-mode='reader'] .foundation-resources__head {
+    margin-bottom: 0.75rem;
+  }
+
+  /* Grid of resource cards → flat list of rows. */
+  [data-mode='reader'] .foundation-resources .grid-3 {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  [data-mode='reader'] .foundation-resources .card {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--nbg-hairline);
+    box-shadow: none;
+  }
+  [data-mode='reader'] .foundation-resources .card:last-child {
+    border-bottom: 0;
+  }
+  /* Row layout: kind+duration on the left, title + author/why on the right. */
+  [data-mode='reader'] .foundation-resources .card__body {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 0.4rem 1.5rem;
+    align-items: baseline;
+    padding: 0;
+  }
+  [data-mode='reader'] .foundation-resources .card__meta {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-items: flex-start;
+  }
+  /* Title is the link itself — bigger than the eyebrows around it. */
+  [data-mode='reader'] .foundation-resources .card__title {
+    margin: 0;
+    font-family: var(--nbg-ff-body);
+    font-size: 1.0625rem;
+    font-weight: 500;
+    line-height: 1.35;
+    letter-spacing: 0;
+  }
+  [data-mode='reader'] .foundation-resources .card__title a {
+    color: var(--nbg-ink);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 160ms ease, color 120ms ease;
+  }
+  [data-mode='reader'] .foundation-resources .card__title a:hover {
+    color: var(--nbg-accent);
+    border-bottom-color: var(--nbg-accent);
+  }
+  /* Author + why on the second grid row, aligned with the title column. */
+  [data-mode='reader'] .foundation-resources .card__summary {
+    grid-column: 2;
+    margin: 0;
+    font-size: 0.9375rem;
+    color: var(--nbg-muted);
+    line-height: 1.5;
+  }
+  [data-mode='reader'] .foundation-resources .card__summary strong {
+    color: var(--nbg-ink-2);
+    font-weight: 600;
+  }
+  /* Drop the redundant "Open →" CTA — the title IS the link. */
+  [data-mode='reader'] .foundation-resources .card .feature__cta {
+    display: none;
+  }
+
+  /* Mobile: rows stack so they don't squeeze the kind/duration column. */
+  @media (max-width: 45rem) {
+    [data-mode='reader'] .foundation-resources .card__body {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+    [data-mode='reader'] .foundation-resources .card__summary {
+      grid-column: 1;
     }
   }
 }

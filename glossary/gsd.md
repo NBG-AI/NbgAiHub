@@ -9,6 +9,8 @@ last_reviewed: "2026-05-19"
 external_link: null
 deeper_link: "https://556lowcodenocode.github.io/Onboarding/"
 ai_summary: A community workflow framework that adds a `.planning/` folder to your project — roadmap, milestones, phases, audit trail — so Claude can pick up multi-week work across sessions without losing the thread.
+tldr: "A community workflow framework that adds a .planning/ folder — roadmap, milestones, phases, audit trail — so Claude resumes multi-week work cleanly."
+aliases: []
 ---
 
 GSD is an *optional* community framework for managing Claude Code projects that span weeks or months. The whole idea: persist project state in a `.planning/` folder so Claude (and you) can resume work without re-explaining context.

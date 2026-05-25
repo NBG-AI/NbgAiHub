@@ -5,8 +5,16 @@
 
 import { defineConfig, fontProviders } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import remarkGlossaryLink from './src/plugins/remark-glossary-link.ts';
 
 export default defineConfig({
+  // GitHub Pages — published as a project page under chomovazuzana.
+  // URL: https://chomovazuzana.github.io/NbgAiHub/
+  // The trailing-slash setting matches Starlight's link generation.
+  site: 'https://chomovazuzana.github.io',
+  base: '/NbgAiHub',
+  trailingSlash: 'always',
+
   // CLAUDE.md → Ports: dev server pinned to 4321.
   // CLI flag `--port 4322` is the escape hatch on collision (don't edit this).
   server: { port: 4321, host: false },
@@ -14,6 +22,35 @@ export default defineConfig({
   // The floating Astro dev dock interferes with UAT screenshots and isn't
   // useful in this project (we're not editing Astro internals live). Off.
   devToolbar: { enabled: false },
+
+  // News is hard-redirected to the colleague-curated AgentNews feed.
+  // External URL — Astro emits a meta-refresh + JS fallback HTML page
+  // at /news/ in the static build. Per the 2026-05-25 nav rework.
+  redirects: {
+    '/news/': 'https://biks2013.github.io/AgentNews/',
+  },
+
+  // §S.14.5 — Glossary auto-linking. See docs/refined-requests/glossary-tooltips.md
+  // and docs/design/project-design.md §S.14.3 for the plugin contract.
+  // The plugin walks the markdown AST at build time, matches glossary
+  // slugs + aliases case-insensitively with word-boundary awareness,
+  // skips fenced code / inline code / headings / existing links /
+  // Starlight asides / the term's own glossary page, and wraps the first
+  // match per file with a plain HTML `<button data-glossary-slug="…">`
+  // that GlossaryTerm.astro's runtime registry script hydrates into a
+  // popover. News under `news/published/` is excluded per OQ1 (resolved
+  // 2026-05-25 — news surface routes externally, see redirects above).
+  markdown: {
+    remarkPlugins: [
+      [
+        remarkGlossaryLink,
+        {
+          glossaryDir: '../glossary',
+          excludePaths: ['/news/published/'],
+        },
+      ],
+    ],
+  },
 
   // P4.B — Astro Fonts API. Stable since Astro 6.0.0 (we are on 6.3.5).
   // See docs/research/astro-fonts-api-experimental-stability.md and
@@ -92,30 +129,24 @@ export default defineConfig({
         // because AuthControls + SignInModal are mounted by SplashAwareHeader.
         SocialIcons: './src/components/SocialIconsOverride.astro',
       },
+      // 2026-05-25 navigation rework: flatten the sidebar to one entry per
+      // pillar. Removed: Start Here group (collapsed into single
+      // Foundations link), Reference (content merged into Tips + Glossary),
+      // Contribute group (unlinked — pages remain orphaned for reversal).
+      // News redirects externally via the `redirects` config above.
       sidebar: [
         { label: 'Home', link: '/' },
-        { label: 'My Pins', link: '/my-pins/' },
-        {
-          label: 'Start Here',
-          collapsed: false,
-          items: [
-            { label: 'Day 1', link: '/start-here/day-1/' },
-            { label: 'Week 1 (coming soon)', link: '/start-here/week-1/' },
-          ],
-        },
-        { label: 'News', link: '/news/' },
+        { label: 'Foundations', link: '/start-here/foundations/' },
+        { label: 'Day 1', link: '/start-here/day-1/' },
         { label: 'Skills', link: '/skills/' },
         { label: 'Tips & Tricks', link: '/tips/' },
         { label: 'Glossary', link: '/glossary/' },
-        { label: 'Reference', link: '/reference/' },
         {
-          label: 'Contribute',
-          collapsed: false,
-          items: [
-            { label: 'How to contribute', link: '/contribute/' },
-            { label: 'Submit a Skill', link: '/submit-skill/' },
-          ],
+          label: 'News ↗',
+          link: 'https://biks2013.github.io/AgentNews/',
+          attrs: { target: '_blank', rel: 'noopener' },
         },
+        { label: 'My Pins', link: '/my-pins/' },
       ],
     }),
   ],

@@ -113,14 +113,18 @@ describe('Pagefind retint via Starlight token aliases (AC34)', () => {
 });
 
 describe('Marketing surface chrome (AC10)', () => {
+  // 2026-05-25 nav rework: /news/ is now a static meta-refresh redirect
+  // to AgentNews (no MarketingShell). /reference/ deleted entirely.
+  // /contribute/ + /submit-skill/ remain orphaned (no sidebar link) but
+  // their HTML still emits the unified header chrome.
   const marketingPages = [
     'index.html',
     'skills/index.html',
     'tips/index.html',
     'glossary/index.html',
-    'news/index.html',
     'my-pins/index.html',
     'submit-skill/index.html',
+    'start-here/foundations/index.html',
     'start-here/day-1/index.html',
   ];
 
@@ -291,11 +295,10 @@ describe('Unified header on splash pages (AC31/AC32/AC33)', () => {
     'skills/index.html',
     'tips/index.html',
     'glossary/index.html',
-    'news/index.html',
     'my-pins/index.html',
     'submit-skill/index.html',
+    'start-here/foundations/index.html',
     'start-here/day-1/index.html',
-    'reference/index.html',
     'contribute/index.html',
   ];
 

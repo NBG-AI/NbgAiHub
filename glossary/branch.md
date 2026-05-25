@@ -9,6 +9,8 @@ last_reviewed: "2026-05-19"
 external_link: null
 deeper_link: "https://556lowcodenocode.github.io/Onboarding/"
 ai_summary: A parallel line of work. You branch off `main`, make changes without disturbing anyone, then merge back via a Pull Request when it's ready.
+tldr: "A parallel line of work. You branch off main, make changes without disturbing anyone, then merge back via a Pull Request when it's ready."
+aliases: ["branches"]
 ---
 
 A branch is a parallel line of work in the same repo. The team's default branch is usually `main` (or `master` on older repos). You create a feature branch off `main`, make your changes there, and merge it back through a Pull Request.

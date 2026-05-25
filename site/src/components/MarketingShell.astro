@@ -31,6 +31,12 @@
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 import Container from './primitives/Container.astro';
 import Section from './primitives/Section.astro';
+// §S.14.4 — Glossary tooltip registry. Renders once per marketing page.
+// Inlines `<script type="application/json" id="nbg-glossary-data">` plus the
+// runtime wiring script that hydrates every `[data-glossary-slug]` button
+// emitted by the remark plugin into a popover. Build-time portable (zero
+// @astrojs/starlight imports), so it works under any Astro chrome.
+import GlossaryTerm from './primitives/GlossaryTerm.astro';
 
 interface Props {
   title: string;
@@ -40,6 +46,10 @@ interface Props {
   hero?: 'auto' | 'none';
   width?: 'default' | 'wide' | 'full';
   theme?: 'default' | 'inverse';
+  /** "reader" applies a calmer, single-rhythm content treatment.
+   *  See `[data-mode="reader"]` rules in agentnews-layout.css. Used on
+   *  long-scroll content pages (Foundations, Day 1, etc.). */
+  mode?: 'default' | 'reader';
 }
 
 const {
@@ -50,6 +60,7 @@ const {
   hero = 'auto',
   width = 'wide',
   theme = 'default',
+  mode = 'default',
 } = Astro.props;
 
 // Per global no-fallback rule — `title` is required.
@@ -68,6 +79,7 @@ const showHero    = hero === 'auto' && hasHeroSlot;
     data-surface={surfaceId}
     data-theme-mode={theme}
     data-width={width}
+    data-mode={mode}
   >
     {eyebrow && (
       <p class="nbg-marketing__eyebrow" data-marketing-eyebrow>{eyebrow}</p>
@@ -93,6 +105,8 @@ const showHero    = hero === 'auto' && hasHeroSlot;
       </Section>
     )}
   </main>
+
+  <GlossaryTerm />
 </StarlightPage>
 
 <script>

@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+/**
+ * Postbuild base-path rewrite for GitHub Pages.
+ *
+ * Astro's `base: '/NbgAiHub'` config prefixes asset imports, sitemap URLs,
+ * and `import.meta.env.BASE_URL` — but it does NOT rewrite hardcoded
+ * `<a href="/glossary/">` in .astro JSX or `(/glossary/#cli)` links inside
+ * authored markdown. This script walks `dist/` after the build and prepends
+ * the base prefix to any root-relative URL that points at one of our known
+ * top-level routes.
+ *
+ * Idempotent: only rewrites if the prefix isn't already present.
+ * Asset paths (`/_astro/...`, `/_pagefind/...`, `/_data/...`) are already
+ * base-aware via Astro so we leave them alone.
+ */
+import { readFileSync, writeFileSync, statSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const BASE = '/NbgAiHub';
+
+// Known top-level routes — the only paths we rewrite. Anything not on this
+// list is either an asset (handled by Astro) or an external link.
+const ROUTES = [
+  'glossary',
+  'skills',
+  'tips',
+  'news',
+  'start-here',
+  'my-pins',
+  'submit-skill',
+  'contribute',
+  '404',
+];
+
+// Match: attribute="/route" or attribute="/route/..." or attribute="/route#..."
+// Captures the attribute name + the route segment, leaves the rest as-is.
+const ROUTE_PATTERN = new RegExp(
+  `(\\b(?:href|src|action|data-pin-href|content)=["'])/(${ROUTES.join('|')})(/|#|"|')`,
+  'g',
+);
+
+function rewriteFile(path) {
+  const original = readFileSync(path, 'utf8');
+  const rewritten = original.replace(ROUTE_PATTERN, (_match, attr, route, tail) => {
+    return `${attr}${BASE}/${route}${tail}`;
+  });
+  if (rewritten !== original) {
+    writeFileSync(path, rewritten);
+    return true;
+  }
+  return false;
+}
+
+function walk(dir, exts = ['.html']) {
+  let touched = 0;
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const stat = statSync(full);
+    if (stat.isDirectory()) {
+      touched += walk(full, exts);
+    } else if (exts.some((e) => full.endsWith(e))) {
+      if (rewriteFile(full)) touched++;
+    }
+  }
+  return touched;
+}
+
+const here = fileURLToPath(new URL('.', import.meta.url));
+const distDir = join(here, '..', 'dist');
+
+const touched = walk(distDir);
+console.log(`rewrite-base-paths: prefixed ${BASE} in ${touched} file(s) under dist/`);

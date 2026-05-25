@@ -6022,3 +6022,929 @@ Render-time discrimination via a new pure-function helper `site/src/lib/news-sec
 ---
 
 *End of UI Redesign section.*
+
+---
+
+## §S.14 — Glossary Tooltips
+
+Design contract for the glossary auto-linking + hover tooltip feature. Authoritative companions:
+- Refined spec: `docs/refined-requests/glossary-tooltips.md` (31 ACs, 10 assumptions).
+- Plan: `docs/design/plan-006-glossary-tooltips.md` (phases A → B → C → D — locked, not re-sequenced here).
+- Glossary count after Phase A: **28** (21 existing + 7 new — `cli`, `frontmatter`, `yaml`, `markdown`, `rss`, `model`, `hook`). Plan still says 27 in places; see §S.14.10 R-1.
+
+This section specifies interfaces, data models, file paths, the remark plugin contract, the `GlossaryTerm.astro` component API, error handling, token usage, and the test contracts. Coders execute against these interfaces in parallel without re-reading each other's code.
+
+### §S.14.1 — Schema delta
+
+`site/src/content.config.ts` — extend the `glossary` collection's `z.object()` with **two** new keys layered on top of `baseShape('glossary')`. No other collection is touched.
+
+```ts
+// site/src/content.config.ts — glossary collection (after edit)
+const glossary = defineCollection({
+  loader: glob({ pattern: '*.md', base: '../glossary' }),
+  schema: z.object({
+    ...baseShape('glossary'),
+    // §S.14.1 — Glossary tooltips feature. Required short form, ≤160 chars,
+    // plain text (no markdown). Build fails loud if missing or oversize —
+    // per global CLAUDE.md "Never create fallback values for missing
+    // configuration."
+    tldr: z
+      .string({ required_error: 'glossary entry missing required field "tldr"' })
+      .min(1, 'tldr must be a non-empty string')
+      .max(160, 'tldr must be ≤160 characters (plain text, no markdown)'),
+    // §S.14.1 — Optional alias list. Defaults to [] so remark plugin can
+    // iterate uniformly without nullish guards. Lowercase or original
+    // casing both acceptable in source; matcher is case-insensitive.
+    aliases: z
+      .array(z.string().min(1))
+      .default([]),
+  }),
+});
+```
+
+**Field constraints — table form:**
+
+| Field | Type | Constraint | Required | Default |
+|---|---|---|---|---|
+| `tldr` | `z.string()` | `.min(1).max(160)` plain text | **yes** | n/a — Zod throws on missing |
+| `aliases` | `z.array(z.string().min(1))` | each alias `.min(1)` (no empty strings) | no | `[]` (NOT `undefined`) |
+
+**Validation error wording (frozen — tests assert exact substrings):**
+- Missing `tldr` → `'glossary entry missing required field "tldr"'` (via `required_error`).
+- Oversize `tldr` → `'tldr must be ≤160 characters (plain text, no markdown)'`.
+- Empty `tldr` (empty string) → `'tldr must be a non-empty string'`.
+- Non-array `aliases` → standard Zod `'Expected array, received …'` (not custom-overridden — Zod's wording is clear enough).
+
+**Why `.default([])` not `.optional()`:** the remark plugin's index-builder iterates `[entry.id, ...entry.data.aliases]` for every glossary entry to build the term→slug map. A default of `[]` removes a per-entry nullish guard from the hot loop. The spec §3 mandates `.default([])` explicitly.
+
+**Why NOT extend `baseShape`:** only the glossary collection consumes these fields. Folding `tldr` into `baseShape` would force every news / skill / tip / journey entry to carry a tldr — out of scope. Glossary-only is the deliberate placement.
+
+### §S.14.2 — Glossary MD frontmatter template
+
+The complete **12-key** frontmatter shape for new glossary entries (10 inherited from `baseShape` + 2 new):
+
+```yaml
+---
+type: glossary                    # 1. literal, enforced by baseShape
+title: "Command-line interface (CLI)"  # 2. string, min 1
+audience: beginner                # 3. enum beginner|advanced|both
+topics: [foundations, terminal]   # 4. string array
+internal: false                   # 5. bool
+authored: "2026-05-25"            # 6. YYYY-MM-DD
+last_reviewed: "2026-05-25"       # 7. YYYY-MM-DD
+external_link: null               # 8. URL or null
+deeper_link: null                 # 9. URL or null
+ai_summary: "A CLI is the text-based interface for invoking commands by typing them — claude, gh, git, npm all live here." # 10. string
+tldr: "The text interface for running tools like claude, gh, git, and npm. You type a command and it runs." # 11. NEW — ≤160 chars
+aliases: ["command-line interface", "command line"] # 12. NEW — defaults to [] when omitted
+---
+
+A **CLI** (command-line interface) is …
+```
+
+**Worked `cli.md` example** (tldr is 102 chars including spaces — comfortably ≤160):
+
+```
+tldr: "The text interface for running tools like claude, gh, git, and npm. You type a command and it runs."
+```
+
+**Slug derivation:** Astro's `glob` loader derives `entry.id` from the filename minus `.md`. So `glossary/cli.md` → `entry.id === 'cli'`. The `slug` is NOT a separate frontmatter key — it's the filename. This is consistent with the existing 21 entries; no change.
+
+**Alias contract (frozen for Phase A authors):**
+
+| Slug | Aliases |
+|---|---|
+| `pull-request` | `["PR", "PRs"]` |
+| `repository` | `["repo", "repos"]` |
+| `hook` | `["hooks"]` (new entry — see §S.14.10 R-1) |
+| `skill` | `["skills"]` |
+| `plugin` | `["plugins"]` |
+| `large-language-model` | `["LLM", "LLMs"]` |
+| `claudemd` | `["CLAUDE.md"]` |
+| all other 21 entries | author's discretion, `[]` if no obvious alias |
+
+### §S.14.3 — Remark plugin contract
+
+**File path (overrides plan + refined spec):** `site/src/plugins/remark-glossary-link.ts`.
+
+Justification for override: the plan suggests `site/src/lib/remark-glossary.ts` and the refined spec suggests `site/src/lib/remark-glossary.ts`. The `site/src/lib/` folder is for runtime-import shared modules (slug, auth, api-fetch, etc.). A build-time remark plugin is **not** runtime code — it's loaded only by `astro.config.mjs`. Placing it under `src/plugins/` matches Astro convention and prevents future contributors from accidentally importing the plugin into a page component (which would explode at runtime — node-only deps). All test files still live in `site/tests/` per plan.
+
+#### Module signature
+
+```ts
+// site/src/plugins/remark-glossary-link.ts
+import type { Plugin } from 'unified';
+import type { Root, Text, Parent } from 'mdast';
+
+export interface GlossaryEntry {
+  /** Canonical slug — filename minus `.md`, e.g. "pull-request". */
+  slug: string;
+  /** Display title from frontmatter — used as fallback if `display` is omitted at render. */
+  title: string;
+  /** Lower-cased term variants (slug + each alias) — what the matcher actually scans for. */
+  variants: string[];
+}
+
+export interface RemarkGlossaryLinkOptions {
+  /** Absolute or relative path to the glossary content dir. Required. */
+  glossaryDir: string;
+  /**
+   * Path substring tests. If `file.path` includes ANY of these, the plugin
+   * returns early without mutating the AST. Default: ['/news/published/'].
+   */
+  excludePaths?: string[];
+  /**
+   * Optional. When set, the plugin emits raw HTML nodes (type: 'html')
+   * instead of MDX JSX nodes. Used as a fallback if Astro/Starlight's MDX
+   * processor strips unknown component refs (refined spec A10, plan R2).
+   * Default: false (try JSX first; switch to true via env var if needed).
+   */
+  emitHtmlFallback?: boolean;
+}
+
+export default function remarkGlossaryLink(
+  options: RemarkGlossaryLinkOptions,
+): Plugin<[], Root, Root>;
+```
+
+#### Initialization contract
+
+The glossary index is built **once at plugin factory time** (the outer `remarkGlossaryLink(options)` call), NOT on every file pass.
+
+```ts
+// pseudo-code — actual code in site/src/plugins/remark-glossary-link.ts
+export default function remarkGlossaryLink(options: RemarkGlossaryLinkOptions): Plugin<[], Root, Root> {
+  if (!options?.glossaryDir) {
+    throw new Error('remark-glossary-link: options.glossaryDir is required (no fallback).');
+  }
+  const index: Map<string, GlossaryEntry> = buildGlossaryIndex(options.glossaryDir);
+  // index: keyed by lower-cased variant (slug OR alias), value is the canonical entry.
+  // Built ONCE. Astro re-invokes the factory between dev hot-reloads when the config
+  // changes, so HMR-on-glossary-edits is acceptable as a known limitation.
+
+  const excludePaths = options.excludePaths ?? ['/news/published/'];
+  const emitHtml = options.emitHtmlFallback ?? false;
+
+  return function transformer(tree, file) {
+    // per-file state — first-occurrence tracking lives here
+    if (excludePaths.some(p => (file.path ?? '').includes(p))) return;
+    const matched: Set<string> = new Set();              // canonical slugs already wrapped in this file
+    const currentSlug = deriveCurrentGlossarySlug(file); // null if file isn't under glossary/
+    visit(tree, predicate, (node, idx, parent) => {
+      // ... see "AST visitor contract" below
+    });
+  };
+}
+```
+
+**Index structure:** `Map<string, GlossaryEntry>` keyed by `variant.toLowerCase()`. Conflict resolution: see §S.14.7.
+
+#### AST visitor contract
+
+Use `unist-util-visit` with **an inclusion test + an ancestor-aware skip filter**:
+
+```ts
+import { visit, SKIP } from 'unist-util-visit';
+
+// Skip subtrees whose root we shouldn't descend into.
+// Returns SKIP to halt traversal into the node + its children.
+visit(tree, (node: any, _index: number | undefined, parent: any) => {
+  if (parent === null || parent === undefined) return; // root
+  // Skip these subtrees entirely (don't descend):
+  if (node.type === 'code')           return SKIP; // fenced code blocks
+  if (node.type === 'inlineCode')     return SKIP; // `…` inline code
+  if (node.type === 'heading')        return SKIP; // h1–h6
+  if (node.type === 'link')           return SKIP; // [text](url) — existing links
+  if (node.type === 'linkReference')  return SKIP;
+  if (node.type === 'definition')     return SKIP;
+  if (node.type === 'html')           return SKIP; // raw HTML — leave alone
+  // Starlight asides (remark-directive): containerDirective with name in
+  // {note, tip, caution, danger}.
+  if (
+    node.type === 'containerDirective' &&
+    ['note', 'tip', 'caution', 'danger'].includes(node.name)
+  ) return SKIP;
+
+  // We DO descend into: paragraph, listItem, tableCell, blockquote,
+  // emphasis, strong, delete (formatting nodes nest), and into the actual
+  // 'text' leaves. Matching happens on 'text' nodes only.
+  if (node.type !== 'text') return; // descend, don't match
+  // ... matching logic — see next subsection
+});
+```
+
+**Why `SKIP` not `'skip'`:** `unist-util-visit` returns the `SKIP` constant; semantics: do NOT descend into this subtree, continue with the next sibling. This is the cleanest way to enforce the skip rules without per-text-node ancestor inspection.
+
+**Nested-formatting matching:** because `emphasis` / `strong` / `delete` are NOT in the skip list, the visitor descends into them and matches on their inner `text` leaves. So `*pull request*` in source markdown becomes `emphasis > text("pull request")` — the visitor reaches the text and wraps it. Edge case: if a term is split across formatting (e.g. `pull *request*` → two siblings `text("pull ")` + `emphasis > text("request")`), the visitor sees only `"pull "` and `"request"` in isolation — neither matches `"pull request"`. **Accepted limitation** — see §S.14.10 R-3.
+
+#### Match algorithm
+
+Build **one alternation regex** at index-build time, sorted **longest-first** so multi-word aliases win against single-word substrings (e.g. `command-line interface` matches before `command-line` ever has a chance):
+
+```ts
+function buildMatcherRegex(index: Map<string, GlossaryEntry>): RegExp {
+  const variants = [...index.keys()]
+    .sort((a, b) => b.length - a.length)        // longest first
+    .map(v => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')); // regex-escape
+  // Boundary rule:
+  //   left  = start-of-string, or a non-[A-Za-z0-9_] char (so hyphen, space,
+  //           punctuation, opening quote all count as boundaries).
+  //   right = end-of-string, or a non-[A-Za-z0-9_] char.
+  // Using \b is WRONG here: \b treats hyphen as a word boundary BUT also
+  // matches inside hyphenated compounds in ways we don't want. We use
+  // explicit lookarounds.
+  return new RegExp(
+    `(?<![A-Za-z0-9_])(${variants.join('|')})(?![A-Za-z0-9_])`,
+    'gi',
+  );
+}
+```
+
+**Boundary table:**
+
+| Source text | Variant `cli` | Match? |
+|---|---|---|
+| `"use the cli now"` | `cli` | ✅ yes — surrounded by spaces |
+| `"click here"` | `cli` | ❌ no — `c` after is `[A-Za-z]` (right boundary fails) |
+| `"command-line"` | `cli` | ❌ no — `cli` does not appear; but if it did, the hyphen IS a boundary |
+| `"agent2"` | `agent` | ❌ no — `2` is `[0-9]` (right boundary fails) |
+| `"agent."` | `agent` | ✅ yes — `.` is a boundary |
+| `"ALLOWED"` | `LLM` (lowercase-keyed) | ❌ no — match is case-insensitive but `LLOW` surrounds `LLM`; specifically `A`/`O` are alphanumeric, both lookarounds fail |
+| `"LLMs"` (with `LLMs` as alias) | `LLMs` | ✅ yes — variant exists, full word |
+| `"LLMs"` (without `LLMs` alias, only `LLM`) | `LLM` | ❌ no — `s` after fails right boundary |
+
+The regex is **case-insensitive** (`i` flag) but **case-preserving** in display: the matched substring (from `match[1]`) is what gets passed as the `display` prop. Lookup of the canonical slug uses `match[1].toLowerCase()` against the index.
+
+#### First-occurrence tracking
+
+Per-file `Set<string>` keyed by **canonical slug** (not by variant) — so matching `"PR"` then `"pull request"` in the same file wraps only the first one (both resolve to slug `pull-request`):
+
+```ts
+const matched: Set<string> = new Set();
+// inside the text-node handler:
+const m = textValue.matchAll(matcherRegex);
+for (const hit of m) {
+  const variant = hit[1].toLowerCase();
+  const entry = index.get(variant)!;             // guaranteed by regex source
+  if (matched.has(entry.slug)) continue;          // already wrapped earlier on this page
+  if (entry.slug === currentSlug) continue;       // self-page skip
+  matched.add(entry.slug);
+  // ... split text node at hit, insert wrapper node, see "Replacement node shape"
+  break; // exit this text node — we wrap at most one term per text node
+}
+```
+
+**`break` after first hit per text node:** the visitor still continues to subsequent text nodes (visit traverses in document order), but `matched` blocks any further occurrences of the same canonical slug. Different slugs can still hit later in the file. Document-order traversal IS the "first textual occurrence" interpretation per assumption A3.
+
+#### Self-page derivation
+
+```ts
+function deriveCurrentGlossarySlug(file: VFile): string | null {
+  const p = file.path ?? '';
+  // Match …/glossary/<slug>.md (forward or back slashes).
+  const m = p.match(/[\\/]glossary[\\/]([^\\/]+)\.md$/);
+  return m ? m[1] : null;
+}
+```
+
+If `currentSlug === null` (file is not in `glossary/`), self-page skipping is a no-op — correct.
+
+#### News skip
+
+Already covered by `excludePaths` in the factory. The default `['/news/published/']` substring match is enough; `file.path` will always include forward slashes after Astro's normalisation. The check happens **before** any visit — zero AST work on news files.
+
+#### Replacement node shape
+
+**Primary path — MDX JSX node (`mdxJsxTextElement`):**
+
+```ts
+const wrapper = {
+  type: 'mdxJsxTextElement',
+  name: 'GlossaryTerm',
+  attributes: [
+    { type: 'mdxJsxAttribute', name: 'slug', value: entry.slug },
+    { type: 'mdxJsxAttribute', name: 'display', value: matchedSourceText },
+  ],
+  children: [], // self-closing
+};
+```
+
+This requires the markdown file to be processed through Astro's MDX transform AND for `GlossaryTerm` to be in-scope. Starlight 0.39's `.md` files are processed through `remark-rehype` but **components are not auto-resolved** in pure `.md` (unlike `.mdx`). So in practice:
+
+**Fallback path — raw HTML node (`type: 'html'`)** — emitted always for `.md` files, JSX only for `.mdx`:
+
+```ts
+const wrapper = {
+  type: 'html',
+  value: `<button type="button" class="nbg-glossary-trigger" data-glossary-slug="${entry.slug}">${escapeHtml(matchedSourceText)}</button>`,
+};
+```
+
+**Decision rule (frozen):** emit raw HTML always. The popover surface element (the `<div popover>`) is NOT injected by the remark plugin — it's hydrated at runtime by a single `<script>` tag that the `GlossaryTerm.astro` "registry" component injects on every page once (see §S.14.4 "Page-level registry"). This decouples plugin output from MDX availability, satisfies the AC contract ("HTML contains `popovertarget="gloss-"`") on the final rendered page, and keeps the plugin's emitted markdown identical across `.md` and `.mdx` sources.
+
+**The plugin emits only a trigger `<button>` with `data-glossary-slug="…"` and the display text.** The popover `<div>` and the wiring of `popovertarget` are produced by a small inline `<script>` that runs **once per page** at parse time, walks all `[data-glossary-slug]` triggers, generates unique IDs, and creates the sibling popover div with the term title + tldr + Read-more link.
+
+**Why this works:** the remark plugin output is pure static HTML. No JSX dependency. No MDX requirement. The registry script (≤80 LOC, no framework) does the popover wiring after DOM parse. AC15 ("rendered HTML contains `popovertarget="gloss-"`") is satisfied because the script runs synchronously in the body before tests inspect the DOM. For build-output test purposes (AC15 evidence — grep on `dist/`), we test the SCRIPT'S output by running it through jsdom — see §S.14.9.
+
+**Text-node splitting** when a match hits mid-string `"… a pull request landed today …"`:
+
+```ts
+// Original text node: { type: 'text', value: '… a pull request landed today …' }
+// After replacement, parent.children gets three siblings:
+// 1. { type: 'text', value: '… a ' }
+// 2. { type: 'html', value: '<button … data-glossary-slug="pull-request">pull request</button>' }
+// 3. { type: 'text', value: ' landed today …' }
+parent.children.splice(index, 1, before, wrapper, after);
+return [SKIP, index + 3]; // tell visit to continue after the inserted nodes
+```
+
+#### Edge cases enumerated
+
+| Case | Behavior |
+|---|---|
+| Empty `aliases: []` | Only the slug is a variant. No-op for aliases. |
+| Alias conflicts with a different entry's primary slug | Plugin logs `WARN: alias collision: "X" claimed by both slug "a" and slug "b" — first-wins` and uses the slug that comes first in lexical order. |
+| Two entries claim the same alias | Same rule — first-wins by slug alphabetical order. WARN logged. |
+| Term split across formatting (`pull *request*`) | Accepted limitation — no match. §S.14.10 R-3. |
+| Term inside `**bold**` / `*italic*` (formatting wraps the whole term) | ✅ matches — visitor descends into emphasis/strong nodes; their child `text` leaf carries the full term. |
+| Term inside `:::tip` aside | ❌ skipped — `containerDirective` with `name: 'tip'` is in skip list. |
+| Term inside table cell text | ✅ matches — `tableCell` is descended into. |
+| Term inside blockquote | ✅ matches — `blockquote` is descended into. |
+| Term in `file.path` matching `/news/published/` | ❌ file skipped at top of transformer. |
+| Term IS the file's own slug (e.g. `agent` in `glossary/agent.md`) | ❌ skipped via `currentSlug` check. |
+| Plugin encounters zero glossary entries (index empty) | Plugin runs as no-op — no regex, no transforms. WARN logged at factory time. |
+| `glossaryDir` doesn't exist | Throw at factory time: `'remark-glossary-link: glossary directory not found at <path>'`. No fallback. |
+
+### §S.14.4 — `GlossaryTerm.astro` component API
+
+**File path:** `site/src/components/primitives/GlossaryTerm.astro`.
+
+Per the spec, the visible button + tooltip surface is one primitive. Because the remark plugin emits a plain `<button data-glossary-slug="…">` (not a JSX tag — see §S.14.3 "Replacement node shape"), the `.astro` component is consumed **not by pages but by `MarketingShell.astro` + content-page layouts**: it slots in a single registry instance that wires every `[data-glossary-slug]` on the page.
+
+Two responsibilities collapse into one `.astro` file:
+
+1. **Registry / wiring script** — injects the popover `<div>` siblings, generates unique IDs, attaches keydown handlers, applies reduced-motion.
+2. **Style block** — the `--nbg-*` token-driven CSS for both the trigger button and the popover surface.
+
+#### Props interface (TypeScript)
+
+```ts
+// site/src/components/primitives/GlossaryTerm.astro — frontmatter script
+
+interface Props {
+  /**
+   * Mode of operation.
+   * - 'registry' (default): renders no inline UI; injects the page-level
+   *   wiring script + popover-surface template. Place ONCE per page (in
+   *   the global layout or MarketingShell).
+   * - 'inline': renders one trigger+popover pair. Used for JSX/MDX
+   *   consumption (e.g. a page that wants to hand-place a tooltip).
+   *   In 'inline' mode, `slug` is required.
+   */
+  mode?: 'registry' | 'inline';
+  /** Required when mode === 'inline'. Canonical glossary slug. */
+  slug?: string;
+  /** Optional override for the display text when mode === 'inline'. Defaults to the entry's `title`. */
+  display?: string;
+}
+```
+
+Both modes are supported but Phase B only needs `'registry'`. Inline mode is a stretch surface for content authors who want explicit tooltips (e.g. inside a Starlight aside, which the plugin skips). The plan does not require inline; we ship the prop to keep the door open.
+
+#### Glossary lookup strategy
+
+The component imports its lookup via `getCollection('glossary')` at the top of the frontmatter script. This is a **build-time** call — works in `.astro` files; resolves to the same data the remark plugin's index was built from.
+
+```ts
+// frontmatter script
+import { getCollection } from 'astro:content';
+const allTerms = await getCollection('glossary');
+// Build a serialisable lookup the inline script can consume.
+const lookup = Object.fromEntries(
+  allTerms.map(t => [t.id, { title: t.data.title, tldr: t.data.tldr }]),
+);
+```
+
+The lookup is **inlined into the page** as a JSON `<script type="application/json" id="nbg-glossary-data">` block on every page (registry mode). The wiring script reads from `document.getElementById('nbg-glossary-data').textContent` and parses it. Page weight: ~28 entries × ~200 bytes ≈ 5.6 KB JSON, gzipped ≈ 1.5 KB. Acceptable. §S.14.10 R-2 for the soft cap.
+
+#### DOM contract — registry mode
+
+```html
+<!-- Emitted by GlossaryTerm.astro in registry mode -->
+<script type="application/json" id="nbg-glossary-data">
+{"agent":{"title":"Agent (vs chatbot, …)","tldr":"…"},"cli":{"title":"CLI","tldr":"…"}, …}
+</script>
+<script>
+  (function() {
+    var data = JSON.parse(document.getElementById('nbg-glossary-data').textContent);
+    var triggers = document.querySelectorAll('button[data-glossary-slug]');
+    var counter = 0;
+    triggers.forEach(function(btn) {
+      var slug = btn.getAttribute('data-glossary-slug');
+      var entry = data[slug];
+      if (!entry) {
+        // §S.14.7 — referenced slug has no MD. Throw loud.
+        throw new Error('GlossaryTerm: no glossary entry for slug "' + slug + '". Add glossary/' + slug + '.md or remove the reference.');
+      }
+      var id = 'gloss-' + slug + '-' + (counter++);
+      btn.setAttribute('popovertarget', id);
+      btn.setAttribute('aria-describedby', id);
+      var pop = document.createElement('div');
+      pop.id = id;
+      pop.setAttribute('popover', 'auto');
+      pop.setAttribute('role', 'tooltip');
+      pop.className = 'nbg-glossary-popover';
+      pop.innerHTML =
+        '<strong class="nbg-glossary-popover__title">' + escapeHtml(entry.title) + '</strong>' +
+        '<p class="nbg-glossary-popover__tldr">' + escapeHtml(entry.tldr) + '</p>' +
+        '<a class="nbg-glossary-popover__more" href="/glossary#' + slug + '">Read more →</a>';
+      btn.insertAdjacentElement('afterend', pop);
+      // Hover-to-show (popover attr is click-toggle by default — add hover):
+      var showT, hideT;
+      btn.addEventListener('mouseenter', function() {
+        clearTimeout(hideT);
+        showT = setTimeout(function() { pop.showPopover(); }, 80);
+      });
+      btn.addEventListener('mouseleave', function() {
+        clearTimeout(showT);
+        hideT = setTimeout(function() { pop.hidePopover(); }, 120);
+      });
+      pop.addEventListener('mouseenter', function() { clearTimeout(hideT); });
+      pop.addEventListener('mouseleave', function() {
+        hideT = setTimeout(function() { pop.hidePopover(); }, 120);
+      });
+      // Belt-and-braces ESC handler (native popover also handles this):
+      btn.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && pop.matches(':popover-open')) {
+          pop.hidePopover();
+          btn.focus();
+        }
+      });
+    });
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, function(c) {
+        return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+      });
+    }
+  })();
+</script>
+```
+
+The script is inlined (not `defer`/`module`) so it runs at parse time, BEFORE any test or screenshot inspects the DOM. Total inline JS: ≈80 LOC. No client framework imports.
+
+#### Hover behavior — exact mechanism
+
+The HTML `popover` attribute makes the popover **click-toggle by default**. Hover-to-show is achieved by JS (above): `mouseenter` on trigger → `setTimeout(80ms) → showPopover()`. The 80ms delay prevents flicker on cursor passing through. `mouseleave` cancels the show timer; if popover is open, schedules a 120ms hide timer (which is cancelled if cursor enters the popover itself — so the popover is reachable for clicking the "Read more" link).
+
+**Reduced-motion override** for the show/hide animation (the JS timing stays — it's anti-flicker, not animation):
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .nbg-glossary-popover { transition: none !important; animation: none !important; }
+}
+```
+
+The 80ms / 120ms JS timers are **NOT** zeroed under reduced-motion — they exist to debounce hover, not to animate. Removing them would cause flicker; keeping them is in the spirit of reduced-motion (no perceived motion happens during the timer).
+
+**Keyboard equivalents:** because the trigger is a real `<button>`, Tab focuses it. Native popover semantics open via `popovertarget` on Enter/Space (the user-agent default for buttons with `popovertarget`). No JS needed for keyboard.
+
+#### Positioning — anchored at the trigger's bottom-right (2026-05-25 follow-on)
+
+The HTML `popover` attribute puts the popover in the top layer with a user-agent default of `inset: 0; margin: auto;` which **centers** it in the viewport — not what we want for a tooltip. The wiring script overrides this by setting explicit inline `position: fixed; top/left/right/bottom; margin: 0;` styles right before each `showPopover()` call.
+
+**Anchor rule:** the popover's top-left corner sits at the trigger's `getBoundingClientRect().right` (horizontal) and `bottom + 6px` (vertical) — so the popover hangs from the bottom-right of the term.
+
+**Viewport clamping**:
+
+- If `left + popWidth` would overflow the right edge by more than 8px (the gutter), shift `left` so the popover hugs the gutter instead.
+- If `top + popHeight` would overflow the bottom edge, **flip** the popover above the trigger (`top = triggerRect.top - popHeight - 6`). If that would now overflow the top edge, clamp to the gutter at the top.
+
+**Re-measure cycle**: positioning runs twice per show — once with an estimate (320px max-width, 120px height fallback when `offsetWidth === 0` pre-show), then again in the next `requestAnimationFrame` after `showPopover()` has triggered layout, using actual measurements. The estimate-first approach prevents a visible flicker (popover never paints at the wrong spot); the rAF refinement catches cases where the actual width is narrower than 320px due to shorter content.
+
+**Scroll + resize**: while the popover is open, both events trigger a `positionAt()` recompute so the tooltip stays glued to the trigger. Both listeners are added to `window` and check `pop.matches(':popover-open')` before doing work — a no-op when the popover is closed.
+
+The four edges (top, left, right, bottom) are all explicitly set on the inline style each time, so the user-agent default `inset: 0` is fully overridden — no leftover `right: 0` or `bottom: 0` from the UA stylesheet can interfere.
+
+#### ESC dismissal
+
+Native popover `popover="auto"` closes on ESC automatically (light-dismiss). The belt-and-braces handler above ensures focus returns to the trigger button after ESC — a small UX improvement over the native behavior which leaves focus on `document.body`.
+
+#### Reduced-motion handling
+
+Single `@media (prefers-reduced-motion: reduce)` block in the component's `<style>`:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  .nbg-glossary-trigger,
+  .nbg-glossary-popover {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+```
+
+Targets: any `transition` on the trigger button (hover underline animation) and any `transition`/`animation` on the popover (opacity/transform on open).
+
+#### Styling token map
+
+| Property | Token (light) | Token (dark — inherits via theme override) |
+|---|---|---|
+| Trigger underline color | `var(--nbg-color-accent)` | inherits via accent flip |
+| Trigger hover color | `var(--nbg-color-accent-hover)` | same |
+| Trigger underline thickness | `1px` (literal — no token; matches Starlight links) | same |
+| Popover background | `var(--nbg-color-bg-elevated)` | same |
+| Popover border | `1px solid var(--nbg-color-border-default)` | same |
+| Popover shadow | `var(--nbg-sh-lg)` | same |
+| Popover radius | `var(--nbg-r-md)` | same |
+| Popover padding | `var(--nbg-sp-3) var(--nbg-sp-4)` | same |
+| Popover max-width | `min(320px, calc(100vw - var(--nbg-sp-8)))` | same |
+| Popover title color | `var(--nbg-color-fg-primary)` | same |
+| Popover title font | `var(--nbg-type-body)` `var(--nbg-fw-semibold)` | same |
+| Popover title size | `var(--nbg-fs-md)` (14.5px) | same |
+| Popover tldr color | `var(--nbg-color-fg-secondary)` | same |
+| Popover tldr size | `var(--nbg-fs-sm-2)` (14px) | same |
+| Popover tldr margin | `var(--nbg-sp-2) 0 var(--nbg-sp-3)` | same |
+| Read-more link color | `var(--nbg-color-link)` | same |
+| Read-more link hover color | `var(--nbg-color-link-hover)` | same |
+| Read-more link size | `var(--nbg-fs-sm)` | same |
+| Focus ring | `var(--nbg-color-focus-ring)` via `box-shadow` | same |
+
+Zero raw hex / rgb / hsl literals. The `1px` thicknesses are not colours.
+
+#### Accessibility audit
+
+| A11y vector | Behavior |
+|---|---|
+| Keyboard nav — Tab | Tab moves focus through triggers in document order. Each trigger is a focusable `<button>`. |
+| Open popover with keyboard | Enter or Space on a focused trigger button with `popovertarget` opens the popover (native). |
+| Close popover with keyboard | ESC closes (native + belt-and-braces). Focus returns to the trigger button (belt-and-braces handler). |
+| Screen-reader announcement (trigger) | `<button>` element with text content → "<term>, button". `aria-describedby` points at the popover, so SRs read the tooltip body when the button gains focus. |
+| Screen-reader announcement (popover) | `role="tooltip"` (set by registry script) → announced as a tooltip when referenced by `aria-describedby`. |
+| Focus management | Popover is NOT a focus trap. Focus stays on trigger button when popover opens. Tab from the trigger moves to the next focusable in document order (which may be inside the popover — the "Read more" link — that's fine and expected). |
+| Mobile / touch | Native popover toggles on tap. Hover handlers are inert on touch (no `mouseenter`). |
+
+### §S.14.5 — Wiring in `astro.config.mjs`
+
+Current state: `markdown.remarkPlugins` does NOT exist in `astro.config.mjs`. Astro 6 accepts `markdown.remarkPlugins` at the top level of `defineConfig({})`. Insertion point: a new top-level `markdown` key, placed **before** the `integrations` block to keep markdown config visually grouped.
+
+```js
+// site/astro.config.mjs — diff (additions only)
+import remarkGlossaryLink from './src/plugins/remark-glossary-link.ts';
+
+export default defineConfig({
+  // ... existing keys (server, devToolbar, redirects, fonts) unchanged ...
+
+  // §S.14.5 — Glossary auto-linking. See docs/refined-requests/glossary-tooltips.md
+  // and DECISIONS.md 2026-05-25 ("Glossary tooltips — build-time auto-linking").
+  // Plugin runs at build-time only. Skips news/published/* per resolved OQ1.
+  markdown: {
+    remarkPlugins: [
+      [remarkGlossaryLink, {
+        glossaryDir: '../glossary',           // relative to site/
+        excludePaths: ['/news/published/'],
+      }],
+    ],
+  },
+
+  integrations: [ /* ... existing Starlight config unchanged ... */ ],
+});
+```
+
+**Plugin ordering rationale:** Astro composes `markdown.remarkPlugins` BEFORE Starlight's internal remark transforms (asides expansion, code-block decoration, etc.). Our plugin sees the raw markdown AST with `containerDirective` nodes still intact — that's why we can skip them by `node.type === 'containerDirective' && node.name in {note,tip,caution,danger}`. If Astro/Starlight ever flips this order (R1), the plugin's behavior on asides may degrade — covered by the `:::note` integration test in Phase B-2.
+
+**Import path note:** Astro 6 supports `.ts` imports in `astro.config.mjs` via tsx-on-the-fly. Existing project already imports `.astro` components in `astro.config.mjs#integrations.starlight.components`, so the `.ts` import is consistent.
+
+**Implementation discovery (2026-05-25, after the team-flow run):** Astro 6's content-collection `render(entry)` path uses a markdown processor that does NOT inherit the project's `markdown.remarkPlugins`. So wiring at `astro.config.mjs` alone is not sufficient — any page that calls `createMarkdownProcessor()` directly OR calls `render()` on a collection entry will bypass the plugin unless it's passed explicitly. The three site surfaces that need explicit re-wiring:
+
+1. `site/src/pages/start-here/foundations.astro` (segmented step rendering)
+2. `site/src/pages/start-here/day-1.astro` (segmented step rendering)
+3. `site/src/pages/glossary.astro` (per-entry body rendering — was using `render(entry)` returning `<Content/>`; rewritten to use `createMarkdownProcessor()` to pick up the plugin)
+
+Pattern in each (cast required because `createMarkdownProcessor`'s `remarkPlugins` is typed against unified's generic Plugin shape while our factory returns a narrower `Plugin<[RemarkGlossaryLinkOptions], Root, Root>`):
+
+```ts
+import { createMarkdownProcessor } from '@astrojs/markdown-remark';
+import remarkGlossaryLink from '../plugins/remark-glossary-link.ts';
+
+const processor = await createMarkdownProcessor({
+  remarkPlugins: [
+    [remarkGlossaryLink as any, { glossaryDir: '../glossary', excludePaths: ['/news/published/'] }],
+  ],
+});
+
+// For per-entry rendering, pass a synthesised fileURL so the plugin's
+// self-page skip (don't link a term inside its own glossary page) still works:
+const result = await processor.render(entry.body, {
+  fileURL: new URL(`file:///glossary/${entry.id}.md`),
+});
+```
+
+When a future page lands that also bypasses the project markdown config, it must be added to this list and to `Issues - Pending Items.md` #15.
+
+### §S.14.6 — Audit script architecture
+
+**File path:** `scripts/audit-glossary-candidates.mjs` (repo root, NOT under `site/scripts/` — this matches the existing `scripts/sync-doc-counts.mjs` placement convention).
+
+**Runtime:** Node 22 ESM. No npm deps beyond Node built-ins (`fs/promises`, `path`, `url`, `process`).
+
+#### CLI signature
+
+```
+node scripts/audit-glossary-candidates.mjs [--out <path>] [--corpus <dir>...]
+
+Options:
+  --out <path>      Output markdown report path.
+                    Default: docs/reference/glossary-audit-YYYY-MM-DD.md
+                    (today's UTC date).
+  --corpus <dir>    Add a corpus directory. Default corpus (when no --corpus
+                    flags given) is:
+                      glossary/, tips/, skills/, journeys/, news/published/,
+                      site/src/pages/, site/src/content/docs/
+  --help            Print this message.
+```
+
+#### Three detector functions
+
+Each returns a `Map<string, { count: number, samples: Array<{file: string, line: number}> }>`. Detectors share **one corpus walk**:
+
+```js
+// pseudo-shape — actual code in scripts/audit-glossary-candidates.mjs
+
+const STOPWORDS = new Set([
+  'the','a','an','and','or','but','of','in','on','at','to','for','with',
+  'is','are','was','were','be','been','being','have','has','had','do',
+  'does','did','will','would','should','could','may','might','must',
+  'this','that','these','those','it','its','they','them','their','there',
+  'you','your','yours','we','our','us','i','me','my','if','then','else',
+  'when','where','why','how','what','which','who','whom','as','by','from',
+  'so','too','also','just','only','very','more','most','some','any','all',
+  'no','not','than','because','about','into','over','under','out','up',
+  'down','off','through','can','one','two','three','first','last',
+  // tech-noisy stopwords:
+  'code','file','files','use','using','used','run','running','runs',
+  'see','set','get','make','made','new','old','same','different',
+]);
+
+async function detectAcronyms(corpusFiles, existingVariants) {
+  // Regex per spec §10: /\b[A-Z]{2,5}s?\b/g — limit to 5 chars to avoid
+  // matching long all-caps headings; the trailing 's?' covers plurals.
+  // Threshold: count >= 3. Exclude variants present in existingVariants
+  // (slug-lowered AND alias-lowered).
+}
+async function detectBackticked(corpusFiles, existingVariants) {
+  // Regex: /`([^`\n]+)`/g. Captured group → lowercase → dedupe per file.
+  // Threshold: count >= 3. Exclude existingVariants.
+}
+async function detectFrequentNouns(corpusFiles, existingVariants) {
+  // Tokenize: word.toLowerCase().match(/^[a-z][a-z-]{2,}$/) — 3+ chars,
+  // alphabetic + hyphen. Drop STOPWORDS. Threshold: count >= 5.
+}
+```
+
+#### Output format
+
+```markdown
+# Glossary audit — 2026-05-25
+
+Generated by scripts/audit-glossary-candidates.mjs. Triage these candidates
+manually — the script does NOT auto-add glossary entries.
+
+## Capitalised acronyms (≥3 occurrences, not in glossary)
+
+| Term | Count | Sample |
+|---|---|---|
+| `API` | 12 | `tips/working-with-claude.md:42` |
+| `JSON` | 8 | `skills/claudemd.md:17` |
+
+## Backticked terms (≥3 occurrences, not in glossary)
+
+| Term | Count | Sample |
+|---|---|---|
+| `npm` | 14 | `journeys/day-1.md:88` |
+
+## Recurring nouns (≥5 occurrences, alphabetic, stop-words excluded)
+
+| Term | Count | Sample |
+|---|---|---|
+| `context` | 23 | `tips/context-discipline.md:5` |
+
+*End of report.*
+```
+
+#### Hard write-isolation guarantee
+
+The script makes filesystem writes via **exactly one** code path:
+
+```js
+// One sentinel constant, one fs.writeFile call, one defensive check.
+import { writeFile, mkdir } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+
+async function writeReport(reportPath, markdown) {
+  const abs = resolve(reportPath);
+  // Defensive: never allow a write that would land inside glossary/.
+  if (abs.includes(`${resolve('glossary')}/`) || abs.endsWith('glossary')) {
+    throw new Error(
+      `audit-glossary-candidates: refusing to write into glossary/ (path: ${abs})`
+    );
+  }
+  await mkdir(dirname(abs), { recursive: true });
+  await writeFile(abs, markdown, 'utf8');
+}
+```
+
+The script has NO OTHER fs.write* / fs.append* / fs.copy* / fs.rm / fs.unlink calls. Verified by C-2 test (`audit-glossary-no-mutation.test.ts`): the test snapshots `glossary/` dir mtimes pre- and post-run; asserts every file's mtime is byte-identical.
+
+### §S.14.7 — Error handling strategy
+
+Per global CLAUDE.md "Never create fallback values for missing configuration":
+
+| Scenario | Error path | Wording |
+|---|---|---|
+| Glossary MD missing `tldr` | Zod validation error in `getCollection('glossary')`. `astro build` exits non-zero. | `'glossary entry missing required field "tldr"'` + Astro's per-field path prefix (e.g. `[content/glossary/agent.md] tldr: …`). |
+| Glossary MD has `tldr` longer than 160 chars | Zod validation error. Build fails. | `'tldr must be ≤160 characters (plain text, no markdown)'`. |
+| Glossary MD has empty `tldr: ""` | Zod validation error. Build fails. | `'tldr must be a non-empty string'`. |
+| Page references a slug via `<GlossaryTerm slug="…">` (inline mode) and that slug doesn't exist in `glossary/` | Frontmatter script throws via explicit lookup check (component code throws if `lookup[slug] === undefined` in inline mode). Build fails. | `'GlossaryTerm: no glossary entry for slug "<slug>". Add glossary/<slug>.md or remove the reference.'`. |
+| Registry script encounters a `[data-glossary-slug]` button whose slug isn't in the JSON lookup at runtime (only possible if remark plugin and content collection drift — should never happen in practice) | Registry script throws an `Error` at page load. | Same wording as above (string is shared). |
+| Two glossary entries claim the same alias | Remark plugin logs `WARN` at factory init AND continues. "First" = alphabetical by slug. | `'remark-glossary-link: alias "<alias>" claimed by both slug "<a>" and slug "<b>" — using "<a>" (alphabetical first-wins)'`. |
+| `glossaryDir` option missing | Plugin factory throws. Build fails. | `'remark-glossary-link: options.glossaryDir is required (no fallback).'`. |
+| `glossaryDir` path doesn't exist on disk | Plugin factory throws. Build fails. | `'remark-glossary-link: glossary directory not found at <path>'`. |
+| Glossary directory exists but is empty (no `.md` files) | Plugin logs `WARN` at factory init. Plugin becomes a no-op (no matches, no errors). | `'remark-glossary-link: glossary directory is empty — auto-linking disabled.'`. |
+
+### §S.14.8 — Token usage map
+
+Concrete `--nbg-*` token consumption by `GlossaryTerm.astro` styles:
+
+| Component property | Token reference |
+|---|---|
+| Trigger button base color | inherits text color (`currentColor`) |
+| Trigger underline | `text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--nbg-color-accent);` |
+| Trigger hover decoration color | `var(--nbg-color-accent-hover)` |
+| Trigger focus ring | `box-shadow: 0 0 0 2px var(--nbg-color-bg-canvas), 0 0 0 4px var(--nbg-color-focus-ring);` (token-only; the `2px`/`4px` are layout literals not colours) |
+| Popover surface background | `var(--nbg-color-bg-elevated)` |
+| Popover surface border | `var(--nbg-color-border-default)` (1px width literal) |
+| Popover shadow (elevation 3) | `var(--nbg-sh-lg)` |
+| Popover radius | `var(--nbg-r-md)` |
+| Popover padding (block × inline) | `var(--nbg-sp-3) var(--nbg-sp-4)` |
+| Popover gap (between title / tldr / link) | `var(--nbg-sp-2)` |
+| Popover title color | `var(--nbg-color-fg-primary)` |
+| Popover title font-family | `var(--nbg-type-body)` |
+| Popover title font-weight | `var(--nbg-fw-semibold)` |
+| Popover title font-size | `var(--nbg-fs-md)` |
+| Popover tldr color | `var(--nbg-color-fg-secondary)` |
+| Popover tldr font-size | `var(--nbg-fs-sm-2)` |
+| Popover tldr line-height | `1.45` (literal — no token; the existing project uses bare line-height numbers throughout) |
+| Read-more link color (idle) | `var(--nbg-color-link)` |
+| Read-more link color (hover) | `var(--nbg-color-link-hover)` |
+| Read-more link font-size | `var(--nbg-fs-sm)` |
+| Read-more link font-weight | `var(--nbg-fw-medium)` |
+| Reduced-motion guard target props | `transition`, `animation` (zeroed) |
+
+No new tokens are added to `semantic.css` or `primitives.css`. Every value already exists.
+
+### §S.14.9 — Test contracts
+
+Phase 9 test-builder agents implement these as Vitest cases. One line per case; the test-builder fills in fixtures + asserts.
+
+#### `site/tests/glossary-schema.test.ts`
+
+- "accepts a valid glossary entry with all 12 keys"
+- "rejects when `tldr` is missing — error message matches /missing required field "tldr"/"
+- "rejects when `tldr` is empty string — error matches /non-empty string/"
+- "rejects when `tldr` is 161 characters — error matches /≤160 characters/"
+- "accepts exactly 160-character `tldr`"
+- "defaults `aliases` to `[]` when omitted from frontmatter"
+- "round-trips `aliases: ['PR', 'PRs']` unchanged"
+- "rejects when `aliases` contains an empty string"
+- "rejects when `aliases` is not an array (e.g. a single string)"
+
+#### `site/tests/remark-glossary-word-boundary.test.ts`
+
+- "wraps `cli` in `'use the cli now'`"
+- "does NOT wrap `cli` inside `'click here'`"
+- "does NOT wrap `cli` inside `'command-line'` (no occurrence anyway, but verifies no false positive)"
+- "wraps `agent` in `'an agent does X'`"
+- "does NOT wrap `agent` inside `'agents are great'` when no `agents` alias is configured"
+- "wraps `agents` in `'agents are great'` when `agents` IS an alias of `agent`"
+- "does NOT wrap inside `'agent2'` (numeric adjacency)"
+- "does NOT match inside `'LLOWED'` for variant `LLM` (case-insensitive, but no boundary)"
+- "preserves source casing in display attribute — input `'Pull Request'` yields button text `'Pull Request'`"
+- "preserves source casing for lowercase — input `'pr'` yields button text `'pr'`"
+- "case-insensitively matches `'PR'`, `'pr'`, `'Pr'` to the same canonical slug"
+- "longest-first alternation: matches `command-line interface` ahead of `command-line` when both are variants"
+
+#### `site/tests/remark-glossary-first-occurrence.test.ts`
+
+- "wraps only the first of three occurrences of the same slug in one file"
+- "wraps the first occurrence even when the second is in a different paragraph"
+- "treats slug-and-alias as the same canonical: `PR` followed by `pull request` wraps only `PR`"
+- "different slugs each wrap once — `agent` and `cli` in the same file both get wrapped on first occurrence"
+
+#### `site/tests/remark-glossary-skip-rules.test.ts`
+
+- "skips fenced code blocks (``` … ```)"
+- "skips inline code (\`…\`)"
+- "skips headings h1 through h6 — iterates six levels"
+- "skips existing markdown links `[text](url)`"
+- "skips link reference syntax `[text][ref]`"
+- "skips the term on its own glossary page (file path under `glossary/<slug>.md`)"
+- "skips Starlight aside `:::note … :::`"
+- "skips Starlight aside `:::tip … :::`"
+- "skips Starlight aside `:::caution … :::`"
+- "skips Starlight aside `:::danger … :::`"
+- "DOES descend into emphasis nodes (`*term*` is matched)"
+- "DOES descend into strong nodes (`**term**` is matched)"
+- "DOES descend into blockquote children"
+- "DOES descend into table cell children"
+- "skips raw HTML nodes (`<div>term</div>` is left alone)"
+
+#### `site/tests/remark-glossary-news-skip.test.ts`
+
+- "returns early when `file.path` includes `/news/published/` — no AST mutation"
+- "still wraps terms when `file.path` includes `/news/` but not `/news/published/` (defensive — should not happen in practice, but covers the path-substring contract)"
+- "honors a custom `excludePaths` option overriding the default"
+
+#### `site/tests/glossary-term-component.test.ts`
+
+- "registry mode emits `<script type=\"application/json\" id=\"nbg-glossary-data\">`"
+- "registry mode emits the inline wiring script"
+- "registry-script-output (when run through jsdom) adds `popovertarget=\"gloss-<slug>-<n>\"` to every `[data-glossary-slug]` button"
+- "registry-script-output adds `aria-describedby` with matching id"
+- "registry-script-output creates a sibling `<div id=\"gloss-<slug>-<n>\" popover=\"auto\" role=\"tooltip\">`"
+- "popover contains the term title, tldr text, and a `Read more →` link to `/glossary#<slug>`"
+- "inline mode renders one trigger+popover pair when given `slug` prop"
+- "inline mode uses `display` prop when provided, else falls back to entry `title`"
+- "inline mode throws when slug is unknown — error matches /no glossary entry for slug/"
+- "component file contains zero `from '@astrojs/starlight` imports"
+- "component file contains zero `client:` directives"
+- "component CSS contains no raw hex / rgb() / hsl() colour literals (regex check)"
+- "component CSS contains `@media (prefers-reduced-motion: reduce)`"
+- "registry script attaches a `keydown` ESC listener (grep on script source)"
+
+#### `site/tests/build-output-glossary-tooltips.test.ts` (extends existing `build-output.test.ts` OR new file)
+
+- "at least one tip page output contains `data-glossary-slug=` (auto-linking active on tips)"
+- "at least one skill page output contains `data-glossary-slug=` (auto-linking active on skills)"
+- "at least one journey page output contains `data-glossary-slug=` (auto-linking active on journeys)"
+- "the glossary index page (`/glossary/index.html`) does NOT contain `data-glossary-slug=` for its own entry's slug (self-page skip on the canonical page renders)"
+- "no `news/<slug>/index.html` page output contains `data-glossary-slug=` (news-skip confirmed)"
+- "every page that emits a `data-glossary-slug=` button also emits the `<script id=\"nbg-glossary-data\">` registry block"
+
+#### `site/tests/audit-glossary-no-mutation.test.ts`
+
+- "snapshot `glossary/` file mtimes pre-run, invoke the audit module programmatically, snapshot post-run, assert byte-identical"
+- "the audit module throws if asked to write to a path inside `glossary/`"
+
+### §S.14.10 — Risks not addressed by the plan
+
+#### R-1 — Plan undercount: glossary count is 28, not 27
+
+The refined spec's "Defect surfaced during planning" section (lines 211–224) raises the new-entries count from 6 to 7 (adds `hook.md`), making the final glossary count **28** (21 existing + 7 new). The plan (lines 25, 47, 91, 234, 291) still reports 27 throughout — including in `npm run build`'s `ls glossary/*.md | wc -l` verification.
+
+**Surfaced at top of output.** Phase A executors must:
+1. Author `hook.md` as a 7th new entry (assigned to PAR-A.6 or a new PAR-A.7).
+2. Update the verification command from `wc -l` returns `27` → returns `28`.
+3. Update AC26's evidence to "Glossary = 28".
+4. Update DECISIONS.md / SCOPE.md content-count entries accordingly when D-4 runs `sync-doc-counts.mjs`.
+
+The plan's sequencing remains valid — this is a count delta, not a phase change.
+
+#### R-2 — Inline JSON data inflates page weight
+
+Every page emits the full `nbg-glossary-data` JSON (~5.6 KB raw, ~1.5 KB gzipped) regardless of how many terms that page actually references. With 28 entries this is acceptable. Soft cap: if the glossary ever crosses 100 entries (~20 KB raw / ~5 KB gzipped), revisit by splitting into a fetch-on-demand JSON file under `/public/_data/glossary-tooltips.json` referenced via a separate `<script>` tag. Not a Phase B concern — recorded as a Pending Item.
+
+#### R-3 — Term split across markdown formatting boundaries
+
+`pull *request*` (one word emphasised) → two AST nodes (`text("pull ")` + `emphasis > text("request")`). The visitor only sees the leaves in isolation; neither matches `"pull request"`. **Accepted limitation.** Authors who want the auto-link can write `*pull request*` (emphasis around the whole term) which the visitor handles correctly. Document in DECISIONS.md 2026-05-25 as "split-formatting terms — author responsibility".
+
+#### R-4 — `<div popover>` injected after a `<button>` inside a `<p>` produces invalid HTML
+
+`<p>` cannot contain block-level `<div>` children — when the registry script does `btn.insertAdjacentElement('afterend', pop)`, and `btn` is inside a `<p>`, the resulting markup is `<p>… <button>term</button> <div popover>…</div> …</p>`. Browsers auto-close the `<p>` at the first block-level child, which mangles the rendered text flow.
+
+**Fix:** emit the popover as a **`<span popover>`** instead of `<div popover>`. The HTML spec allows `popover` on any element (it's a global attribute as of 2024). The popover's three children (title, tldr, link) become `<strong>` (inline), `<span>` (inline, was `<p>`), `<a>` (inline). All inline-flow content — valid inside a `<p>`.
+
+**Registry script revision (final):**
+
+```js
+var pop = document.createElement('span');
+pop.setAttribute('popover', 'auto');
+// ... other attrs same ...
+pop.innerHTML =
+  '<strong class="nbg-glossary-popover__title">' + ... + '</strong>' +
+  '<span class="nbg-glossary-popover__tldr">' + ... + '</span>' +
+  '<a class="nbg-glossary-popover__more" href="…">Read more →</a>';
+```
+
+The CSS uses `display: block` on the children so they still stack vertically, regardless of the inline element shells. **This is the load-bearing fix for the HTML-validity risk.**
+
+#### R-5 — Astro may strip unknown `popover` attribute on `<span>`
+
+Astro's HTML processor (`rehype-raw` chain) should preserve the `popover` attribute — it's a standard HTML global attribute since 2024. If it doesn't (older rehype-stringify cleanup), the workaround is to set `popover` via JS (`pop.setAttribute('popover','auto')`) which we already do. **No Astro-config change needed** — the registry script applies the attribute at runtime, not at SSR time. The static HTML emitted by remark only contains the trigger `<button data-glossary-slug>`; the popover element doesn't exist until the script runs.
+
+#### R-6 — Headless Chromium SSR baseline
+
+The Phase D headless-Chromium screenshots will run against the dev server (or `dist/`). The registry script must execute before the screenshot. Puppeteer's `page.goto(…, { waitUntil: 'networkidle0' })` is sufficient — inline scripts run synchronously at parse time. No explicit `page.evaluate('document.querySelectorAll("[popovertarget]")')` wait needed.
+
+---
+
+*End of §S.14 — Glossary Tooltips section.*

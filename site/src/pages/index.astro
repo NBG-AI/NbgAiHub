@@ -2,9 +2,11 @@
 /**
  * / — Homepage.
  *
- * AgentNews-aesthetic composition (2026-05-24):
- * full-bleed marketing shell with editorial hero + three feed sections
- * (News, Skills, Tips), terminating in a journey CTA.
+ * 2026-05-25 nav rework: the homepage is now a traffic router. Above-the-fold
+ * is a two-door hero — Newcomer → Foundations, Experienced → Skills/Tips/
+ * Glossary/News (external). Below the fold the user can scroll into the
+ * Skills and Tips feeds; News is hard-redirected to AgentNews and does not
+ * render inline on this site any more.
  *
  * Composition contract: page body is raw AgentNews HTML classes
  * (.hero, .section, .wrap, .grid-3, .card, .feature) consuming --nbg-*
@@ -13,33 +15,37 @@
  * so we control the entire body markup.
  *
  * Related: project-design.md §S.13.16 (AgentNews aesthetic anchor).
- * Backs AC6, AC7, AC8, AC9, AC10, AC15.
  */
 import { getCollection } from 'astro:content';
 import MarketingShell from '../components/MarketingShell.astro';
-import { getRecentNews } from '../lib/news';
-import { getNewsSection, NEWS_SECTION_TAGS } from '../lib/news-sections';
 
-const recentNews   = await getRecentNews(6);
-const skills       = await getCollection('skills');
-const tips         = await getCollection('tips');
-const glossary     = await getCollection('glossary');
+const skills   = await getCollection('skills');
+const tips     = await getCollection('tips');
+const glossary = await getCollection('glossary');
 
-const featureNews  = recentNews[0] ?? null;
-const tailNews     = recentNews.slice(1, 4);
-
-// 6 most recent skills, 6 most recent tips
 const topSkills = skills.slice(0, 6);
 const topTips   = tips.slice(0, 6);
 
-function slugify(entryId: string): string {
-  return entryId;
+/**
+ * Split skill titles on " — " so cards can render the short explanation
+ * as the headline and the slash command on its own line below it.
+ * Left side of the em-dash carries the command label (`/claudemd`, `gsd-*`);
+ * right side is the short explanation. Fallback to /skill_id if a future
+ * entry omits the separator.
+ */
+function splitSkillTitle(title: string, skill_id: string) {
+  const parts = title.split(' — ');
+  if (parts.length < 2) {
+    return { explanation: title, command: `/${skill_id}` };
+  }
+  const head = parts[0]!;
+  return {
+    explanation: parts.slice(1).join(' — '),
+    command: head.startsWith('/') ? head : `/${head}`,
+  };
 }
 
-function formatDate(authored: string): string {
-  // Already ISO YYYY-MM-DD
-  return `${authored} UTC`;
-}
+const AGENTNEWS_URL = 'https://biks2013.github.io/AgentNews/';
 ---
 
 <MarketingShell
@@ -49,108 +55,54 @@ function formatDate(authored: string): string {
   width="full"
   hero="none"
 >
-  {/* ─── Hero ─────────────────────────────────────────────────────── */}
-  <section class="hero">
+  {/* ─── Hero: traffic router (above the fold) ───────────────────── */}
+  <section class="hero hero--router">
     <div class="wrap">
       <div class="hero__intro">
         <h1 class="hero__title">
-          What I wish I knew about <em>the agent stack.</em>
+          What I wish I knew sooner about <em>Claude Code.</em>
         </h1>
         <p class="hero__lede">
-          A curated Claude Code knowledge hub for bank colleagues.
-          <strong>Skills</strong>, <strong>tips</strong>,
-          <strong>news</strong>, and <strong>onboarding paths</strong> —
-          opinionated, plainspoken, no AI-slop hedging.
-          <small>Updated {new Date().toISOString().slice(0, 10)} UTC</small>
-          <small><a href="/start-here/day-1/">→ start with Day 1</a></small>
+          A practical guide to Claude Code at NBG — for anyone just starting out
+          and anyone already using it daily.
         </p>
+      </div>
+
+      <div class="router-grid">
+        <article class="router-card router-card--newcomer">
+          <div class="router-card__badge">New to Claude Code</div>
+          <h2 class="router-card__title">Start with Foundations</h2>
+          <p class="router-card__body">
+            What makes Claude Code different from ChatGPT or Gemini, why we
+            chose it at NBG, and how to get it running on your machine.
+          </p>
+          <div class="router-card__actions">
+            <a class="router-card__cta router-card__cta--primary" href="/start-here/foundations/">
+              → Open Foundations
+            </a>
+            <a class="router-card__cta router-card__cta--secondary" href="/start-here/day-1/">
+              → Day 1 setup
+            </a>
+          </div>
+        </article>
+
+        <article class="router-card router-card--experienced">
+          <div class="router-card__badge">Already using it</div>
+          <h2 class="router-card__title">Jump straight in</h2>
+          <p class="router-card__body">
+            Skip the intro and go straight to what you need — the skills catalog,
+            tips and tricks, glossary lookups, or the curated News feed.
+          </p>
+          <div class="router-card__actions router-card__actions--grid">
+            <a class="router-pill" href="/skills/">Skills</a>
+            <a class="router-pill" href="/tips/">Tips &amp; Tricks</a>
+            <a class="router-pill" href="/glossary/">Glossary</a>
+            <a class="router-pill" href={AGENTNEWS_URL} target="_blank" rel="noopener">News ↗</a>
+          </div>
+        </article>
       </div>
     </div>
   </section>
-
-  {/* ─── News feed (top 4) ────────────────────────────────────────── */}
-  {recentNews.length > 0 && (
-    <section class="section" id="news">
-      <div class="wrap">
-        <div class="section__head">
-          <h2>News</h2>
-          <span class="count">{recentNews.length} items</span>
-          <a href="/news/">All news →</a>
-        </div>
-
-        {featureNews && (
-          <div class="feature">
-            <a
-              href={`/news/${slugify(featureNews.id)}/`}
-              class="feature__art feature__art--placeholder"
-              aria-label={featureNews.data.title}
-            >
-              <div class="card__art__glyph">{NEWS_SECTION_TAGS[getNewsSection(featureNews)]}</div>
-            </a>
-            <div class="feature__body">
-              <div class="feature__meta">
-                <span class="tag tag--link">{NEWS_SECTION_TAGS[getNewsSection(featureNews)]}</span>
-                <span class={`tag tag--confidence-${featureNews.data.editor_confidence}`}>
-                  {featureNews.data.editor_confidence} confidence
-                </span>
-              </div>
-              <div class="dates">
-                <span class="date-item">
-                  <span class="date-label">Published</span>
-                  <span class="date-value">{formatDate(featureNews.data.authored)}</span>
-                </span>
-              </div>
-              <h3 class="feature__title">
-                <a href={`/news/${slugify(featureNews.id)}/`}>{featureNews.data.title}</a>
-              </h3>
-              {featureNews.data.ai_summary && (
-                <p class="feature__summary">{featureNews.data.ai_summary}</p>
-              )}
-              <a class="feature__cta" href={`/news/${slugify(featureNews.id)}/`}>
-                Read brief →
-              </a>
-            </div>
-          </div>
-        )}
-
-        {tailNews.length > 0 && (
-          <div class="grid-3" style="margin-top: 3.5rem;">
-            {tailNews.map((entry) => {
-              const section = getNewsSection(entry);
-              return (
-                <article class="card" data-audience={entry.data.audience}>
-                  <a
-                    href={`/news/${slugify(entry.id)}/`}
-                    class="card__art card__art--placeholder"
-                    aria-label={entry.data.title}
-                  >
-                    <span class="card__art__glyph">{NEWS_SECTION_TAGS[section]}</span>
-                  </a>
-                  <div class="card__body">
-                    <div class="card__meta">
-                      <span class="tag">{NEWS_SECTION_TAGS[section]}</span>
-                    </div>
-                    <div class="dates">
-                      <span class="date-item">
-                        <span class="date-label">Published</span>
-                        <span class="date-value">{formatDate(entry.data.authored)}</span>
-                      </span>
-                    </div>
-                    <h3 class="card__title">
-                      <a href={`/news/${slugify(entry.id)}/`}>{entry.data.title}</a>
-                    </h3>
-                    {entry.data.ai_summary && (
-                      <p class="card__summary">{entry.data.ai_summary}</p>
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </section>
-  )}
 
   {/* ─── Skills feed ──────────────────────────────────────────────── */}
   <section class="section" id="skills">
@@ -161,21 +113,25 @@ function formatDate(authored: string): string {
         <a href="/skills/">All skills →</a>
       </div>
       <div class="grid-3">
-        {topSkills.map((skill) => (
-          <article class="card card--text" data-audience={skill.data.audience}>
-            <div class="card__body">
-              <div class="card__meta">
-                <span class="eyebrow accent">Skill</span>
+        {topSkills.map((skill) => {
+          const { explanation, command } = splitSkillTitle(skill.data.title, skill.data.skill_id);
+          return (
+            <article class="card card--text" data-audience={skill.data.audience}>
+              <div class="card__body">
+                <div class="card__meta">
+                  <span class="eyebrow accent">Skill</span>
+                </div>
+                <h3 class="card__title">
+                  <a href={`/skills/#${skill.id}`}>{explanation}</a>
+                </h3>
+                <p class="card__command"><code>{command}</code></p>
+                {skill.data.ai_summary && (
+                  <p class="card__summary">{skill.data.ai_summary}</p>
+                )}
               </div>
-              <h3 class="card__title">
-                <a href={`/skills/#${skill.id}`}>{skill.data.title}</a>
-              </h3>
-              {skill.data.ai_summary && (
-                <p class="card__summary">{skill.data.ai_summary}</p>
-              )}
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     </div>
   </section>
@@ -208,49 +164,6 @@ function formatDate(authored: string): string {
     </div>
   </section>
 
-  {/* ─── Start-Here CTA ──────────────────────────────────────────── */}
-  <section class="section" id="start-here">
-    <div class="wrap">
-      <div class="section__head">
-        <h2>Start here</h2>
-        <span class="count">2 paths</span>
-      </div>
-      <div class="grid-2">
-        <article class="card card--text">
-          <div class="card__body">
-            <div class="card__meta">
-              <span class="eyebrow accent">Journey</span>
-            </div>
-            <h3 class="card__title">
-              <a href="/start-here/day-1/">Day 1 → first session</a>
-            </h3>
-            <p class="card__summary">
-              Six steps: install Claude Code, run your first session, learn the
-              survival keys, write CLAUDE.md, browse the skills marketplace,
-              know where to go next.
-            </p>
-            <a class="feature__cta" href="/start-here/day-1/">Begin → Day 1</a>
-          </div>
-        </article>
-        <article class="card card--text">
-          <div class="card__body">
-            <div class="card__meta">
-              <span class="eyebrow accent">Journey</span>
-            </div>
-            <h3 class="card__title">
-              <a href="/start-here/week-1/">Week 1 → habits</a>
-            </h3>
-            <p class="card__summary">
-              Five days of practice: shipping habits, code review with Claude,
-              custom skills, MCP servers, retros. Roughly 30 min/day.
-            </p>
-            <a class="feature__cta" href="/start-here/week-1/">Plan → Week 1</a>
-          </div>
-        </article>
-      </div>
-    </div>
-  </section>
-
   {/* ─── Footer ──────────────────────────────────────────────────── */}
   <footer class="site-footer">
     <div class="wrap">
@@ -259,27 +172,23 @@ function formatDate(authored: string): string {
           <h4>NBG AI Hub</h4>
           <p>
             A curated Claude Code knowledge hub for bank colleagues. Skills,
-            tips, news, onboarding paths.
+            tips, glossary, onboarding paths.
           </p>
         </div>
         <div>
           <h4>Read</h4>
           <ul>
-            <li><a href="/news/">News</a></li>
             <li><a href="/skills/">Skills</a></li>
             <li><a href="/tips/">Tips</a></li>
             <li><a href="/glossary/">Glossary</a></li>
-            <li><a href="/reference/">Reference</a></li>
+            <li><a href={AGENTNEWS_URL} target="_blank" rel="noopener">News ↗</a></li>
           </ul>
         </div>
         <div>
           <h4>Start</h4>
           <ul>
-            <li><a href="/start-here/day-1/">Day 1</a></li>
-            <li><a href="/start-here/week-1/">Week 1</a></li>
-            <li><a href="/contribute/">Contribute</a></li>
-            <li><a href="/submit-skill/">Submit a skill</a></li>
-            <li><a href="/my-pins/">My pins</a></li>
+            <li><a href="/start-here/foundations/">Foundations</a></li>
+            <li><a href="/my-pins/">My Pins</a></li>
           </ul>
         </div>
         <div>
@@ -297,3 +206,204 @@ function formatDate(authored: string): string {
     </div>
   </footer>
 </MarketingShell>
+
+<style>
+  /* Non-layered scoped styles so they beat the un-layered base rules
+     in agentnews-layout.css (which strip <a> borders/colors). Tokens
+     come from semantic.css — the flat AgentNews set:
+     --nbg-surface, --nbg-surface-2, --nbg-bg, --nbg-bg-2,
+     --nbg-border, --nbg-ink, --nbg-muted, --nbg-accent,
+     --nbg-accent-soft, --nbg-r-md/lg. */
+
+  /* Override the 2-column .hero__intro layout from agentnews-layout.css
+     for this page — stack title and lede vertically so the lede sits
+     directly under the title instead of dangling in the top-right
+     corner. Keep the lede narrower than the title for readability. */
+  .hero--router .hero__intro {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+  /* Unset the 22.5rem cap from agentnews-layout.css so the lede uses
+     the full container width (one line on desktop). */
+  .hero--router .hero__lede {
+    max-width: none;
+  }
+
+  /* Default grid `align-items: stretch` makes both cards equal height
+     (each fills the row's natural max content). Inside each card a
+     flex column stacks badge → title → body, then `margin-top: auto`
+     on the actions row anchors it to the card bottom. Result: cards
+     are guaranteed same height; action rows align at the same Y on
+     both sides. */
+  .router-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  /* CSS Grid with explicit row tracks. Each child is pinned to its
+     own row by `grid-row` — no auto-flow, no flex behavior. Row 4 is
+     `1fr` (the spacer) so the actions row 5 is always pushed to the
+     bottom. This makes the layout completely deterministic — every
+     element across both cards sits at the same Y guaranteed.
+
+     Row map:
+       1: badge      (auto, content-sized)
+       2: title      (auto)
+       3: body       (auto)
+       4: SPACER     (1fr — absorbs extra height)
+       5: actions    (auto, anchored to bottom of card)            */
+  .router-card {
+    display: grid;
+    grid-template-rows: auto auto auto 1fr auto;
+    row-gap: 0.875rem;
+    height: 100%;
+    padding: 2rem 1.75rem;
+    border: 1px solid var(--nbg-border);
+    border-radius: var(--nbg-r-lg, 12px);
+    background: var(--nbg-surface);
+    box-sizing: border-box;
+  }
+
+  /* ROOT CAUSE FIX (2026-05-25): the cards live inside Starlight's
+     `.sl-markdown-content` wrapper, which applies a global vertical-
+     rhythm rule:
+       .sl-markdown-content :not(a, strong, em, ...) + :not(a, strong, ...)
+         { margin-top: var(--sl-content-gap-y); }
+     That rule added `margin-top: 16px` to the SECOND .router-card,
+     shifting it down relative to the first. Verified via puppeteer
+     `getComputedStyle().marginTop` returning `"16px"` on card 1 and
+     `"0px"` on card 0. The override below cancels it for our grid. */
+  .router-grid > * + * {
+    margin-top: 0;
+  }
+
+  .router-card__badge {
+    grid-row: 1;
+    margin: 0;
+  }
+
+  .router-card__title {
+    grid-row: 2;
+    margin: 0;
+  }
+
+  .router-card__body {
+    grid-row: 3;
+    margin: 0;
+  }
+
+  .router-card__actions {
+    grid-row: 5;
+    margin: 0;
+  }
+
+  .router-card--newcomer {
+    background: var(--nbg-accent-soft);
+    border-color: var(--nbg-accent);
+  }
+
+  .router-card__badge {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--nbg-accent);
+    /* (was: align-self: start — only needed under subgrid) */
+  }
+
+  .router-card__title {
+    font-size: clamp(1.4rem, 2.2vw, 1.75rem);
+    line-height: 1.2;
+    margin: 0;
+    color: var(--nbg-ink);
+    /* (was: align-self: start — only needed under subgrid) */
+  }
+
+  .router-card__body {
+    color: var(--nbg-muted);
+    line-height: 1.5;
+    margin: 0;
+    /* (was: align-self: start — only needed under subgrid) */
+  }
+
+  /* Bottom half of the card flex column. justify-content: space-between
+     on .router-card already pins this to the bottom edge — no auto
+     margin needed. padding-top creates breathing room above. */
+  .router-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 1.5rem;
+  }
+
+  /* Pills laid out as a single row of 4 (matching the newcomer card's
+     single-row button layout). Each pill flexes to fill its share of
+     the row width, so all four are exactly equal width regardless of
+     label length. */
+  .router-card__actions--grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+  }
+
+  .router-card__cta {
+    padding: 0.625rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-decoration: none;
+    line-height: 1.2;
+    transition: filter 120ms ease, background 120ms ease, border-color 120ms ease;
+  }
+
+  .router-card__cta--primary {
+    background: var(--nbg-accent);
+    color: #ffffff;
+    border: 1px solid var(--nbg-accent);
+  }
+
+  .router-card__cta--primary:hover {
+    background: var(--nbg-accent-ink);
+    border-color: var(--nbg-accent-ink);
+  }
+
+  .router-card__cta--secondary {
+    background: var(--nbg-surface);
+    color: var(--nbg-ink);
+    border: 1px solid var(--nbg-border);
+  }
+
+  .router-card__cta--secondary:hover {
+    border-color: var(--nbg-accent);
+    background: var(--nbg-surface-2);
+  }
+
+  .router-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--nbg-border);
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    text-align: center;
+    color: var(--nbg-ink);
+    background: var(--nbg-surface);
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+
+  .router-pill:hover {
+    background: var(--nbg-surface-2);
+    border-color: var(--nbg-accent);
+  }
+
+  @media (max-width: 720px) {
+    .router-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

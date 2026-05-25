@@ -9,6 +9,8 @@ last_reviewed: "2026-05-19"
 external_link: null
 deeper_link: "https://556lowcodenocode.github.io/Onboarding/"
 ai_summary: A tracked discussion thread on GitHub — bug reports, feature requests, ideas. Issues have a state (open/closed), labels, assignees, and a comment thread. They're how the team remembers what to do next.
+tldr: "A tracked thread on GitHub for one piece of pending work — a bug, a feature request, an idea. Has a state, labels, assignees, and a comment trail."
+aliases: ["issues"]
 ---
 
 An issue is a thread for one piece of pending work — a bug, a feature, an idea, a question. Each issue has a title, a body, labels (`bug`, `enhancement`, `question`), an assignee, and a state (`open` or `closed`).

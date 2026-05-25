@@ -9,6 +9,8 @@ last_reviewed: "2026-05-19"
 external_link: null
 deeper_link: "https://556lowcodenocode.github.io/Onboarding/"
 ai_summary: A saved snapshot of changes with a message describing why. Commits live on your machine until you push them — they're the unit of "I'm done with this slice of work."
+tldr: "A saved snapshot of changes with a message describing why. Commits live on your machine until you push them — the unit of finishing a slice of work."
+aliases: ["commits"]
 ---
 
 A commit is one saved change-set: a few files, a one-line message, and a parent commit it builds on. Together, commits form your project's history.
