@@ -3,95 +3,6 @@
   "type": "news",
   "items": [
     {
-      "slug": "11-claude-things-i-wish-someone-had-told-me-12-months-ago",
-      "title": "11 Claude things I wish someone had told me 12 months ago",
-      "audience": "both",
-      "topics": [
-        "workflow",
-        "tips",
-        "claudecode",
-        "model-selection",
-        "memory",
-        "projects-feature",
-        "custom-styles",
-        "mobile-voice-mode",
-        "skills"
-      ]
-    },
-    {
-      "slug": "5-claude-patterns-that-helped-non-technical-users-get",
-      "title": "5 Claude patterns that helped non-technical users get better results",
-      "audience": "both",
-      "topics": [
-        "workflow",
-        "prompt-engineering",
-        "hallucination-mitigation",
-        "context-management"
-      ]
-    },
-    {
-      "slug": "anthropic-acquires-stainless",
-      "title": "Anthropic acquires Stainless",
-      "audience": "both",
-      "topics": [
-        "industry-news",
-        "strategic-move",
-        "company-acquisition"
-      ]
-    },
-    {
-      "slug": "anthropic-security-usage-policy",
-      "title": "Anthropic security Usage Policy",
-      "audience": "advanced",
-      "topics": [
-        "platform-news",
-        "security-policy",
-        "usage-restrictions"
-      ]
-    },
-    {
-      "slug": "claude-code-weekly-limits-are-increasing-50-now-through",
-      "title": "Claude Code weekly limits are increasing 50%, now through July 13.",
-      "audience": "both",
-      "topics": [
-        "platform-news",
-        "usage-limits",
-        "claudecode"
-      ]
-    },
-    {
-      "slug": "how-i-stopped-claude-code-from-over-engineering-everything",
-      "title": "How I stopped Claude Code from over-engineering everything",
-      "audience": "both",
-      "topics": [
-        "workflow",
-        "prompt-engineering",
-        "field-report"
-      ]
-    },
-    {
-      "slug": "made-claude-code-warn-you-time-before-it-hits-usage-to",
-      "title": "Made claude code warn you, time before it hits usage to transfer the pending work, all dynamically",
-      "audience": "advanced",
-      "topics": [
-        "workflow",
-        "rate-limits",
-        "usage-monitoring",
-        "agent-hooks",
-        "field-report"
-      ]
-    },
-    {
-      "slug": "new-ui-preview-feature-on-claude-code-is-really-great",
-      "title": "New UI Preview feature on Claude Code is really great.",
-      "audience": "both",
-      "topics": [
-        "workflow",
-        "ui-preview",
-        "interactive-prompting"
-      ]
-    },
-    {
       "slug": "9-things-about-claude-i-wish-someone-had-told-me-10-years",
       "title": "9 things about Claude I wish someone had told me 10 years ago",
       "audience": "both",
@@ -597,6 +508,61 @@
         "automation",
         "setup",
         "enterprise-use"
+      ]
+    },
+    {
+      "slug": "b2b-sales-consultant-6-yrs-solo-an-honest-critique-of",
+      "title": "B2B sales consultant 6 yrs solo. an honest critique of claude after 9 months of daily use.",
+      "audience": "both",
+      "topics": [
+        "field-report",
+        "limitations",
+        "workflow"
+      ]
+    },
+    {
+      "slug": "how-i-ship-features-with-a-7-agent-claude-code-team-that",
+      "title": "how i ship features with a 7-agent claude code team that reviews its own code and talk to each other",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "multi-agent-system",
+        "code-review",
+        "collaboration",
+        "claudecode"
+      ]
+    },
+    {
+      "slug": "i-checked-which-of-my-claude-code-skills-actually-fire-half",
+      "title": "I checked which of my Claude Code skills actually fire. Half never had, and they were burning 23k tokens every session",
+      "audience": "advanced",
+      "topics": [
+        "workflow",
+        "skill-management",
+        "token-optimization",
+        "field-report"
+      ]
+    },
+    {
+      "slug": "i-stress-tested-kimi-k2-6-against-claude-opus-4-7-on-a",
+      "title": "I stress-tested Kimi K2.6 against Claude Opus 4.7 on a quick coding-agent task",
+      "audience": "advanced",
+      "topics": [
+        "field-report",
+        "workflow",
+        "coding-agent",
+        "model-comparison"
+      ]
+    },
+    {
+      "slug": "opus-4-6-4-7-substantial-degradation-as-of-yesterday",
+      "title": "Opus 4.6 / 4.7 substantial degradation as of yesterday",
+      "audience": "both",
+      "topics": [
+        "model-performance",
+        "opus",
+        "regression",
+        "field-report"
       ]
     }
   ]

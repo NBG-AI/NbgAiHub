@@ -80,6 +80,13 @@ function isCurrent(href: string): boolean {
   if (href !== '/' && currentPath.startsWith(href)) return true;
   return false;
 }
+
+// BASE_URL is '/' locally and '/NbgAiHub/' on GitHub Pages (set by
+// PUBLIC_BASE in the deploy workflow). Used to resolve the brand link
+// and the wordmark images correctly under both base paths — Astro does
+// NOT auto-prefix raw `<a href="/">` or `<img src="/public-asset">`,
+// only its own bundled imports.
+const base = import.meta.env.BASE_URL;
 ---
 
 {isSplash ? (
@@ -89,10 +96,10 @@ function isCurrent(href: string): boolean {
     data-nbg-topnav
   >
     <div class="nbg-topnav__inner">
-      <a class="nbg-topnav__brand" href="/" aria-label="NBG AI Hub home">
+      <a class="nbg-topnav__brand" href={base} aria-label="NBG AI Hub home">
         <img
           class="nbg-topnav__logo nbg-topnav__logo--light"
-          src="/brand/nbg-wordmark-blue.png"
+          src={`${base}brand/nbg-wordmark-blue.png`}
           alt=""
           width="1338"
           height="302"
@@ -100,7 +107,7 @@ function isCurrent(href: string): boolean {
         />
         <img
           class="nbg-topnav__logo nbg-topnav__logo--dark"
-          src="/brand/nbg-wordmark-white.png"
+          src={`${base}brand/nbg-wordmark-white.png`}
           alt=""
           width="1338"
           height="302"
