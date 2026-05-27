@@ -482,6 +482,13 @@ function resourceKindTone(kind: Resource['kind']): string {
     .journey-intro :global(p:last-child) {
       margin-bottom: 0 !important;
     }
+    /* Hide markdown `---` separators inside the intro — local renders them
+       with browser-default 32px top+bottom margins (deployed has Starlight's
+       16/0 rule applying). Different visual height on local vs deploy. The
+       separator adds no value in the docs-style layout — kill it both sides. */
+    .journey-intro :global(hr) {
+      display: none !important;
+    }
 
     /* ─── Top 6-card section overview (mirrors Day 1) ─────────── */
     .journey-overview {

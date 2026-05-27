@@ -315,6 +315,13 @@ const heroSummary = entry.data.ai_summary;
     .journey-intro :global(p:last-child) {
       margin-bottom: 0 !important;
     }
+    /* Hide markdown `---` separators inside the intro — local renders them
+       with browser-default 32px top+bottom margins (deployed has Starlight's
+       16/0 rule applying). Different visual height on local vs deploy. The
+       separator adds no value in the docs-style layout — kill it both sides. */
+    .journey-intro :global(hr) {
+      display: none !important;
+    }
 
     /* ─── Top 5-card overview (kept from prior layout) ─────────── */
     .journey-overview {
