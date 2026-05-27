@@ -238,7 +238,7 @@ function resourceKindTone(kind: Resource['kind']): string {
   </section>
 
   {introHtml.length > 0 && (
-    <section class="section" id="intro" style="padding-block: 2rem;">
+    <section class="foundation-intro-section" id="intro">
       <div class="wrap">
         <div class="journey-intro sl-markdown-content" set:html={introHtml} />
       </div>
@@ -465,14 +465,22 @@ function resourceKindTone(kind: Resource['kind']): string {
 
 <style>
   @layer nbg.components {
-    /* ─── Hero / intro (unchanged from prior layout) ───────────── */
+    /* ─── Hero / intro ─────────────────────────────────────────── */
+    /* Custom class (not `.section`) — avoids agentnews-layout's
+       `.section { padding-block: ... }` unlayered rule overriding us. */
+    .foundation-intro-section {
+      padding-block: 2rem !important;
+    }
     .journey-intro {
       color: var(--nbg-ink-2);
       font-size: 1.125rem;
       line-height: 1.7;
     }
     .journey-intro :global(p) {
-      margin: 0 0 1rem 0;
+      margin: 0 0 1rem 0 !important;
+    }
+    .journey-intro :global(p:last-child) {
+      margin-bottom: 0 !important;
     }
 
     /* ─── Top 6-card section overview (mirrors Day 1) ─────────── */
@@ -547,25 +555,27 @@ function resourceKindTone(kind: Resource['kind']): string {
     }
 
     /* ─── Two-column main layout ────────────────────────────────── */
+    /* !important on layout spacing — unlayered Starlight/agentnews-layout
+       rules on `.wrap` and `.section` beat our @layer rules in production. */
     .foundation-layout {
-      display: grid;
-      grid-template-columns: 240px minmax(0, 1fr);
-      gap: 3rem;
-      padding-block: 2rem 3rem;
-      align-items: start;
+      display: grid !important;
+      grid-template-columns: 240px minmax(0, 1fr) !important;
+      gap: 3rem !important;
+      padding-block: 2rem 3rem !important;
+      align-items: start !important;
     }
     @media (max-width: 960px) {
       .foundation-layout {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
+        grid-template-columns: 1fr !important;
+        gap: 1.5rem !important;
       }
     }
 
     /* ─── Sticky TOC sidebar ───────────────────────────────────── */
     .foundation-toc {
-      position: sticky;
-      top: 5rem;
-      align-self: start;
+      position: sticky !important;
+      top: 5rem !important;
+      align-self: start !important;
     }
     @media (max-width: 960px) {
       .foundation-toc {
@@ -577,9 +587,9 @@ function resourceKindTone(kind: Resource['kind']): string {
       }
     }
     .foundation-toc__inner {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 1rem !important;
     }
     .foundation-toc__eyebrow {
       font-family: var(--nbg-ff-mono);
@@ -590,13 +600,13 @@ function resourceKindTone(kind: Resource['kind']): string {
       font-weight: 500;
     }
     .foundation-toc__list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.125rem;
-      border-left: 2px solid var(--nbg-hairline);
+      list-style: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 0.125rem !important;
+      border-left: 2px solid var(--nbg-hairline) !important;
     }
     .foundation-toc__list a {
       display: block;
@@ -632,24 +642,24 @@ function resourceKindTone(kind: Resource['kind']): string {
 
     /* ─── Main column sections ─────────────────────────────────── */
     .foundation-main {
-      display: flex;
-      flex-direction: column;
-      gap: 4rem;
-      min-width: 0;
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 4rem !important;
+      min-width: 0 !important;
     }
     @media (max-width: 960px) {
       .foundation-main {
-        gap: 3rem;
+        gap: 3rem !important;
       }
     }
     .foundation-section {
-      padding: 0;
-      scroll-margin-top: 5rem;
+      padding: 0 !important;
+      scroll-margin-top: 5rem !important;
     }
     .foundation-section__head {
-      margin-bottom: 1.5rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid var(--nbg-hairline);
+      margin-bottom: 1.5rem !important;
+      padding-bottom: 1rem !important;
+      border-bottom: 1px solid var(--nbg-hairline) !important;
     }
     /* !important required — Starlight .sl-markdown-content h2 cascade
        beats class-only selectors. Newsreader serif, modest display size. */

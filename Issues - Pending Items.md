@@ -14,8 +14,8 @@ Pending items first (most critical at top). Per CLAUDE.md doc-hygiene: each entr
     `<TerminalDemo>` mocks sit in `site/src/pages/start-here/day-1.astro` (`firstSessionFrames`, `survivalKeysFrames`) for the same reason as #22 — need a real Claude Code session captured. **Replace path:** PNG capture per frame, annotate, swap the `<TerminalDemo>` calls for `<img>` tags + figcaption.
 
 20. **Starlight CSS ships unlayered, beats `@layer nbg.components` in production** (medium / recurring footgun).
-    Per CSS spec, unlayered rules beat any `@layer` block regardless of declared order. Vite dev order masked this locally; production CSS bundle reverses it and Starlight wins same-specificity ties.
-    **Fix path:** wrap Starlight's CSS imports in `@layer starlight.X { @import ... }` via Vite/PostCSS plugin (single-source). Until then: any local-vs-deploy visual drift is almost certainly this — diagnose with CDP `CSS.getMatchedStylesForNode`, patch with `!important` on the specific property. See DECISIONS 2026-05-26 (afternoon).
+    Per CSS spec, unlayered rules beat any `@layer` block regardless of declared order. Same trap also fires from `agentnews-layout.css` (unlayered rules on `.section` + `.wrap`). Round-1 (2026-05-26) patched typography; round-2 (2026-05-27 late) patched layout/spacing on Day 1 + Foundations.
+    **Fix path:** wrap Starlight + agentnews CSS imports in `@layer starlight, agentnews;` via Vite/PostCSS plugin (single-source). Until then: `!important` on every losing property, prefer custom class names over `.section`/`.wrap`. Canonical doc: `docs/reference/starlight-cascade-gotcha.md`.
 
 19. **`--nbg-sh-focus-ring` primitive in `tokens/primitives.css:243-244` still references `var(--nbg-c-violet-500)`** (low / cosmetic-debt).
     Semantic-layer override in `tokens/semantic.css` already wins in production. Leftover primitive is a footgun if anyone resets the token. One-line cleanup, not urgent.

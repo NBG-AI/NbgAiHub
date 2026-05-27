@@ -1,6 +1,6 @@
 # NbgAiHub — Scope
 
-**Last updated:** 2026-05-26 — site is **live** at <https://chomovazuzana.github.io/NbgAiHub/> (GitHub Pages, `build_type: workflow`, repo public for free-tier Pages). Latest visible work: listing-page parity pass (Tips + Skills now read as structural twins of Foundations), sign-in modal redesign (centered, two-step bordered cards, teal `01`/`02` chips), violet→teal focus-ring token fix site-wide. Tests: site 310/310, pipeline 205/205. AUTO doc counts: glossary 36, tips 14, skills 9, journeys 2, news 54.
+**Last updated:** 2026-05-27 (late) — Day 1 rewritten to the Foundations docs-style layout (240px sticky TOC | 48rem justified main; top 5-card navi kept), matching 6-card top navi added to Foundations, stale "sequence change" blockquote removed from `journeys/day-1.md`. Starlight unlayered-cascade hardened in two rounds — `!important` on every `:global(<tag>)` body-prose rule AND every layout/spacing rule across both pages; intro sections renamed off `.section` to dodge `agentnews-layout.css`. New canonical reference at `docs/reference/starlight-cascade-gotcha.md`, linked from CLAUDE.md + Issue #20. Site live at <https://chomovazuzana.github.io/NbgAiHub/>. Tests: site 310/310, pipeline 205/205. AUTO doc counts: glossary 36, tips 14, skills 9, journeys 2, news 54.
 
 > Per-session narrative lives in **DECISIONS.md** (append-only). This header is a snapshot of *current* state — not history. When something changes, bump the date and rewrite this single paragraph; do not append "Prior" blocks.
 

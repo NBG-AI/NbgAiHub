@@ -6,6 +6,21 @@ Per CLAUDE.md doc-hygiene: each entry ≤20 lines, structured as Decision (bulle
 
 ---
 
+## 2026-05-27 (late evening) — Day 1 docs-style layout + Starlight cascade hardening, round 2
+
+**Decision:**
+- Day 1 rewritten to the Foundations docs-style layout: 240px sticky TOC sidebar | scrollable main column with 48rem justified prose, clean title-only section heads, accent "Next → Tips" card at the bottom. Top 5-card `.journey-overview` kept (UAT preference).
+- Foundations grew the matching 6-card top overview; one IntersectionObserver drives both the sidebar TOC `data-active` and the top-card `data-current` highlights in sync.
+- `journeys/day-1.md`: removed the stale `> **2026-05-27 — sequence change**` blockquote.
+- `!important` baked onto every body-prose `:global(<tag>)` rule (p, blockquote, h3, code, pre, table, strong) AND every layout/spacing property (`.day-layout`/`.foundation-layout` padding-block + grid, `.day-section__head`/`.foundation-section__head` margin-bottom, `.day-main`/`.foundation-main` gap, etc.). Intro sections renamed from `.section` → `.day-intro-section` / `.foundation-intro-section` to dodge `agentnews-layout.css`'s `.section { padding-block: 0 !important }` rule entirely.
+- New canonical reference: `docs/reference/starlight-cascade-gotcha.md` — incident log + default posture + diagnosis ladder. Linked from CLAUDE.md new "Starlight cascade gotcha" section. Memory file `feedback_starlight_unlayered.md` updated with the layout-rule corollary.
+
+**Why:** Round-1 cascade fix (Issue #20 / DECISIONS 2026-05-26) covered `:global(<tag>)` typography but not structural spacing; deploy showed layout-padding + section-head margin collapse before any local probe surfaced them. Documenting once, exhaustively, breaks the cycle of rediscovery.
+
+**Refs:** commits `ff67a4a`, `facf572`, plus the current commit. Live: <https://chomovazuzana.github.io/NbgAiHub/start-here/day-1/> + `/foundations/`. Issue #20 retained (wider fix — wrapping Starlight CSS in `@layer starlight` via PostCSS — still deferred).
+
+---
+
 ## 2026-05-27 (evening) — Homepage demo swapped from mock to real recording
 
 **Decision:**
