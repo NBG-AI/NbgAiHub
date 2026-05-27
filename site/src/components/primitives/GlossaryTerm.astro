@@ -339,6 +339,11 @@ const manifestJson = JSON.stringify(manifest)
       font: inherit;
       color: inherit;
       cursor: help;
+      /* User-agent default for <button> is text-align: center — surfaces
+         when a glossary trigger wraps to two lines inside a narrow table
+         cell (e.g. "Claude Code" in the foundations Step 5 SURFACE
+         column). Inherit the surrounding cell's alignment instead. */
+      text-align: inherit;
       text-decoration: underline dotted var(--nbg-color-accent);
       text-underline-offset: 3px;
       text-decoration-thickness: 1px;
