@@ -222,6 +222,18 @@ function resourceKindTone(kind: Resource['kind']): string {
           <small><a href="/start-here/day-1/">→ ready to install? Skip to Day 1</a></small>
         </p>
       </div>
+      <nav class="journey-overview" aria-label="Foundations sections">
+        <ol>
+          {renderedSteps.map((step) => (
+            <li>
+              <a href={`#f${step.n}`} data-step-id={`f${step.n}`}>
+                <span class="journey-overview__num">{String(step.n).padStart(2, '0')}</span>
+                <span class="journey-overview__label">{tocLabels[step.n] ?? step.title}</span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      </nav>
     </div>
   </section>
 
@@ -422,15 +434,16 @@ function resourceKindTone(kind: Resource['kind']): string {
   // its heading is in the upper third of the viewport.
   (function () {
     const links = Array.from(document.querySelectorAll('.foundation-toc [data-toc-target]'));
-    if (!links.length) return;
-    const byId = new Map();
-    links.forEach(function (a) {
-      byId.set(a.getAttribute('data-toc-target'), a);
-    });
+    const overviewLinks = Array.from(document.querySelectorAll('.journey-overview [data-step-id]'));
+    if (!links.length && !overviewLinks.length) return;
     function setActive(id) {
       links.forEach(function (a) {
         if (a.getAttribute('data-toc-target') === id) a.setAttribute('data-active', '');
         else a.removeAttribute('data-active');
+      });
+      overviewLinks.forEach(function (a) {
+        const li = a.closest('li');
+        if (li) li.dataset.current = a.dataset.stepId === id ? 'true' : 'false';
       });
     }
     const sections = Array.from(document.querySelectorAll('.foundation-section[id]'));
@@ -460,6 +473,77 @@ function resourceKindTone(kind: Resource['kind']): string {
     }
     .journey-intro :global(p) {
       margin: 0 0 1rem 0;
+    }
+
+    /* ─── Top 6-card section overview (mirrors Day 1) ─────────── */
+    .journey-overview {
+      margin-top: 2rem;
+      padding-top: 1.75rem;
+      border-top: 1px solid var(--nbg-hairline);
+    }
+    .journey-overview ol {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+    .journey-overview li { margin: 0; }
+    .journey-overview a {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.625rem;
+      padding: 0.875rem 0.875rem 1rem;
+      border: 1px solid var(--nbg-hairline);
+      border-radius: var(--nbg-r-md);
+      background: var(--nbg-surface);
+      color: var(--nbg-ink-2);
+      text-decoration: none;
+      transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+      height: 100%;
+    }
+    .journey-overview a:hover {
+      border-color: color-mix(in srgb, var(--nbg-accent) 50%, var(--nbg-hairline));
+      background: color-mix(in srgb, var(--nbg-accent) 4%, var(--nbg-surface));
+      transform: translateY(-1px);
+    }
+    .journey-overview a:focus-visible {
+      outline: 2px solid var(--nbg-accent);
+      outline-offset: 2px;
+    }
+    .journey-overview li[data-current='true'] a {
+      border-color: var(--nbg-accent);
+      background: color-mix(in srgb, var(--nbg-accent) 8%, var(--nbg-surface));
+    }
+    .journey-overview__num {
+      font-family: var(--nbg-ff-mono);
+      font-size: 0.6875rem;
+      letter-spacing: 0.08em;
+      color: var(--nbg-accent);
+      font-weight: 600;
+      padding-top: 0.1rem;
+      flex: 0 0 auto;
+    }
+    .journey-overview__label {
+      font-family: var(--nbg-ff-body);
+      font-size: 0.9375rem;
+      line-height: 1.3;
+      color: var(--nbg-ink);
+      letter-spacing: -0.005em;
+    }
+    @media (max-width: 75rem) {
+      .journey-overview ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 48rem) {
+      .journey-overview ol { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 30rem) {
+      .journey-overview ol { grid-template-columns: 1fr; gap: 0.5rem; }
+      .journey-overview a { padding: 0.75rem 0.875rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .journey-overview a { transition: none; }
     }
 
     /* ─── Two-column main layout ────────────────────────────────── */

@@ -1,13 +1,22 @@
 ---
 /**
- * /start-here/day-1 — AgentNews-aesthetic Day-1 onboarding journey.
+ * /start-here/day-1 — docs-style scrollable layout (2026-05-27 redesign).
  *
- * Preserves the existing markdown-segmentation + step-rendering logic
- * (Astro markdown processor, `## Step N — Title` split, server-side HTML
- * injection). Chrome is migrated to AgentNews .hero + .section + .wrap.
+ * Keeps the existing top 5-card `.journey-overview` (per UAT preference) and
+ * adds a Foundations-style two-column main: 240px sticky TOC sidebar | main
+ * scrollable column. Each step renders as a `.day-section` with a clean
+ * title-only header — no "Step X / N" counter, no eyebrow. Body prose is
+ * 48rem justified with hyphens.
  *
- * Related: project-design.md §S.13.16, plan-005 phase 4 #10.
- * Backs AC10, AC15.
+ * Cascade traps handled:
+ *   - Starlight's unlayered `.sl-markdown-content h2` rule is beaten by a
+ *     compound selector + !important on `.day-section .day-section__title`.
+ *   - `[data-mode="reader"] .foundation-step { max-width: 56rem }` is sidestepped
+ *     by using a unique class (`.day-section__prose`) instead.
+ *
+ * Per-step visuals (preserved from prior version):
+ *   d3 — first-session TerminalDemo
+ *   d4 — survival-keys TerminalDemo
  */
 import { getEntry, getCollection } from 'astro:content';
 import { createMarkdownProcessor } from '@astrojs/markdown-remark';
@@ -17,10 +26,6 @@ import type { TerminalFrame } from '../../components/TerminalDemo.astro';
 import remarkGlossaryLink from '../../plugins/remark-glossary-link.ts';
 import { linkGlossaryTerms } from '../../lib/glossary-link-string';
 
-// UAT T19 V2 (2026-05-27) — annotated visuals slotted into Day 1 Steps 3 + 4.
-// CSS-styled terminal blocks for now; real captures (PNGs or asciinema) can
-// replace these slots later. Bound to step numbers so they survive the
-// 2026-05-27 step renumber (Step 3 = first session; Step 4 = survival keys).
 const firstSessionFrames: TerminalFrame[] = [
   {
     prompt: 'cd NbgAiHub',
@@ -55,9 +60,6 @@ const survivalKeysFrames: TerminalFrame[] = [
   },
 ];
 
-// UAT T15 V2 — read glossary length at build time so the count never
-// drifts away from Foundations (was "Thirty-four" while Foundations
-// said "Thirty-six").
 const glossaryCount = (await getCollection('glossary')).length;
 
 const entry = await getEntry('journeys', 'day-1');
@@ -83,11 +85,9 @@ interface ParsedStep {
 function splitSteps(body: string): { intro: string; steps: ParsedStep[] } {
   const lines = body.split('\n');
   const headingRe = /^##\s+Step\s+(\d+)\s*[—\-]\s*(.+?)\s*$/;
-
   const introLines: string[] = [];
   const steps: ParsedStep[] = [];
   let current: ParsedStep | null = null;
-
   for (const line of lines) {
     const match = line.match(headingRe);
     if (match && match[1] && match[2]) {
@@ -102,11 +102,9 @@ function splitSteps(body: string): { intro: string; steps: ParsedStep[] } {
     }
   }
   if (current) steps.push(current);
-
   for (const step of steps) {
     step.bodyMd = step.bodyMd.replace(/\n---\s*\n?\s*$/, '\n').trim();
   }
-
   return { intro: introLines.join('\n').trim(), steps };
 }
 
@@ -118,12 +116,6 @@ if (steps.length === 0) {
   );
 }
 
-// §S.14.5 — pass the glossary auto-link plugin into the manual processor
-// so segmented steps go through the same auto-linking pipeline as the
-// content-collection render() path. Cast is needed because
-// `createMarkdownProcessor`'s `remarkPlugins` is typed against unified's
-// generic Plugin shape, while our factory returns the narrower
-// `Plugin<[], Root, Root>` — the runtime contract is identical.
 const processor = await createMarkdownProcessor({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   remarkPlugins: [
@@ -142,6 +134,16 @@ const renderedSteps = await Promise.all(
 );
 
 const introHtml = intro.length > 0 ? (await processor.render(intro)).code : '';
+
+// Short TOC labels — chosen to fit the 240px sidebar without wrapping.
+// Order must match the step order in journeys/day-1.md.
+const tocLabels: Record<number, string> = {
+  1: 'Install & terminal',
+  2: 'GitHub account',
+  3: 'First session',
+  4: 'Survival keys',
+  5: 'Write CLAUDE.md',
+};
 
 const heroTitle = entry.data.title ?? 'Day 1';
 const heroSummary = entry.data.ai_summary;
@@ -168,7 +170,7 @@ const heroSummary = entry.data.ai_summary;
         <ol>
           {renderedSteps.map((step) => (
             <li>
-              <a href={`#step-${step.n}`} data-step-id={`step-${step.n}`}>
+              <a href={`#d${step.n}`} data-step-id={`d${step.n}`}>
                 <span class="journey-overview__num">{String(step.n).padStart(2, '0')}</span>
                 <span class="journey-overview__label" set:html={step.title.replace(/`([^`]+)`/g, '<code>$1</code>')} />
               </a>
@@ -187,28 +189,41 @@ const heroSummary = entry.data.ai_summary;
     </section>
   )}
 
-  {renderedSteps.map((step) => (
-    <section
-      class="section"
-      id={`step-${step.n}`}
-      data-step={step.n}
-      aria-label={`Step ${step.n}: ${step.title}`}
-    >
-      <div class="wrap">
-        <div class="section__head">
-          <h2>Step {step.n} / {renderedSteps.length}</h2>
-          <span class="count">{step.title}</span>
-        </div>
-        <div class="journey-step">
-          <div class="journey-step__header">
-            <span class="journey-step__badge" aria-hidden="true">{String(step.n).padStart(2, '0')}</span>
-            <h3 class="journey-step__title" set:html={step.title.replace(/`([^`]+)`/g, '<code>$1</code>')} />
+  <div class="day-layout wrap">
+    <aside class="day-toc" aria-label="Day 1 steps">
+      <div class="day-toc__inner">
+        <span class="day-toc__eyebrow">Steps</span>
+        <nav>
+          <ol class="day-toc__list">
+            {renderedSteps.map((step) => (
+              <li>
+                <a href={`#d${step.n}`} data-toc-target={`d${step.n}`}>
+                  <span class="day-toc__label">{tocLabels[step.n] ?? step.title}</span>
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
+        <a class="day-toc__skip" href="/tips/">→ Skip to Tips &amp; tricks</a>
+      </div>
+    </aside>
+
+    <div class="day-main">
+      {renderedSteps.map((step) => (
+        <section
+          class="day-section"
+          id={`d${step.n}`}
+          data-step={step.n}
+          aria-label={`Step ${step.n}: ${step.title}`}
+        >
+          <header class="day-section__head">
+            <h2 class="day-section__title" set:html={step.title.replace(/`([^`]+)`/g, '<code>$1</code>')} />
+          </header>
+
+          <div class="day-section__prose">
+            <div class="day-section__body sl-markdown-content" set:html={step.html} />
           </div>
-          <div class="journey-step__body sl-markdown-content" set:html={step.html} />
-          {/* UAT T19 V2 — visual peek slotted at the steps where seeing the
-              UI most reduces anxiety: Step 3 (first session) and Step 4
-              (survival keys). Bound to step.n so a future reorder doesn't
-              silently disconnect them from their content. */}
+
           {step.n === 3 && (
             <TerminalDemo
               title="Your first session"
@@ -223,38 +238,67 @@ const heroSummary = entry.data.ai_summary;
               caption="Stylised preview. A real recording will replace this slot."
             />
           )}
-        </div>
-      </div>
-    </section>
-  ))}
+        </section>
+      ))}
+    </div>
+  </div>
 
-  <section class="section" id="next">
+  <section class="day-next" id="next">
     <div class="wrap">
-      <div class="section__head">
-        <h2>Where next</h2>
-      </div>
-      <div class="grid-2">
-        <article class="card card--text">
-          <div class="card__body">
-            <div class="card__meta"><span class="eyebrow eyebrow--accent">Tips</span></div>
-            <h3 class="card__title"><a href="/tips/">Tips &amp; tricks</a></h3>
-            <p class="card__summary" set:html={linkGlossaryTerms('Prompting patterns, survival keys, context discipline — the small habits that compound.')} />
+      <article class="day-next__card">
+        <div class="day-next__body">
+          <span class="day-next__eyebrow">Next →</span>
+          <h2 class="day-next__title">Tips &amp; tricks</h2>
+          <p class="day-next__lede" set:html={linkGlossaryTerms("You've installed, signed in, run your first session, and put a CLAUDE.md down. Now the habits that compound — prompting patterns, survival keys, context discipline, the small moves that take a user from working to fast.")} />
+          <div class="day-next__actions">
+            <a class="day-next__cta day-next__cta--primary" href="/tips/">
+              Open Tips →
+            </a>
+            <a class="day-next__cta day-next__cta--secondary" href="/glossary/">
+              Or look up a term ({glossaryCount} in the glossary)
+            </a>
           </div>
-        </article>
-        <article class="card card--text">
-          <div class="card__body">
-            <div class="card__meta"><span class="eyebrow eyebrow--accent">Glossary</span></div>
-            <h3 class="card__title"><a href="/glossary/">Look up terms</a></h3>
-            <p class="card__summary" set:html={linkGlossaryTerms(`${glossaryCount} terms in plain English — what they mean, when they matter. Use it as a reference, not a reading list.`)} />
-          </div>
-        </article>
-      </div>
+        </div>
+      </article>
     </div>
   </section>
 </MarketingShell>
 
+<script is:inline>
+  // Drives both the top `.journey-overview` cards AND the sticky `.day-toc`
+  // sidebar. One IntersectionObserver, two highlights kept in sync.
+  (function () {
+    var overviewLinks = Array.from(document.querySelectorAll('.journey-overview [data-step-id]'));
+    var tocLinks = Array.from(document.querySelectorAll('.day-toc [data-toc-target]'));
+    var sections = Array.from(document.querySelectorAll('.day-section[id]'));
+    if (!sections.length) return;
+
+    function setActive(id) {
+      overviewLinks.forEach(function (a) {
+        var li = a.closest('li');
+        if (li) li.dataset.current = a.dataset.stepId === id ? 'true' : 'false';
+      });
+      tocLinks.forEach(function (a) {
+        if (a.getAttribute('data-toc-target') === id) a.setAttribute('data-active', '');
+        else a.removeAttribute('data-active');
+      });
+    }
+    setActive(sections[0].id);
+
+    if (!('IntersectionObserver' in window)) return;
+    var observer = new IntersectionObserver(function (entries) {
+      var visible = entries
+        .filter(function (e) { return e.isIntersecting; })
+        .sort(function (a, b) { return a.boundingClientRect.top - b.boundingClientRect.top; });
+      if (visible.length) setActive(visible[0].target.id);
+    }, { rootMargin: '-25% 0px -60% 0px', threshold: 0 });
+    sections.forEach(function (s) { observer.observe(s); });
+  })();
+</script>
+
 <style>
   @layer nbg.components {
+    /* ─── Intro under hero ─────────────────────────────────────── */
     .journey-intro {
       color: var(--nbg-ink-2);
       font-size: 1.125rem;
@@ -264,12 +308,7 @@ const heroSummary = entry.data.ai_summary;
       margin: 0 0 1rem 0;
     }
 
-    /* ── Hero journey overview ────────────────────────────────────────
-       A horizontal map of the 5 steps shown directly under the hero
-       lede. Lets a newcomer see the whole journey at a glance and jump
-       in mid-way on a return visit. Each step renders as a chip with a
-       monospaced 0N number and the step title. Active step (when the
-       user is scrolled into it) gets accent treatment via JS below. */
+    /* ─── Top 5-card overview (kept from prior layout) ─────────── */
     .journey-overview {
       margin-top: 2rem;
       padding-top: 1.75rem;
@@ -283,9 +322,7 @@ const heroSummary = entry.data.ai_summary;
       grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 0.75rem;
     }
-    .journey-overview li {
-      margin: 0;
-    }
+    .journey-overview li { margin: 0; }
     .journey-overview a {
       display: flex;
       align-items: flex-start;
@@ -336,126 +373,275 @@ const heroSummary = entry.data.ai_summary;
       border-radius: var(--nbg-r-sm);
     }
     @media (max-width: 60rem) {
-      .journey-overview ol {
-        grid-template-columns: 1fr 1fr;
-      }
+      .journey-overview ol { grid-template-columns: 1fr 1fr; }
     }
     @media (max-width: 36rem) {
-      .journey-overview ol {
+      .journey-overview ol { grid-template-columns: 1fr; gap: 0.5rem; }
+      .journey-overview a { padding: 0.75rem 0.875rem; }
+    }
+
+    /* ─── Two-column docs layout ───────────────────────────────── */
+    .day-layout {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: 3rem;
+      padding-block: 2rem 3rem;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .day-layout {
         grid-template-columns: 1fr;
-        gap: 0.5rem;
-      }
-      .journey-overview a {
-        padding: 0.75rem 0.875rem;
+        gap: 1.5rem;
       }
     }
 
-    .journey-step {
-      max-width: 56rem;
+    /* ─── Sticky TOC sidebar ───────────────────────────────────── */
+    .day-toc {
+      position: sticky;
+      top: 5rem;
+      align-self: start;
+    }
+    @media (max-width: 960px) {
+      .day-toc {
+        position: static;
+        border: 1px solid var(--nbg-hairline);
+        border-radius: var(--nbg-r-md, 8px);
+        padding: 1rem;
+        background: var(--nbg-surface);
+      }
+    }
+    .day-toc__inner {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .day-toc__eyebrow {
+      font-family: var(--nbg-ff-mono);
+      font-size: 0.6875rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--nbg-muted);
+      font-weight: 500;
+    }
+    .day-toc__list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+      border-left: 2px solid var(--nbg-hairline);
+    }
+    .day-toc__list a {
+      display: block;
+      padding: 0.5rem 0.75rem;
+      margin-left: -2px;
+      border-left: 2px solid transparent;
+      color: var(--nbg-muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      line-height: 1.35;
+      transition: color 120ms ease, border-color 120ms ease;
+    }
+    .day-toc__list a:hover { color: var(--nbg-ink); }
+    .day-toc__list a[data-active] {
+      color: var(--nbg-accent);
+      border-left-color: var(--nbg-accent);
+      font-weight: 600;
+    }
+    .day-toc__skip {
+      font-family: var(--nbg-ff-mono);
+      font-size: 0.75rem;
+      color: var(--nbg-accent);
+      text-decoration: none;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--nbg-hairline);
+      letter-spacing: 0.04em;
+    }
+    .day-toc__skip:hover { text-decoration: underline; }
+
+    /* ─── Main column sections ─────────────────────────────────── */
+    .day-main {
+      display: flex;
+      flex-direction: column;
+      gap: 4rem;
+      min-width: 0;
+    }
+    @media (max-width: 960px) {
+      .day-main { gap: 3rem; }
+    }
+    .day-section {
+      padding: 0;
       scroll-margin-top: 5rem;
     }
-    .journey-step__header {
-      display: flex;
-      align-items: baseline;
-      gap: 1.25rem;
-      margin: 0 0 1.25rem 0;
+    .day-section__head {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--nbg-hairline);
     }
-    .journey-step__badge {
+    /* !important + compound selector required — Starlight's unlayered
+       `.sl-markdown-content h2` cascade beats class-only selectors. */
+    .day-section .day-section__title {
+      font-family: var(--nbg-ff-serif, Newsreader, Georgia, serif) !important;
+      font-weight: 500 !important;
+      font-size: 1.875rem !important;
+      line-height: 1.15 !important;
+      letter-spacing: -0.015em !important;
+      color: var(--nbg-ink) !important;
+      margin: 0 !important;
+    }
+    .day-section .day-section__title :global(code) {
       font-family: var(--nbg-ff-mono);
-      font-size: 0.8125rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      color: var(--nbg-accent);
-      flex: 0 0 auto;
-      padding: 0.2rem 0.55rem;
-      border: 1px solid color-mix(in srgb, var(--nbg-accent) 35%, var(--nbg-hairline));
-      border-radius: var(--nbg-r-pill);
-      background: color-mix(in srgb, var(--nbg-accent) 6%, transparent);
-      line-height: 1.4;
-      align-self: center;
+      font-size: 0.85em;
+      background: var(--nbg-surface-2);
+      padding: 0.1em 0.35em;
+      border-radius: var(--nbg-r-sm);
     }
-    .journey-step__title {
-      font-family: var(--nbg-ff-serif);
-      font-weight: 500;
-      font-size: var(--nbg-fs-feature);
-      line-height: 1.15;
-      letter-spacing: -0.02em;
-      color: var(--nbg-ink);
-      margin: 0;
+
+    /* ─── Body prose: 48rem measure, justified ─────────────────── */
+    .day-section__prose {
+      max-width: 48rem !important;
+      scroll-margin-top: 5rem;
     }
-    .journey-step__body {
+    .day-section__body {
       color: var(--nbg-ink);
       font-size: 1rem;
       line-height: 1.7;
+      text-align: justify;
+      hyphens: auto;
+      -webkit-hyphens: auto;
+      word-spacing: 0;
     }
-    .journey-step__body :global(p) {
-      margin: 0 0 1rem 0;
+    .day-section__body :global(p) { margin: 0 0 1rem 0; }
+    .day-section__body :global(p:last-child) { margin-bottom: 0; }
+    .day-section__body :global(ul),
+    .day-section__body :global(ol),
+    .day-section__body :global(table),
+    .day-section__body :global(pre),
+    .day-section__body :global(blockquote) {
+      text-align: start;
+      hyphens: manual;
     }
-    .journey-step__body :global(p:last-child) {
-      margin-bottom: 0;
-    }
-    .journey-step__body :global(ul),
-    .journey-step__body :global(ol) {
+    .day-section__body :global(ul),
+    .day-section__body :global(ol) {
       margin: 0 0 1rem 0;
       padding-left: 1.5rem;
     }
-    .journey-step__body :global(li) {
-      margin-bottom: 0.5rem;
+    .day-section__body :global(li) { margin-bottom: 0.5rem; }
+    .day-section__body :global(h3) {
+      font-family: var(--nbg-ff-serif, Newsreader, Georgia, serif);
+      font-weight: 500;
+      font-size: 1.25rem;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+      color: var(--nbg-ink);
+      margin: 1.75rem 0 0.75rem;
     }
-    .journey-step__body :global(code) {
+    .day-section__body :global(code) {
       font-family: var(--nbg-ff-mono);
       font-size: 0.95em;
       background: var(--nbg-surface-2);
       padding: 0.1em 0.35em;
       border-radius: var(--nbg-r-sm);
     }
-    .journey-step__body :global(pre) {
+    .day-section__body :global(pre) {
       background: var(--nbg-surface-2);
       border: 1px solid var(--nbg-hairline);
       border-radius: var(--nbg-r-md);
       padding: 1rem;
       overflow-x: auto;
     }
+    .day-section__body :global(blockquote) {
+      margin: 1rem 0;
+      padding: 0.75rem 1rem;
+      border-left: 3px solid var(--nbg-accent);
+      background: color-mix(in srgb, var(--nbg-accent) 5%, var(--nbg-surface));
+      color: var(--nbg-ink-2);
+      border-radius: 0 var(--nbg-r-sm) var(--nbg-r-sm) 0;
+    }
+    .day-section__body :global(blockquote p) { margin: 0 0 0.5rem 0; }
+    .day-section__body :global(blockquote p:last-child) { margin-bottom: 0; }
+    .day-section__body :global(strong) {
+      color: var(--nbg-ink);
+      font-weight: 600;
+    }
+
+    /* ─── Bottom Next card ─────────────────────────────────────── */
+    .day-next {
+      padding-block: 3rem 4rem;
+    }
+    .day-next__card {
+      padding: 2.5rem;
+      border: 1px solid color-mix(in srgb, var(--nbg-accent) 30%, var(--nbg-hairline));
+      border-radius: var(--nbg-r-lg, 12px);
+      background: color-mix(in srgb, var(--nbg-accent) 5%, var(--nbg-surface));
+      box-shadow: 0 12px 36px -24px color-mix(in srgb, var(--nbg-accent) 35%, transparent);
+    }
+    .day-next__eyebrow {
+      display: inline-block;
+      font-family: var(--nbg-ff-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--nbg-accent);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .day-next .day-next__title {
+      font-family: var(--nbg-ff-serif, Newsreader, Georgia, serif) !important;
+      font-weight: 500 !important;
+      font-size: 2rem !important;
+      line-height: 1.15 !important;
+      letter-spacing: -0.015em !important;
+      color: var(--nbg-ink) !important;
+      margin: 0 0 0.75rem 0 !important;
+    }
+    .day-next__lede {
+      margin: 0 0 1.5rem 0;
+      max-width: 48rem;
+      font-size: 1.0625rem;
+      line-height: 1.55;
+      color: var(--nbg-ink-2);
+    }
+    .day-next__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .day-next__cta {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      transition: background 120ms ease, border-color 120ms ease, filter 120ms ease;
+    }
+    .day-next__cta--primary {
+      background: var(--nbg-accent);
+      color: #ffffff;
+      border: 1px solid var(--nbg-accent);
+    }
+    .day-next__cta--primary:hover { filter: brightness(1.05); }
+    .day-next__cta--secondary {
+      background: transparent;
+      color: var(--nbg-accent);
+      border: 1px solid color-mix(in srgb, var(--nbg-accent) 40%, var(--nbg-hairline));
+      font-weight: 500;
+      font-size: 0.875rem;
+    }
+    .day-next__cta--secondary:hover {
+      background: color-mix(in srgb, var(--nbg-accent) 8%, transparent);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .day-toc__list a,
+      .day-next__cta,
+      .journey-overview a {
+        transition: none;
+      }
+    }
   }
 </style>
-
-<script>
-  // Highlight the active step in the hero overview as the user scrolls.
-  // Cheap IntersectionObserver — no scroll handler, no requestAnimationFrame.
-  // Mirrors the StepIndicator primitive but inline so the page stays self-contained.
-  (() => {
-    const overview = document.querySelector<HTMLElement>('.journey-overview');
-    if (!overview) return;
-    const items = overview.querySelectorAll<HTMLElement>('li');
-    if (items.length === 0) return;
-
-    const sections: HTMLElement[] = [];
-    items.forEach((li) => {
-      const link = li.querySelector<HTMLAnchorElement>('a[data-step-id]');
-      const id = link?.dataset.stepId;
-      if (!id) return;
-      const section = document.getElementById(id);
-      if (section) sections.push(section);
-    });
-    if (sections.length === 0) return;
-
-    const setCurrent = (id: string | null) => {
-      items.forEach((li) => {
-        const a = li.querySelector<HTMLAnchorElement>('a[data-step-id]');
-        const isCurrent = a?.dataset.stepId === id;
-        li.dataset.current = isCurrent ? 'true' : 'false';
-      });
-    };
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) setCurrent(visible.target.id);
-      },
-      { rootMargin: '-25% 0px -55% 0px', threshold: [0, 0.1, 0.5] },
-    );
-    sections.forEach((s) => observer.observe(s));
-  })();
-</script>

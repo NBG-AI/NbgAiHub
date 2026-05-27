@@ -15,8 +15,6 @@ You just got Claude Code. Here's the path that takes you from "installed" to "ac
 
 **You don't need to write code to use this.** If your job is reading requirements, summarising documents, drafting user stories, querying data, sanity-checking artefacts — all of that is text in, text out, and Claude Code reads files directly. Specs, exports, meeting notes, JIRA dumps. The Day 1 path below is the same whether you write code or not.
 
-> **2026-05-27 — sequence change:** the GitHub account step moved up from Step 5 to Step 2. The clone-a-repo reference in Step 3 needs an account to point at, so the account comes first now.
-
 ---
 
 ## Step 1 — Install and pick a terminal
