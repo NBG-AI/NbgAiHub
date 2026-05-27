@@ -616,6 +616,39 @@ const heroSummary = entry.data.ai_summary;
       padding-left: 1.5rem !important;
     }
     .day-section__body :global(li) { margin-bottom: 0.5rem !important; }
+    /* Table styling — mirrors Foundations' .foundation-step__body table
+       rules (monospace eyebrow header, hairline rows, top-aligned cells).
+       `table-layout: fixed` + explicit first-col width prevents long
+       provider names like "Anthropic API key" from wrapping awkwardly
+       AND keeps the descriptions readable rather than line-by-letter. */
+    .day-section__body :global(table) {
+      width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      margin: 1rem 0 1.5rem !important;
+      font-size: 0.9375rem !important;
+    }
+    .day-section__body :global(th),
+    .day-section__body :global(td) {
+      text-align: left !important;
+      padding: 0.625rem 0.75rem !important;
+      border-bottom: 1px solid var(--nbg-hairline) !important;
+      vertical-align: top !important;
+      word-wrap: break-word !important;
+    }
+    .day-section__body :global(th:first-child),
+    .day-section__body :global(td:first-child) {
+      width: 30% !important;
+    }
+    .day-section__body :global(th) {
+      font-family: var(--nbg-ff-mono) !important;
+      font-size: 0.75rem !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.12em !important;
+      color: var(--nbg-muted) !important;
+      font-weight: 500 !important;
+      border-bottom: 1px solid var(--nbg-border, var(--nbg-hairline)) !important;
+    }
     .day-section__body :global(h3) {
       font-family: var(--nbg-ff-serif, Newsreader, Georgia, serif) !important;
       font-weight: 500 !important;
