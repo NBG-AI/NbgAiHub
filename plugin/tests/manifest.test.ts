@@ -34,7 +34,7 @@ describe("plugin.json (plugin/.claude-plugin/plugin.json)", () => {
   it("author object has name + url", () => {
     const author = manifest.author as Record<string, unknown>;
     expect(author.name).toBe("NbgAiHub");
-    expect(author.url).toBe("https://github.com/chomovazuzana/NbgAiHub");
+    expect(author.url).toBe("https://github.com/556LowCodeNoCode/NbgAiHub");
   });
 });
 

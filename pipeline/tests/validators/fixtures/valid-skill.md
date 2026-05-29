@@ -12,7 +12,7 @@ external_link: https://github.com/anthropics/claude-code
 deeper_link: null
 ai_summary: A fictional skill used as a happy-path fixture for the CI validator. It demonstrates a fully-populated, well-formed frontmatter block.
 when_to_use: Use this fixture in tests that need a fully populated, happy-path frontmatter — exercises the validator's positive path without tripping any rule.
-install_command: /plugin marketplace add chomovazuzana/NbgAiHub
+install_command: /plugin marketplace add 556LowCodeNoCode/NbgAiHub
 skill_id: valid-skill
 origin: internal
 category: workflow

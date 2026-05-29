@@ -37,7 +37,7 @@ function makeValidForm(overrides: Partial<SkillForm> = {}): SkillForm {
     external_link: null,
     deeper_link: null,
     ai_summary: 'A short summary of what this skill does.',
-    install_command: '/plugin marketplace add chomovazuzana/NbgAiHub',
+    install_command: '/plugin marketplace add 556LowCodeNoCode/NbgAiHub',
     skill_id: 'example-skill',
     origin: 'internal',
     category: 'workflow',
