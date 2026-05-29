@@ -33,6 +33,7 @@ const ROUTES = [
   'skills',
   'tips',
   'news',
+  'use-cases',
   'start-here',
   'my-pins',
   'submit-skill',
