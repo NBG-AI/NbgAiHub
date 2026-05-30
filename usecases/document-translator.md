@@ -19,7 +19,7 @@ inputs:
   - Claude Code installed and a terminal open (see Day 1)
 ---
 
-Imagine NBG operates across borders. Most of the time, a written translation isn't a hard linguistic problem — it's a context problem. Google Translate gives you a word-for-word version that's grammatically fine and tonally wrong. The Athens-Frankfurt case escalation reads as flat or rude in the target language; the London supplier's "by EOB Friday" lands in Greek inboxes as ambiguous.
+NBG isn't a wildly cross-border bank, but the occasional Athens-Frankfurt case or London supplier email still lands on someone's desk. When it does, the translation isn't a hard linguistic problem — it's a context problem. Google Translate gives you a word-for-word version that's grammatically fine and tonally wrong. The case escalation reads as flat or rude in the target language; the supplier's "by EOB Friday" lands in Greek inboxes as ambiguous.
 
 This use case treats translation as a structured task: original on the left, target on the right, *notes on what didn't carry across* on the bottom. The notes are where the value lives.
 
