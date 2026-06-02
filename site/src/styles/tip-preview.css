@@ -1,7 +1,11 @@
-/* Hover-preview popover for /tips/ — appears beside a
-   `.listing-row[data-tip-slug]` on hover, shows the tip's full body.
+/* /tips/ preview surface.
+   2026-06-02 — moved from a floating hover-popover to a sticky two-column
+   pane (right column of `.tips-shell`). The same `.tip-preview` class is
+   reused for typography; the pane variant (`.tip-preview--pane`) drops
+   the fixed-positioning + shadow chrome and instead sticks below the
+   filter bar inside its grid column.
    Lives outside any `<style>` block (plain global stylesheet) because the
-   popover content is cloned from a hidden template at runtime and would
+   pane content is cloned from a hidden template at runtime and would
    never receive Astro's scoped-class hash. */
 
 .tip-preview {
@@ -14,29 +18,52 @@
   --nbg-fs-lg: 0.9375rem;    /* h4 */
   --sl-text-h2: 1rem;
   --sl-text-h3: 1.0625rem;
-  position: fixed;
-  z-index: 1000;
-  width: min(820px, calc(100vw - 32px));
-  max-height: 70vh;
-  overflow-y: auto;
   background: var(--nbg-surface, #ffffff);
   color: var(--nbg-ink, #0b1e2e);
   border: 1px solid var(--nbg-border, #dce3eb);
   border-radius: 12px;
-  box-shadow:
-    0 24px 56px -24px rgba(11, 30, 46, 0.28),
-    0 4px 12px -6px rgba(11, 30, 46, 0.08);
   padding: 1.3rem 1.5rem 1.4rem;
   font-family: var(--nbg-ff-body, system-ui, -apple-system, 'Segoe UI', sans-serif);
-  animation: tip-preview-enter 140ms ease-out;
 }
-.tip-preview[hidden] { display: none; }
+
+/* Pane variant — sticky right column inside `.tips-shell`. The grid
+   below decides the column width; here we just stick.
+   Initial position is offset down by ~5.5rem so the pane's top aligns
+   with the FIRST listing row instead of the cluster heading above it
+   (the heading "Prompting" + its lede + the section's top padding
+   together total roughly that height). Sticky `top` kicks in once you
+   scroll past — at which point the heading offset no longer matters. */
+.tip-preview--pane {
+  position: sticky;
+  /* Sit ~1rem below the sticky filter bar. The filter bar pins at
+     `top: var(--sl-nav-height, 4rem)` and is ~3.25rem tall + padding. */
+  top: calc(var(--sl-nav-height, 4rem) + 4rem);
+  margin-top: 10.75rem;
+  max-height: calc(100vh - var(--sl-nav-height, 4rem) - 5rem);
+  overflow-y: auto;
+  box-shadow: 0 2px 6px -2px rgba(11, 30, 46, 0.04);
+}
+.tip-preview-pane__placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.tip-preview-pane__placeholder[hidden],
+.tip-preview-pane__content[hidden] { display: none; }
+.tip-preview-pane__hint {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--nbg-muted, #5b6b80);
+}
+/* Soft enter when content swaps in. */
+.tip-preview--pane .tip-preview-pane__content { animation: tip-preview-enter 160ms ease-out; }
 @keyframes tip-preview-enter {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0);    }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tip-preview { animation: none; }
+  .tip-preview--pane .tip-preview-pane__content { animation: none; }
 }
 .tip-preview__head {
   margin: 0 0 1rem 0;
@@ -174,3 +201,52 @@
    non-rendering; this defends against any future rule that would accidentally
    reveal its content. */
 .listing-row .tip-body-template { display: none !important; }
+
+/* ─── Two-column shell ────────────────────────────────────────────────
+   Below the hero + filter bar, /tips/ runs as a 2-column grid:
+   left = the listing sections (clusters / orphans / empty host),
+   right = the sticky preview pane. Each section inside `.tips-shell__main`
+   keeps its own `<div class="wrap">`, which now naturally fits the
+   narrower column width (max-width was already a ceiling, not a floor).
+   Below 1100px the grid collapses to a single column and the preview
+   pane is hidden — rows fall back to title click-through. */
+.tips-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 2.5rem;
+  /* Match the body wrap container so the shell aligns with the hero +
+     filter bar above. Pulled from `--nbg-container-max` (agentnews
+     primitives) so any future bump of the page width carries through. */
+  max-width: var(--nbg-container-max, 80rem);
+  margin: 0 auto;
+  padding: 0 var(--nbg-container-pad-desktop, 1.5rem);
+}
+.tips-shell__main { min-width: 0; }
+/* The listing sections inside `__main` already have their own `.wrap`
+   for horizontal padding. Inside this grid column the `.wrap` is
+   redundant — strip its left/right padding so rows align flush with
+   the column edge, but keep the centering for visual safety. */
+.tips-shell__main .section > .wrap {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+@media (max-width: 1100px) {
+  .tips-shell {
+    grid-template-columns: minmax(0, 1fr);
+    /* No right column — let the page width-of-defaults govern. */
+    padding: 0;
+  }
+  .tips-shell__main .section > .wrap {
+    /* Restore the standard wrap padding when we collapse back to one column. */
+    padding-left: var(--nbg-container-pad-desktop, 1.5rem);
+    padding-right: var(--nbg-container-pad-desktop, 1.5rem);
+  }
+  .tip-preview--pane { display: none; }
+}
+@media (hover: none), (pointer: coarse) {
+  /* Touch devices never trigger hover anyway — drop the pane entirely
+     so the listing flows full-width. */
+  .tips-shell { grid-template-columns: minmax(0, 1fr); }
+  .tip-preview--pane { display: none; }
+}

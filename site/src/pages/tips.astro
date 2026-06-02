@@ -225,6 +225,14 @@ function audienceTooltip(a: string): string {
     </div>
   </section>
 
+  {/* 2026-06-02 — two-column shell. Left = listing sections (clusters +
+      orphans + empty-state host). Right = sticky preview pane that
+      updates on row hover. Collapses to single column ≤1100px viewport
+      (see `.tips-shell` CSS); the preview pane is `display: none` there
+      and rows fall back to title click-through as the sole affordance. */}
+  <div class="tips-shell">
+  <div class="tips-shell__main">
+
   {CLUSTERS.map((cluster) => {
     const items = buckets[cluster.key] ?? [];
     if (items.length === 0) return null;
@@ -343,6 +351,27 @@ function audienceTooltip(a: string): string {
     </div>
   </section>
 
+  </div>{/* /.tips-shell__main */}
+
+  {/* Sticky preview pane — populated by the hover script below. Carries
+      a quiet placeholder at rest so the column doesn't look broken at
+      first load. Hidden on coarse-pointer + narrow viewports via CSS. */}
+  <aside
+    id="tip-preview-pane"
+    class="tip-preview tip-preview--pane"
+    data-state="empty"
+    aria-live="polite"
+    aria-label="Tip preview"
+  >
+    <div class="tip-preview-pane__placeholder" data-tip-preview-placeholder>
+      <p class="tip-preview__eyebrow">Tip preview</p>
+      <p class="tip-preview-pane__hint">Hover a tip on the left to read the full text. Click the title to open its own page.</p>
+    </div>
+    <div class="tip-preview-pane__content" data-tip-preview-content hidden></div>
+  </aside>
+
+  </div>{/* /.tips-shell */}
+
   <script is:inline>
     (function () {
       // 2026-05-28 UX rethink — section-emptiness coordinator.
@@ -411,126 +440,84 @@ function audienceTooltip(a: string): string {
     })();
   </script>
 
-  {/* Hover-preview popover (single shared element).
+  {/* Sticky preview pane wiring.
        Each `.listing-row[data-tip-slug]` carries a hidden
        `<script type="text/x-tip-body">` with its pre-rendered body. On row
-       hover the script below copies that content into this aside, sets a
-       title header, and positions it next to the row. Esc dismisses;
-       mouseleave hides. Disabled on coarse-pointer (touch) devices — those
-       tap to navigate via the stretched-link overlay. */}
-  <aside
-    id="tip-preview-popover"
-    class="tip-preview"
-    role="tooltip"
-    hidden
-    aria-hidden="true"
-  ></aside>
-
+       hover the script below copies that content into the sticky pane
+       declared above (#tip-preview-pane), swapping in the placeholder
+       when no row is active. Disabled on coarse-pointer (touch) devices
+       and on narrow viewports — those tap-to-navigate via the
+       stretched-link overlay; the pane itself is `display:none` there. */}
   <script is:inline>
     (function () {
-      var popover = document.getElementById('tip-preview-popover');
-      if (!popover) return;
+      var pane = document.getElementById('tip-preview-pane');
+      if (!pane) return;
+      // Skip wiring on touch — the pane is also display:none in CSS for
+      // narrow viewports, but skipping the listeners avoids dead work.
       if (window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches) {
         return;
       }
       var rows = document.querySelectorAll('.listing-row[data-tip-slug]');
       if (!rows.length) return;
 
-      var showTimer = null;
-      var hideTimer = null;
+      var placeholder = pane.querySelector('[data-tip-preview-placeholder]');
+      var content = pane.querySelector('[data-tip-preview-content]');
       var activeRow = null;
+      var clearTimer = null;
 
-      function render(row) {
+      function showRow(row) {
         var template = row.querySelector('.tip-body-template');
-        if (!template) return false;
+        if (!template) return;
         var bodyHtml = template.textContent || '';
-        if (!bodyHtml.trim()) return false;
+        if (!bodyHtml.trim()) return;
         var titleNode = row.querySelector('.listing-row__title-link');
         var titleText = titleNode ? (titleNode.textContent || '').trim() : '';
-        popover.innerHTML =
+        activeRow = row;
+        content.innerHTML =
           '<header class="tip-preview__head">' +
             '<p class="tip-preview__eyebrow">Tip preview</p>' +
             '<h3 class="tip-preview__title"></h3>' +
           '</header>' +
           '<div class="tip-preview__body"></div>';
-        var titleEl = popover.querySelector('.tip-preview__title');
+        var titleEl = content.querySelector('.tip-preview__title');
         if (titleEl) titleEl.textContent = titleText;
-        var bodyEl = popover.querySelector('.tip-preview__body');
+        var bodyEl = content.querySelector('.tip-preview__body');
         if (bodyEl) bodyEl.innerHTML = bodyHtml;
-        return true;
+        if (placeholder) placeholder.hidden = true;
+        content.hidden = false;
+        pane.setAttribute('data-state', 'showing');
+        // Scroll the pane back to top so each new tip starts fresh.
+        pane.scrollTop = 0;
       }
-
-      function position(row) {
-        var rect = row.getBoundingClientRect();
-        popover.style.left = '0px';
-        popover.style.top = '0px';
-        popover.hidden = false;
-        popover.setAttribute('aria-hidden', 'false');
-        var popRect = popover.getBoundingClientRect();
-        var gap = 16;
-        var pad = 16;
-        var vw = window.innerWidth;
-        var vh = window.innerHeight;
-        var left, top;
-        if (rect.right + gap + popRect.width <= vw - pad) {
-          left = rect.right + gap;
-          top = rect.top;
-        } else if (rect.left - gap - popRect.width >= pad) {
-          left = rect.left - gap - popRect.width;
-          top = rect.top;
-        } else {
-          left = Math.max(pad, Math.min(rect.left, vw - popRect.width - pad));
-          top = rect.bottom + 8;
-        }
-        if (top + popRect.height > vh - pad) {
-          top = Math.max(pad, vh - popRect.height - pad);
-        }
-        if (top < pad) top = pad;
-        popover.style.left = left + 'px';
-        popover.style.top = top + 'px';
-      }
-
-      function show(row) {
-        if (!render(row)) return;
-        activeRow = row;
-        position(row);
-      }
-      function hide() {
-        popover.hidden = true;
-        popover.setAttribute('aria-hidden', 'true');
-        popover.innerHTML = '';
+      function restorePlaceholder() {
         activeRow = null;
+        content.innerHTML = '';
+        content.hidden = true;
+        if (placeholder) placeholder.hidden = false;
+        pane.setAttribute('data-state', 'empty');
       }
 
       rows.forEach(function (row) {
         row.addEventListener('mouseenter', function () {
-          if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-          if (showTimer) { clearTimeout(showTimer); showTimer = null; }
-          show(row);
+          if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
+          showRow(row);
         });
-        row.addEventListener('mouseleave', function (e) {
-          if (showTimer) { clearTimeout(showTimer); showTimer = null; }
-          var next = e.relatedTarget;
-          if (next && next.nodeType === 1 && popover.contains(next)) return;
-          hideTimer = setTimeout(function () {
-            if (!popover.matches(':hover')) hide();
+        row.addEventListener('mouseleave', function () {
+          // Short delay so moving between adjacent rows doesn't flash
+          // the placeholder between hovers.
+          clearTimer = setTimeout(function () {
+            if (!activeRow || activeRow.matches(':hover')) return;
+            restorePlaceholder();
           }, 180);
         });
       });
-      popover.addEventListener('mouseenter', function () {
-        if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      // Allow hovering the pane itself (e.g. to scroll a long body) without
+      // collapsing back to the placeholder.
+      pane.addEventListener('mouseenter', function () {
+        if (clearTimer) { clearTimeout(clearTimer); clearTimer = null; }
       });
-      popover.addEventListener('mouseleave', function () {
-        hideTimer = setTimeout(function () { hide(); }, 120);
-      });
-      document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !popover.hidden) hide();
-      });
-      window.addEventListener('scroll', function () {
-        if (!popover.hidden) hide();
-      }, { passive: true });
-      window.addEventListener('resize', function () {
-        if (!popover.hidden) hide();
+      pane.addEventListener('mouseleave', function () {
+        clearTimer = setTimeout(restorePlaceholder, 120);
       });
     })();
   </script>

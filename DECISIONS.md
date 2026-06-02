@@ -6,6 +6,23 @@ Per CLAUDE.md doc-hygiene: each entry ≤20 lines, structured as Decision (bulle
 
 ---
 
+## 2026-06-02 (tips preview pane) — Two-column shell with sticky tip preview
+
+**Trigger:** /tips/ hover-preview was a floating 820px popover that covered ~3 list rows below the hovered one. Sidebar-pattern fallback (narrowed to 440px, anchored top-right) still overlapped the row's right portion. User asked for a stable 2-column layout with the preview permanently in the right column.
+
+**Decision:**
+- Below the hero + filter bar, /tips/ now runs as a `display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 2.5rem` shell (`.tips-shell` in `tip-preview.css`). Left column carries the existing cluster/orphan listing sections; right column is a sticky `<aside id="tip-preview-pane">`.
+- Pane has two child states: `[data-tip-preview-placeholder]` ("Hover a tip on the left to read the full text…") and `[data-tip-preview-content]` (populated on row hover, cleared on row+pane leave). Hovering the pane itself keeps content open so users can scroll long bodies.
+- Floating-popover JS deleted (positioning math, viewport-edge clamping, scroll-hides). Replaced with `showRow` / `restorePlaceholder` against the sticky pane.
+- Sticky offset: `top: calc(var(--sl-nav-height) + 4rem)` so the pane sits ~1rem below the sticky filter bar. Initial-flow `margin-top: 10.75rem` so the pane's top edge starts level with the first listing row (cluster heading + lede live above on the left only) — verified gap=0 via puppeteer across vw 1280–1920.
+- Responsive collapse: below 1100px viewport or on coarse-pointer, the grid collapses to single column and `.tip-preview--pane { display: none }`. Title click-through becomes the sole affordance there.
+
+**Why:** floating popover was the source — any X-coordinate change still overlapped the list. Stable two-column layout gives the preview its own permanent real estate so hover updates a known location instead of summoning a modal. Click-through to the detail page is preserved as the commit affordance.
+
+**Refs:** `site/src/pages/tips.astro` (`.tips-shell` markup + sticky-pane JS), `site/src/styles/tip-preview.css` (`.tip-preview--pane`, `.tips-shell` grid + 1100px collapse).
+
+---
+
 ## 2026-06-02 (tips taxonomy) — Closed topic enum + filter click-target fix
 
 **Trigger:** /tips/ chip strip showed 14 topic chips including `Advanced` and `Basics` — both duplicated the SHOW/audience axis — plus six singletons (`safety`, `permissions`, `corrections`, `integrations`, `examples`, `data-residency`) and the half-catalog tag `fundamentals`. Separately, sticky-bar audience chips routed clicks to the wrong radio.
