@@ -274,7 +274,19 @@ export function groupFavoritesByType(hydrated: HydratedPin[]): GroupedPins {
     glossary: [],
   };
   for (const pin of hydrated) {
-    grouped[pin.type].push(pin);
+    // Forward-compat safety net: if a future bundle adds a content type
+    // ('podcast', 'video', …) and a user pins one before their /my-pins/
+    // page-load picks up the new bundle, `grouped[pin.type]` is undefined
+    // — pushing onto it would throw a TypeError and freeze the page.
+    // Lazily initialise unknown buckets so the older bundle just shows
+    // them as a generic group rather than crashing. Iteration order still
+    // honours PIN_TYPE_ORDER first, then any unknown keys after.
+    const bucket = grouped[pin.type];
+    if (bucket === undefined) {
+      (grouped as Record<string, HydratedPin[]>)[pin.type] = [pin];
+    } else {
+      bucket.push(pin);
+    }
   }
   for (const key of PIN_TYPE_ORDER) {
     grouped[key].sort((a, b) => {
@@ -288,20 +300,39 @@ export function groupFavoritesByType(hydrated: HydratedPin[]): GroupedPins {
 }
 
 /**
- * Fetch all five pin indices in parallel and return a Map<type, file>.
+ * Fetch all six pin indices in parallel and return a Map<type, file>.
  *
- * Any individual fetch failure (network, 404, schema) is surfaced via
- * Promise.all (i.e. the returned promise rejects). We do not swallow
- * partial failures — a missing index is a build-time bug worth surfacing.
+ * Per-index failures are tolerated: if one index 404s (e.g. CDN propagation
+ * race after adding a new content type, or a stale browser cache holding
+ * an old expectation list), the page still renders with the indices that
+ * came back — pins of the missing type just render as stale "no longer
+ * available" rows rather than the whole page crashing on a Promise.all
+ * rejection. Failures are logged once per call so build-time bugs still
+ * surface in DevTools.
  */
 export async function fetchAllPinIndices(
   baseUrl: string = '',
 ): Promise<Map<FavoriteEntry['type'], PinIndexFile>> {
-  const entries = await Promise.all(
+  const results = await Promise.allSettled(
     PIN_TYPE_ORDER.map(async (type) => {
       const file = await fetchPinIndex(type, baseUrl);
       return [type, file] as const;
     }),
   );
-  return new Map(entries);
+  const map = new Map<FavoriteEntry['type'], PinIndexFile>();
+  for (let i = 0; i < results.length; i += 1) {
+    const r = results[i];
+    if (r === undefined) continue;
+    if (r.status === 'fulfilled') {
+      map.set(r.value[0], r.value[1]);
+    } else {
+      const type = PIN_TYPE_ORDER[i];
+      const reason = r.reason instanceof Error ? r.reason.message : String(r.reason);
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[nbgaihub/pin-store] failed to fetch ${type}-index.json — pins of this type will render as stale. Cause: ${reason}`,
+      );
+    }
+  }
+  return map;
 }

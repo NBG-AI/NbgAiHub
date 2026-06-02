@@ -1385,6 +1385,23 @@ const PIN_TYPE_LABELS = {
   }
 
   async function renderSignedIn(token: string): Promise<void> {
+    try {
+      await renderSignedInInner(token);
+    } catch (err) {
+      // Last-ditch catch — anything thrown between the gist fetch and the
+      // final showSignedInPanel() (grouping, card construction, DOM
+      // updates, …) ends up here instead of becoming an unhandled
+      // rejection that freezes the loading skeleton with no explanation.
+      // eslint-disable-next-line no-console
+      console.error('[nbgaihub/my-pins] unexpected render failure:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      showSignedInPanel();
+      setError(`Could not load your pins: ${msg}`);
+      show(getEmpty());
+    }
+  }
+
+  async function renderSignedInInner(token: string): Promise<void> {
     showLoadingState();
     setError(null);
     clearGridAndFilters();

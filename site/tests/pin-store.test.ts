@@ -339,7 +339,12 @@ describe('pin-store.ts', () => {
       }
     });
 
-    it('surfaces individual fetch failures (does not swallow)', async () => {
+    it('tolerates individual fetch failures (returns the indices that succeeded)', async () => {
+      // 2026-06-02 — contract change: per-index failures are now logged
+      // (not thrown) so a stale CDN or a still-propagating new content
+      // type doesn't kill the whole pin display. Pins of the missing
+      // type render as stale "no longer available" rows instead.
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const fetchMock = vi.fn().mockImplementation((url: string) => {
         if (url.includes('news-index')) {
           return Promise.resolve(new Response('not found', { status: 404 }));
@@ -353,9 +358,14 @@ describe('pin-store.ts', () => {
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      await expect(fetchAllPinIndices()).rejects.toBeInstanceOf(
-        PinIndexNotFoundError,
-      );
+      const map = await fetchAllPinIndices();
+      expect(map.size).toBe(5); // all six minus the 404-ing news index
+      expect(map.has('news')).toBe(false);
+      expect(map.has('skill')).toBe(true);
+      expect(map.has('use-case')).toBe(true);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0]?.[0]).toContain('news-index.json');
+      warnSpy.mockRestore();
     });
 
     it('issues requests in parallel (all started before any settles)', async () => {
