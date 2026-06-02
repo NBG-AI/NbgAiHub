@@ -192,14 +192,24 @@
      Drops the "T1 / 4" mono ordering label and the right-aligned blurb.
      Title is serif (matches Foundations section heads); blurb sits as a
      quiet lede below — same vocabulary the rest of the site uses. */
+  /* `margin-*: 0 !important` on title + lede defeats the Starlight
+     prose cascade (`content-prose.css .sl-markdown-content h2 {
+     margin-block: 2rem 0.75rem }`). Locally that prose rule wins by
+     CSS load order (Vite) and injects 32px top-margin on the cluster
+     heading, pushing the first listing row down by ~58px relative to
+     prod — where the cascade resolves the opposite way and our rule
+     wins naturally. Forcing 0 here gives a single source of truth for
+     vertical alignment that lets the sticky preview pane on /tips/ use
+     a deterministic margin-top to align with the first row in BOTH
+     environments. See DECISIONS 2026-06-02 (tips preview pane). */
   .listing-section__head {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.5rem !important;
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
   }
   .listing-section__title {
-    margin: 0;
+    margin: 0 !important;
     font-family: var(--nbg-ff-serif, Newsreader, Georgia, serif);
     font-weight: 500;
     font-size: 1.5rem;
@@ -208,7 +218,7 @@
     color: var(--nbg-ink, #0b1e2e);
   }
   .listing-section__lede {
-    margin: 0;
+    margin: 0 !important;
     font-size: 0.9375rem;
     line-height: 1.5;
     color: var(--nbg-ink-2, #1a3148);
@@ -268,10 +278,14 @@
     color: #ffffff;
   }
 
-  /* List + row chrome. */
+  /* List + row chrome.
+     `margin: 0 !important` defeats the local-only `ul` adjacent-sibling
+     injection from Starlight's prose cascade (~12px top margin). Without
+     it, the /tips/ first row sits 12px higher locally than in prod,
+     breaking the sticky preview pane's alignment math. */
   .listing-list {
     list-style: none;
-    margin: 0;
+    margin: 0 !important;
     padding: 0;
     display: grid;
     gap: 0.5rem;
