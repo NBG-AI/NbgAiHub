@@ -40,7 +40,8 @@ export type HydratedPin = FavoriteEntry & {
   display: PinIndexItem | null;
 };
 
-/** Grouped output, keys ordered per F-P11 (skill, tip, news, journey-step, glossary). */
+/** Grouped output, keys ordered per F-P11 + use-case (skill, tip, use-case,
+ *  news, journey-step, glossary). */
 export type GroupedPins = Record<FavoriteEntry['type'], HydratedPin[]>;
 
 /** /_data/<type>-index.json returned 404. */
@@ -59,10 +60,12 @@ export class PinIndexSchemaError extends Error {
   }
 }
 
-/** F-P11 display order for grouped output. */
+/** F-P11 + use-case display order for grouped output. Use-cases sit after
+ *  tips since they're "tips you can do end-to-end" — natural reading order. */
 export const PIN_TYPE_ORDER: ReadonlyArray<FavoriteEntry['type']> = [
   'skill',
   'tip',
+  'use-case',
   'news',
   'journey-step',
   'glossary',
@@ -78,6 +81,7 @@ function isPinType(value: unknown): value is FavoriteEntry['type'] {
   return (
     value === 'skill' ||
     value === 'tip' ||
+    value === 'use-case' ||
     value === 'news' ||
     value === 'journey-step' ||
     value === 'glossary'
@@ -260,10 +264,11 @@ export function joinFavoritesWithIndex(
  * Within each group, pins are sorted by `pinned_at` descending — newest first.
  */
 export function groupFavoritesByType(hydrated: HydratedPin[]): GroupedPins {
-  // Initialise all 5 keys in F-P11 order so iteration is deterministic.
+  // Initialise all 6 keys in F-P11+use-case order so iteration is deterministic.
   const grouped: GroupedPins = {
     skill: [],
     tip: [],
+    'use-case': [],
     news: [],
     'journey-step': [],
     glossary: [],

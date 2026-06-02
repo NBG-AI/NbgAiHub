@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "type": "use-case",
+  "items": [
+    {
+      "slug": "complaint-heatmap",
+      "title": "Turn a stack of customer complaints into a one-page heatmap",
+      "audience": "beginner",
+      "topics": [
+        "analysis",
+        "contact-center",
+        "reporting"
+      ]
+    },
+    {
+      "slug": "credit-memo-tldr",
+      "title": "Compress a 15-page SME credit memo into a 3-bullet summary",
+      "audience": "beginner",
+      "topics": [
+        "risk",
+        "credit",
+        "summarisation"
+      ]
+    },
+    {
+      "slug": "document-translator",
+      "title": "Translate a customer email between Greek and English with cultural notes",
+      "audience": "beginner",
+      "topics": [
+        "operations",
+        "multilingual",
+        "customer-care"
+      ]
+    },
+    {
+      "slug": "empathic-reply",
+      "title": "Draft a customer reply that doesn't sound corporate",
+      "audience": "beginner",
+      "topics": [
+        "writing",
+        "retail",
+        "customer-care"
+      ]
+    },
+    {
+      "slug": "invoice-data-extract",
+      "title": "Extract data from a stack of PDF invoices into one clean CSV",
+      "audience": "beginner",
+      "topics": [
+        "accounting",
+        "data",
+        "automation"
+      ]
+    },
+    {
+      "slug": "minute-taker",
+      "title": "Turn a Teams transcript into proper meeting minutes",
+      "audience": "beginner",
+      "topics": [
+        "operations",
+        "writing",
+        "meetings"
+      ]
+    },
+    {
+      "slug": "mortgage-calculator",
+      "title": "Build a one-page mortgage eligibility calculator",
+      "audience": "beginner",
+      "topics": [
+        "mortgages",
+        "build",
+        "html"
+      ]
+    },
+    {
+      "slug": "onboarding-checklist",
+      "title": "Generate a personalised first-week checklist for a new joiner",
+      "audience": "beginner",
+      "topics": [
+        "hr",
+        "onboarding",
+        "writing"
+      ]
+    },
+    {
+      "slug": "policy-diff",
+      "title": "Spot what actually changed between two versions of a policy",
+      "audience": "beginner",
+      "topics": [
+        "compliance",
+        "documents",
+        "review"
+      ]
+    },
+    {
+      "slug": "regulator-brief",
+      "title": "Compress a 60-page regulator PDF into a 1-page brief",
+      "audience": "beginner",
+      "topics": [
+        "compliance",
+        "summarisation",
+        "regulation"
+      ]
+    },
+    {
+      "slug": "runbook-from-interview",
+      "title": "Capture how a colleague does a manual process so you can hand it off",
+      "audience": "beginner",
+      "topics": [
+        "process-improvement",
+        "documentation",
+        "knowledge-sharing"
+      ]
+    },
+    {
+      "slug": "sql-from-question",
+      "title": "Turn a business question into a SQL query you can actually run",
+      "audience": "beginner",
+      "topics": [
+        "data",
+        "sql",
+        "reporting"
+      ]
+    }
+  ]
+}

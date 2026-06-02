@@ -24,6 +24,7 @@ import MarketingShell from '../components/MarketingShell.astro';
 const PIN_TYPE_LABELS = {
   skill: 'Skills',
   tip: 'Tips',
+  'use-case': 'Use cases',
   news: 'News',
   'journey-step': 'Journey',
   glossary: 'Glossary',
@@ -1057,7 +1058,7 @@ const PIN_TYPE_LABELS = {
     type HydratedPin,
   } from '../lib/pin-store.ts';
 
-  type PinType = 'skill' | 'tip' | 'news' | 'journey-step' | 'glossary';
+  type PinType = 'skill' | 'tip' | 'use-case' | 'news' | 'journey-step' | 'glossary';
 
   /** Map (type, slug) -> on-site URL for the title link. Best-effort.
    *  Resolved relative to the deployed base path (/NbgAiHub/ on Pages,
@@ -1074,6 +1075,9 @@ const PIN_TYPE_LABELS = {
       case 'tip':
         // Tips DO have per-slug detail pages at /tips/<slug>/.
         return `${base}/tips/${slug}/`;
+      case 'use-case':
+        // Use cases have per-slug walkthroughs at /use-cases/<slug>/.
+        return `${base}/use-cases/${slug}/`;
       case 'glossary':
         return `${base}/glossary/#${slug}`;
       case 'journey-step':
@@ -1165,6 +1169,7 @@ const PIN_TYPE_LABELS = {
     const TYPE_SINGULAR: Record<PinType, string> = {
       skill: 'skill',
       tip: 'tip',
+      'use-case': 'use case',
       news: 'news item',
       'journey-step': 'journey step',
       glossary: 'glossary term',
@@ -1172,12 +1177,13 @@ const PIN_TYPE_LABELS = {
     const TYPE_PLURAL: Record<PinType, string> = {
       skill: 'skills',
       tip: 'tips',
+      'use-case': 'use cases',
       news: 'news items',
       'journey-step': 'journey steps',
       glossary: 'glossary terms',
     };
     const breakdown: string[] = [];
-    (['skill', 'tip', 'news', 'journey-step', 'glossary'] as const).forEach((t) => {
+    (['skill', 'tip', 'use-case', 'news', 'journey-step', 'glossary'] as const).forEach((t) => {
       const n = grouped[t].length;
       if (n > 0) breakdown.push(`${n} ${n === 1 ? TYPE_SINGULAR[t] : TYPE_PLURAL[t]}`);
     });
@@ -1371,7 +1377,7 @@ const PIN_TYPE_LABELS = {
     };
 
     box.appendChild(makeChip('all', 'All', totalCount, true));
-    (['skill', 'tip', 'news', 'journey-step', 'glossary'] as const).forEach((t) => {
+    (['skill', 'tip', 'use-case', 'news', 'journey-step', 'glossary'] as const).forEach((t) => {
       const count = grouped[t].length;
       if (count > 0) box.appendChild(makeChip(t, labelForType(t), count, false));
     });
@@ -1465,8 +1471,8 @@ const PIN_TYPE_LABELS = {
       }
     };
 
-    // Build the grid in F-P11 display order (skill → tip → news → journey → glossary).
-    (['skill', 'tip', 'news', 'journey-step', 'glossary'] as const).forEach((type) => {
+    // Display order: skill → tip → use-case → news → journey → glossary.
+    (['skill', 'tip', 'use-case', 'news', 'journey-step', 'glossary'] as const).forEach((type) => {
       for (const pin of grouped[type]) {
         grid.appendChild(buildPinCard(pin, onUnpin));
       }

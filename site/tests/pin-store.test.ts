@@ -244,11 +244,12 @@ describe('pin-store.ts', () => {
   });
 
   describe('groupFavoritesByType', () => {
-    it('returns all 5 keys in F-P11 order even when some are empty', () => {
+    it('returns all 6 keys in F-P11 + use-case order even when some are empty', () => {
       const grouped = groupFavoritesByType([]);
       expect(Object.keys(grouped)).toEqual([
         'skill',
         'tip',
+        'use-case',
         'news',
         'journey-step',
         'glossary',
@@ -309,11 +310,12 @@ describe('pin-store.ts', () => {
       expect(grouped.glossary).toHaveLength(1);
       expect(grouped.news).toHaveLength(0);
       expect(grouped['journey-step']).toHaveLength(0);
+      expect(grouped['use-case']).toHaveLength(0);
     });
   });
 
   describe('fetchAllPinIndices', () => {
-    it('calls fetch 5 times in parallel and returns a Map of size 5', async () => {
+    it('calls fetch 6 times in parallel and returns a Map of size 6', async () => {
       const fetchMock = vi.fn().mockImplementation((url: string) => {
         // Map each URL to a minimal valid index for its type.
         const match = url.match(/_data\/([a-z-]+)-index\.json$/);
@@ -327,8 +329,8 @@ describe('pin-store.ts', () => {
 
       const map = await fetchAllPinIndices();
 
-      expect(fetchMock).toHaveBeenCalledTimes(5);
-      expect(map.size).toBe(5);
+      expect(fetchMock).toHaveBeenCalledTimes(6);
+      expect(map.size).toBe(6);
       for (const type of PIN_TYPE_ORDER) {
         const file = map.get(type);
         expect(file).toBeDefined();
@@ -372,7 +374,7 @@ describe('pin-store.ts', () => {
       vi.stubGlobal('fetch', fetchMock);
 
       await fetchAllPinIndices();
-      expect(maxInFlight).toBe(5);
+      expect(maxInFlight).toBe(6);
     });
   });
 });

@@ -20,6 +20,7 @@
  */
 import { getCollection } from 'astro:content';
 import MarketingShell from '../../components/MarketingShell.astro';
+import PinButton from '../../components/PinButton.astro';
 import { linkGlossaryTerms } from '../../lib/glossary-link-string';
 import '../../styles/listing-rows.css';
 
@@ -99,7 +100,7 @@ const allUnits = Array.from(new Set(items.map((u) => u.data.business_unit))).sor
     <div class="wrap">
       <ul class="usecase-grid" role="list">
         {items.map((u) => (
-          <li>
+          <li class="usecase-card-wrap" data-pin-context>
             <a
               class="usecase-card"
               href={`/use-cases/${u.id}/`}
@@ -112,7 +113,7 @@ const allUnits = Array.from(new Set(items.map((u) => u.data.business_unit))).sor
                 </span>
                 <span class="usecase-card__time">{u.data.time_estimate}</span>
               </div>
-              <h2 class="usecase-card__title">{u.data.title}</h2>
+              <h2 class="usecase-card__title" data-pin-title>{u.data.title}</h2>
               <p class="usecase-card__summary" set:html={linkGlossaryTerms(u.data.ai_summary)} />
               <div class="usecase-card__outcome">
                 <span class="usecase-card__outcome-label">You end up with</span>
@@ -122,6 +123,13 @@ const allUnits = Array.from(new Set(items.map((u) => u.data.business_unit))).sor
                 Open the walkthrough <span aria-hidden="true">→</span>
               </span>
             </a>
+            {/* Hover-revealed pin button — sits above the anchor, top-right.
+                Mirrors the listing-row__pin pattern on /tips and /skills.
+                Inside an <li> wrapper rather than inside the <a> because
+                you can't legally nest a <button> in an <a>. */}
+            <div class="usecase-card__pin">
+              <PinButton type="use-case" slug={u.id} />
+            </div>
           </li>
         ))}
       </ul>
@@ -319,6 +327,44 @@ const allUnits = Array.from(new Set(items.map((u) => u.data.business_unit))).sor
     .usecase-grid > li::marker { content: '' !important; }
     @media (max-width: 880px) {
       .usecase-grid { grid-template-columns: 1fr !important; }
+    }
+
+    /* ─── Pin wrapper ──────────────────────────────────────────────
+       Wraps the <a> card so we have a positioned container for the pin
+       button without nesting <button> inside <a>. Hover-reveal mirrors
+       the .listing-row__pin pattern on /tips and /skills: hidden at rest,
+       fades in on row hover or when the pin itself gets keyboard focus. */
+    .usecase-card-wrap {
+      position: relative !important;
+      display: block !important;
+    }
+    .usecase-card__pin {
+      position: absolute !important;
+      top: 0.85rem !important;
+      right: 0.85rem !important;
+      z-index: 3 !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transition: opacity 140ms ease !important;
+    }
+    .usecase-card-wrap:hover .usecase-card__pin,
+    .usecase-card-wrap:focus-within .usecase-card__pin,
+    .usecase-card__pin:has(.nbg-pin[aria-pressed='true']) {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+    /* When the use case is pinned, the icon stays visible at rest with a
+       lower-key opacity so the user can spot what they already saved. */
+    .usecase-card__pin:has(.nbg-pin[aria-pressed='true']) {
+      opacity: 0.85 !important;
+    }
+    /* Touch devices: no real hover state, so always show the pin so users
+       can actually tap it. */
+    @media (hover: none) {
+      .usecase-card__pin {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+      }
     }
 
     /* ─── Card ─────────────────────────────────────────────────── */

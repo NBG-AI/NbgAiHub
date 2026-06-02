@@ -23,6 +23,7 @@ export type PinType =
   | "news"
   | "skill"
   | "tip"
+  | "use-case"
   | "glossary"
   | "journey-step";
 
@@ -74,6 +75,12 @@ const SOURCES: readonly SourceSpec[] = [
     type: "tip",
     sourceDir: "tips",
     outFile: "tip-index.json",
+    stripDatePrefix: false,
+  },
+  {
+    type: "use-case",
+    sourceDir: "usecases",
+    outFile: "use-case-index.json",
     stripDatePrefix: false,
   },
   {

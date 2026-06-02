@@ -99,6 +99,7 @@ describe("buildPinIndex — happy path", () => {
     { file: "news-index.json", type: "news", count: 2 },
     { file: "skill-index.json", type: "skill", count: 0 },
     { file: "tip-index.json", type: "tip", count: 1 },
+    { file: "use-case-index.json", type: "use-case", count: 0 },
     { file: "glossary-index.json", type: "glossary", count: 2 },
     { file: "journey-step-index.json", type: "journey-step", count: 0 },
   ];
