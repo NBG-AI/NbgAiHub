@@ -208,8 +208,18 @@ const PIN_TYPE_LABELS = {
       <h2 id="my-pins-signed-in-heading" class="sr-only">Your pinned items</h2>
 
       <div style="display: grid; gap: 1.5rem;">
-        {/* Filter chip row — emitted by JS based on pin counts. */}
-        <div class="my-pins__filters" data-my-pins-filters role="tablist" aria-label="Filter pins by type" hidden></div>
+        {/* Library header strip — sits directly under the hero so the page
+            doesn't dump filter chips into empty space. Two-row layout:
+            eyebrow + count summary on the left, filter chips on the right
+            (wraps below on narrow viewports). */}
+        <div class="my-pins__library-header" data-my-pins-library-header hidden>
+          <div class="my-pins__library-intro">
+            <p class="my-pins__library-eyebrow">Your library</p>
+            <p class="my-pins__library-stats" data-my-pins-stats></p>
+          </div>
+          {/* Filter chip row — emitted by JS based on pin counts. */}
+          <div class="my-pins__filters" data-my-pins-filters role="tablist" aria-label="Filter pins by type" hidden></div>
+        </div>
 
         {/* Empty state — friendly invite when the gist has zero favourites. */}
         <div data-my-pins-empty hidden class="my-pins__empty">
@@ -316,10 +326,66 @@ const PIN_TYPE_LABELS = {
       .my-pins__skeleton { animation: none; opacity: 0.65; }
     }
 
-    /* Body wrapper — small breath above the body content, no large
-       section-padding gap. */
+    /* Body wrapper — keep the hero→content gap tight. The hero already
+       carries its own bottom padding, so 0.5rem here is enough breath.
+       Bottom keeps a generous 4rem so the privacy footer doesn't crowd
+       the last card. */
     .my-pins__body {
-      padding-block: 2rem 4rem;
+      padding-block: 0.5rem 4rem;
+    }
+    /* Reader-mode .hero ships with a heavy bottom padding (+ hairline
+       border on some surfaces) intended for prose pages. On /my-pins the
+       hero is just a name + lede, so we tighten the gap into the library
+       header. Matches the same compaction trick listing pages use. */
+    .nbg-marketing[data-surface='my-pins'] .hero--stack {
+      padding-bottom: 0.75rem !important;
+      border-bottom: 0 !important;
+    }
+
+    /* ── Library header strip ─────────────────────────────────────────
+       Top-of-content band that gives the page a clear "library" identity
+       and a count summary instead of orphaned filter chips floating in
+       whitespace. Left column: eyebrow + stats. Right column: filter
+       chips. Stacks vertically below 720px. */
+    .my-pins__library-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1.25rem 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--nbg-hairline, #e1e6ed);
+    }
+    .my-pins__library-header[hidden] { display: none; }
+    .my-pins__library-intro {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      min-width: 0;
+    }
+    .my-pins__library-eyebrow {
+      margin: 0;
+      font-family: var(--nbg-ff-mono, ui-monospace, monospace);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--nbg-accent, #0a8a7d);
+    }
+    .my-pins__library-stats {
+      margin: 0;
+      font-family: var(--nbg-ff-serif, 'Newsreader', Georgia, serif);
+      font-size: 1.15rem;
+      font-weight: 500;
+      line-height: 1.3;
+      letter-spacing: -0.012em;
+      color: var(--nbg-ink, #1a2030);
+    }
+    @media (max-width: 720px) {
+      .my-pins__library-header {
+        align-items: stretch;
+        gap: 0.85rem;
+      }
     }
 
     /* Token-rejection banner — only renders when the user landed here
@@ -690,8 +756,8 @@ const PIN_TYPE_LABELS = {
       margin: 0;
       padding: 0;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-      gap: 0.875rem;
+      grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+      gap: 1rem;
     }
 
     /* ── Pin card ──────────────────────────────────────────────────── */
@@ -703,18 +769,18 @@ const PIN_TYPE_LABELS = {
       margin: 0;
       display: flex;
       flex-direction: column;
-      gap: 0.875rem;
-      padding: 1.25rem 1.375rem;
-      border: 1px solid color-mix(in srgb, var(--nbg-ink, #1a2030) 14%, transparent);
+      gap: 0.65rem;
+      padding: 1.25rem 1.4rem 1.1rem;
+      border: 1px solid var(--nbg-hairline, color-mix(in srgb, var(--nbg-ink, #1a2030) 14%, transparent));
       border-radius: 12px;
       background: var(--nbg-bg, #fff);
-      box-shadow: 0 1px 2px 0 color-mix(in srgb, var(--nbg-ink, #1a2030) 5%, transparent);
+      box-shadow: 0 1px 2px 0 color-mix(in srgb, var(--nbg-ink, #1a2030) 4%, transparent);
       transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
     }
     .my-pins__card:hover {
       border-color: color-mix(in srgb, var(--nbg-accent, #0a8a7d) 55%, transparent);
-      transform: translateY(-1px);
-      box-shadow: 0 8px 24px -12px color-mix(in srgb, var(--nbg-ink, #1a2030) 22%, transparent);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px -12px color-mix(in srgb, var(--nbg-ink, #1a2030) 24%, transparent);
     }
     .my-pins__card[data-pin-hidden='true'] {
       display: none;
@@ -723,48 +789,110 @@ const PIN_TYPE_LABELS = {
       opacity: 0.55;
       font-style: italic;
     }
+    /* Click-anywhere: the stretched title-link ::after covers the card.
+       Pin meta + topic pills live above it (z-index:2) so they don't get
+       eaten by the overlay; the × unpin button is positioned absolutely
+       with its own stopPropagation handler. */
+    .my-pins__card--linked { cursor: pointer; }
+    .my-pins__card--linked .my-pins__card-title-link::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      border-radius: inherit;
+    }
+    .my-pins__card--linked .my-pins__card-eyebrow,
+    .my-pins__card--linked .my-pins__card-pills,
+    .my-pins__card--linked .my-pins__card-meta {
+      position: relative;
+      z-index: 2;
+    }
+    .my-pins__card--linked:focus-within {
+      outline: 2px solid var(--nbg-accent, #0a8a7d);
+      outline-offset: 2px;
+    }
+    .my-pins__card--linked .my-pins__card-title-link:focus-visible {
+      outline: none;
+    }
 
-    .my-pins__card-type {
-      display: inline-flex;
-      align-self: flex-start;
+    /* Eyebrow row — mono uppercase, mirrors .listing-row__eyebrow on the
+       tips/skills pages so the card vocabulary stays consistent. */
+    .my-pins__card-eyebrow {
+      display: flex;
       align-items: center;
-      padding: 2px 8px;
-      border-radius: 999px;
+      gap: 0;
+      flex-wrap: wrap;
+      margin: 0;
       font-family: var(--nbg-ff-mono, ui-monospace, monospace);
-      font-size: 0.625rem;
-      font-weight: 500;
+      font-size: 0.6875rem;
+      font-weight: 600;
       letter-spacing: 0.12em;
       text-transform: uppercase;
-      background: color-mix(in srgb, var(--nbg-accent, #0a8a7d) 12%, transparent);
-      color: var(--nbg-accent, #0a8a7d);
-      border: 1px solid color-mix(in srgb, var(--nbg-accent, #0a8a7d) 25%, transparent);
+      color: var(--nbg-muted, #5b6b80);
       line-height: 1.4;
+    }
+    .my-pins__card-eyebrow-type {
+      color: var(--nbg-accent, #0a8a7d);
+    }
+    .my-pins__card-eyebrow-sep {
+      margin: 0 0.45rem;
+      color: var(--nbg-muted-2, #8392a6);
+    }
+    .my-pins__card-eyebrow-when {
+      text-transform: none;
+      letter-spacing: 0.04em;
+      font-weight: 500;
+      color: var(--nbg-muted, #5b6b80);
     }
 
     .my-pins__card-title {
       margin: 0;
-      font-family: var(--nbg-ff-body);
-      font-size: 1rem;
+      font-family: var(--nbg-ff-serif, 'Newsreader', Georgia, serif);
+      font-size: 1.15rem;
       font-weight: 500;
-      line-height: 1.35;
-      color: var(--nbg-ink, #1a2030);
-      letter-spacing: -0.005em;
+      line-height: 1.28;
+      letter-spacing: -0.012em;
+      color: var(--nbg-ink, #0b1e2e);
       /* Right-pad so the title never collides with the absolute-positioned × button. */
-      padding-right: 2rem;
+      padding-right: 1.75rem;
       overflow-wrap: anywhere;
     }
-    .my-pins__card-title a {
+    .my-pins__card-title-link {
       color: inherit;
       text-decoration: none;
-      background-image: linear-gradient(to right, var(--nbg-accent, #0a8a7d), var(--nbg-accent, #0a8a7d));
-      background-size: 0 1px;
-      background-repeat: no-repeat;
-      background-position: 0 100%;
-      transition: background-size 200ms ease, color 120ms ease;
+      transition: color 140ms ease;
     }
-    .my-pins__card-title a:hover {
+    .my-pins__card:hover .my-pins__card-title-link {
       color: var(--nbg-accent, #0a8a7d);
-      background-size: 100% 1px;
+    }
+
+    /* Topic pills — quiet rounded chips, decorative only (pointer-events:
+       none so the stretched title-link overlay owns the click). Mirrors
+       the .listing-pill vocabulary used elsewhere. */
+    .my-pins__card-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+    }
+    .my-pins__card-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.18rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid var(--nbg-hairline, #e1e6ed);
+      background: var(--nbg-surface-2, #f6f8fa);
+      color: var(--nbg-ink-2, #4a5563);
+      font-family: var(--nbg-ff-mono, ui-monospace, monospace);
+      font-size: 0.65rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      line-height: 1.4;
+      pointer-events: none;
+    }
+    .my-pins__card-pill--more {
+      background: transparent;
+      color: var(--nbg-muted, #6b7280);
     }
 
     .my-pins__card-meta {
@@ -778,6 +906,8 @@ const PIN_TYPE_LABELS = {
       text-transform: uppercase;
       color: var(--nbg-muted, #6b7280);
       margin-top: auto; /* pin meta to card bottom */
+      padding-top: 0.25rem;
+      border-top: 1px dashed color-mix(in srgb, var(--nbg-hairline, #e1e6ed) 80%, transparent);
     }
     .my-pins__card-audience--beginner { color: var(--nbg-accent, #0a8a7d); }
     .my-pins__card-audience--advanced { color: var(--nbg-ink, #1a2030); }
@@ -910,20 +1040,42 @@ const PIN_TYPE_LABELS = {
 
   type PinType = 'skill' | 'tip' | 'news' | 'journey-step' | 'glossary';
 
-  /** Map (type, slug) -> on-site URL for the title link. Best-effort. */
+  /** Map (type, slug) -> on-site URL for the title link. Best-effort.
+   *  Resolved relative to the deployed base path (/NbgAiHub/ on Pages,
+   *  / locally) so the link works regardless of host. */
   function urlForPin(type: PinType, slug: string): string {
+    const base = (import.meta.env.BASE_URL ?? '/').replace(/\/+$/, '');
     switch (type) {
       case 'news':
-        return `/news/${slug}/`;
+        // News is hard-redirected to AgentNews per SCOPE.md; route to /news/.
+        return `${base}/news/`;
       case 'skill':
-        return `/skills/`;
+        // No per-skill detail page; route to the listing.
+        return `${base}/skills/`;
       case 'tip':
-        return `/tips/`;
+        // Tips DO have per-slug detail pages at /tips/<slug>/.
+        return `${base}/tips/${slug}/`;
       case 'glossary':
-        return `/glossary#${slug}`;
+        return `${base}/glossary/#${slug}`;
       case 'journey-step':
-        return `/start-here/${slug}/`;
+        return `${base}/start-here/${slug}/`;
     }
+  }
+
+  /** Pretty-print "today / yesterday / N days ago / Mon DD" from a YYYY-MM-DD. */
+  function prettyPinnedAt(yyyymmdd: string): string {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(yyyymmdd);
+    if (m === null) return yyyymmdd;
+    const then = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    const now = new Date();
+    const stripTime = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const days = Math.round((stripTime(now) - stripTime(then)) / 86_400_000);
+    if (days <= 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 7) return `${days} days ago`;
+    if (days < 14) return 'last week';
+    if (days < 60) return `${Math.floor(days / 7)} weeks ago`;
+    return then.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
   function getLoading(): HTMLElement | null {
@@ -968,6 +1120,13 @@ const PIN_TYPE_LABELS = {
     return document.querySelector<HTMLElement>('[data-my-pins-filters]');
   }
 
+  function getLibraryHeader(): HTMLElement | null {
+    return document.querySelector<HTMLElement>('[data-my-pins-library-header]');
+  }
+  function getStatsLine(): HTMLElement | null {
+    return document.querySelector<HTMLElement>('[data-my-pins-stats]');
+  }
+
   function clearGridAndFilters(): void {
     const grid = getGrid();
     if (grid !== null) grid.replaceChildren();
@@ -976,6 +1135,35 @@ const PIN_TYPE_LABELS = {
       filters.replaceChildren();
       filters.hidden = true;
     }
+    const header = getLibraryHeader();
+    if (header !== null) header.hidden = true;
+    const stats = getStatsLine();
+    if (stats !== null) stats.textContent = '';
+  }
+
+  /** Build the "2 pinned items · 1 tip · 1 glossary term" summary string. */
+  function buildStatsText(grouped: Record<PinType, HydratedPin[]>, total: number): string {
+    const TYPE_SINGULAR: Record<PinType, string> = {
+      skill: 'skill',
+      tip: 'tip',
+      news: 'news item',
+      'journey-step': 'journey step',
+      glossary: 'glossary term',
+    };
+    const TYPE_PLURAL: Record<PinType, string> = {
+      skill: 'skills',
+      tip: 'tips',
+      news: 'news items',
+      'journey-step': 'journey steps',
+      glossary: 'glossary terms',
+    };
+    const breakdown: string[] = [];
+    (['skill', 'tip', 'news', 'journey-step', 'glossary'] as const).forEach((t) => {
+      const n = grouped[t].length;
+      if (n > 0) breakdown.push(`${n} ${n === 1 ? TYPE_SINGULAR[t] : TYPE_PLURAL[t]}`);
+    });
+    const totalText = `${total} pinned item${total === 1 ? '' : 's'}`;
+    return breakdown.length > 1 ? `${totalText} · ${breakdown.join(' · ')}` : totalText;
   }
 
   function readTypeLabels(): Record<string, string> {
@@ -1029,20 +1217,37 @@ const PIN_TYPE_LABELS = {
     show(getSignedIn());
   }
 
+  /** Cap the number of topic pills shown on a single card. */
+  const MAX_TOPIC_PILLS = 3;
+
   function buildPinCard(
     pin: HydratedPin,
     onUnpin: (pin: HydratedPin, card: HTMLLIElement) => void,
   ): HTMLLIElement {
     const li = document.createElement('li');
     li.className = 'my-pins__card';
+    if (pin.display !== null) li.classList.add('my-pins__card--linked');
     li.dataset.pinSlug = pin.slug;
     li.dataset.pinType = pin.type;
 
-    // Type chip — quiet mono accent pill, top-left of the card.
-    const typeChip = document.createElement('span');
-    typeChip.className = 'my-pins__card-type';
-    typeChip.textContent = labelForType(pin.type);
-    li.appendChild(typeChip);
+    // Eyebrow row — type label · relative pinned time. Mono, muted, sits
+    // at the top of the card like a listing-row eyebrow elsewhere on the
+    // site. Pairs visually with /tips and /skills rows.
+    const eyebrow = document.createElement('p');
+    eyebrow.className = 'my-pins__card-eyebrow';
+    const typeSpan = document.createElement('span');
+    typeSpan.className = 'my-pins__card-eyebrow-type';
+    typeSpan.textContent = labelForType(pin.type);
+    eyebrow.appendChild(typeSpan);
+    const sep = document.createElement('span');
+    sep.className = 'my-pins__card-eyebrow-sep';
+    sep.textContent = '·';
+    eyebrow.appendChild(sep);
+    const when = document.createElement('span');
+    when.className = 'my-pins__card-eyebrow-when';
+    when.textContent = `pinned ${prettyPinnedAt(pin.pinned_at)}`;
+    eyebrow.appendChild(when);
+    li.appendChild(eyebrow);
 
     // Title (the link). When the item is no longer in the index we render
     // a non-link stale message instead — same as the previous behaviour.
@@ -1050,6 +1255,7 @@ const PIN_TYPE_LABELS = {
     title.className = 'my-pins__card-title';
     if (pin.display !== null) {
       const a = document.createElement('a');
+      a.className = 'my-pins__card-title-link';
       a.href = urlForPin(pin.type as PinType, pin.slug);
       a.textContent = pin.display.title;
       title.appendChild(a);
@@ -1058,6 +1264,29 @@ const PIN_TYPE_LABELS = {
       title.textContent = `No longer available (${pin.type}/${pin.slug})`;
     }
     li.appendChild(title);
+
+    // Topic pills — first MAX_TOPIC_PILLS topics from the pin-index entry,
+    // rendered as quiet rounded pills. `pointer-events: none` so the
+    // stretched title link still owns click-anywhere navigation.
+    if (pin.display !== null && pin.display.topics.length > 0) {
+      const pills = document.createElement('div');
+      pills.className = 'my-pins__card-pills';
+      const shown = pin.display.topics.slice(0, MAX_TOPIC_PILLS);
+      for (const topic of shown) {
+        const pill = document.createElement('span');
+        pill.className = 'my-pins__card-pill';
+        pill.textContent = topic;
+        pills.appendChild(pill);
+      }
+      const extra = pin.display.topics.length - shown.length;
+      if (extra > 0) {
+        const more = document.createElement('span');
+        more.className = 'my-pins__card-pill my-pins__card-pill--more';
+        more.textContent = `+${extra}`;
+        pills.appendChild(more);
+      }
+      li.appendChild(pills);
+    }
 
     // Footer meta line — audience tag pushed to card bottom via margin-top:auto.
     if (pin.display !== null) {
@@ -1076,7 +1305,12 @@ const PIN_TYPE_LABELS = {
     btn.className = 'my-pins__card-unpin';
     btn.textContent = '×';
     btn.setAttribute('aria-label', `Unpin ${pin.display?.title ?? pin.slug}`);
-    btn.addEventListener('click', () => onUnpin(pin, li));
+    btn.addEventListener('click', (event) => {
+      // Don't let the stretched title-link overlay swallow the click.
+      event.preventDefault();
+      event.stopPropagation();
+      onUnpin(pin, li);
+    });
     li.appendChild(btn);
 
     return li;
@@ -1182,14 +1416,16 @@ const PIN_TYPE_LABELS = {
       card.remove();
       try {
         await removeFavorite(token, gistId, { type: pin.type, slug: pin.slug });
-        // Refresh filter chips so the count + type chip removal stays accurate.
+        // Refresh filter chips + stats so the counts stay accurate.
         const anyLeft = grid.querySelector<HTMLLIElement>('.my-pins__card');
         if (anyLeft === null) {
           const filters = getFiltersBox();
           if (filters !== null) { filters.replaceChildren(); filters.hidden = true; }
+          const header = getLibraryHeader();
+          if (header !== null) header.hidden = true;
           show(getEmpty());
         } else {
-          // Rebuild chips from remaining cards.
+          // Rebuild chips + stats from remaining cards.
           const remaining: HydratedPin[] = Array.from(
             grid.querySelectorAll<HTMLLIElement>('.my-pins__card'),
           ).map((c) => ({
@@ -1197,7 +1433,10 @@ const PIN_TYPE_LABELS = {
             type: (c.dataset.pinType ?? 'skill') as PinType,
             display: null,
           })) as unknown as HydratedPin[];
-          buildFilters(groupFavoritesByType(remaining), remaining.length);
+          const regrouped = groupFavoritesByType(remaining);
+          buildFilters(regrouped, remaining.length);
+          const stats = getStatsLine();
+          if (stats !== null) stats.textContent = buildStatsText(regrouped, remaining.length);
         }
       } catch (err) {
         if (parent !== null) parent.insertBefore(card, nextSibling);
@@ -1215,6 +1454,15 @@ const PIN_TYPE_LABELS = {
     });
 
     buildFilters(grouped, favourites.length);
+
+    // Reveal the library header strip + stats line. Hidden while loading
+    // and during the empty state so the page reads as "ah, my pins" not
+    // "what is this header for?".
+    const header = getLibraryHeader();
+    if (header !== null) header.hidden = false;
+    const stats = getStatsLine();
+    if (stats !== null) stats.textContent = buildStatsText(grouped, favourites.length);
+
     showSignedInPanel();
   }
 
