@@ -296,7 +296,7 @@ describe('gist.ts', () => {
       vi.stubGlobal('fetch', fetchMock);
 
       const next = await removeFavorite('ghp_v', GIST_ID, {
-        type: 'news',
+        type: 'tip',
         slug: 'does-not-exist',
       });
 

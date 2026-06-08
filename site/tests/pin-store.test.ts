@@ -33,9 +33,9 @@ function textResponse(status: number, body: string): Response {
   });
 }
 
-const NEWS_INDEX: PinIndexFile = {
+const TIP_FIXTURE: PinIndexFile = {
   schema_version: 1,
-  type: 'news',
+  type: 'tip',
   items: [
     {
       slug: 'foo',
@@ -83,36 +83,36 @@ describe('pin-store.ts', () => {
     it('returns a parsed PinIndexFile on 200', async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValueOnce(jsonResponse(200, NEWS_INDEX));
+        .mockResolvedValueOnce(jsonResponse(200, TIP_FIXTURE));
       vi.stubGlobal('fetch', fetchMock);
 
-      const result = await fetchPinIndex('news');
-      expect(result).toEqual(NEWS_INDEX);
+      const result = await fetchPinIndex('tip');
+      expect(result).toEqual(TIP_FIXTURE);
       expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(fetchMock.mock.calls[0]?.[0]).toBe('/_data/news-index.json');
+      expect(fetchMock.mock.calls[0]?.[0]).toBe('/_data/tip-index.json');
     });
 
     it('applies baseUrl when given', async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValueOnce(jsonResponse(200, NEWS_INDEX));
+        .mockResolvedValueOnce(jsonResponse(200, TIP_FIXTURE));
       vi.stubGlobal('fetch', fetchMock);
 
-      await fetchPinIndex('news', 'https://example.org/site');
+      await fetchPinIndex('tip', 'https://example.org/site');
       expect(fetchMock.mock.calls[0]?.[0]).toBe(
-        'https://example.org/site/_data/news-index.json',
+        'https://example.org/site/_data/tip-index.json',
       );
     });
 
     it('trims a single trailing slash on baseUrl', async () => {
       const fetchMock = vi
         .fn()
-        .mockResolvedValueOnce(jsonResponse(200, NEWS_INDEX));
+        .mockResolvedValueOnce(jsonResponse(200, TIP_FIXTURE));
       vi.stubGlobal('fetch', fetchMock);
 
-      await fetchPinIndex('news', 'https://example.org/site/');
+      await fetchPinIndex('tip', 'https://example.org/site/');
       expect(fetchMock.mock.calls[0]?.[0]).toBe(
-        'https://example.org/site/_data/news-index.json',
+        'https://example.org/site/_data/tip-index.json',
       );
     });
 
@@ -122,7 +122,7 @@ describe('pin-store.ts', () => {
         .mockResolvedValueOnce(new Response('not found', { status: 404 }));
       vi.stubGlobal('fetch', fetchMock);
 
-      await expect(fetchPinIndex('news')).rejects.toBeInstanceOf(
+      await expect(fetchPinIndex('tip')).rejects.toBeInstanceOf(
         PinIndexNotFoundError,
       );
     });
@@ -133,7 +133,7 @@ describe('pin-store.ts', () => {
         .mockResolvedValueOnce(textResponse(200, 'not-json{'));
       vi.stubGlobal('fetch', fetchMock);
 
-      await expect(fetchPinIndex('news')).rejects.toBeInstanceOf(
+      await expect(fetchPinIndex('tip')).rejects.toBeInstanceOf(
         PinIndexSchemaError,
       );
     });
@@ -142,11 +142,11 @@ describe('pin-store.ts', () => {
       const fetchMock = vi
         .fn()
         .mockResolvedValueOnce(
-          jsonResponse(200, { type: 'news', items: [] }),
+          jsonResponse(200, { type: 'tip', items: [] }),
         );
       vi.stubGlobal('fetch', fetchMock);
 
-      await expect(fetchPinIndex('news')).rejects.toBeInstanceOf(
+      await expect(fetchPinIndex('tip')).rejects.toBeInstanceOf(
         PinIndexSchemaError,
       );
     });
@@ -159,7 +159,7 @@ describe('pin-store.ts', () => {
         );
       vi.stubGlobal('fetch', fetchMock);
 
-      await expect(fetchPinIndex('news')).rejects.toBeInstanceOf(
+      await expect(fetchPinIndex('tip')).rejects.toBeInstanceOf(
         PinIndexSchemaError,
       );
     });
@@ -170,13 +170,13 @@ describe('pin-store.ts', () => {
         .mockResolvedValueOnce(
           jsonResponse(200, {
             schema_version: 1,
-            type: 'news',
+            type: 'tip',
             items: [{ slug: 'x' }], // missing title, audience, topics
           }),
         );
       vi.stubGlobal('fetch', fetchMock);
 
-      await expect(fetchPinIndex('news')).rejects.toBeInstanceOf(
+      await expect(fetchPinIndex('tip')).rejects.toBeInstanceOf(
         PinIndexSchemaError,
       );
     });
@@ -185,11 +185,11 @@ describe('pin-store.ts', () => {
   describe('joinFavoritesWithIndex', () => {
     it('hydrates display when the slug is found in the matching index', () => {
       const favourites: FavoriteEntry[] = [
-        { type: 'news', slug: 'foo', pinned_at: '2026-05-18' },
+        { type: 'tip', slug: 'foo', pinned_at: '2026-05-18' },
         { type: 'skill', slug: 'cool-skill', pinned_at: '2026-05-17' },
       ];
       const indices = new Map<FavoriteEntry['type'], PinIndexFile>([
-        ['news', NEWS_INDEX],
+        ['tip', TIP_FIXTURE],
         ['skill', SKILL_INDEX],
       ]);
 
@@ -204,11 +204,11 @@ describe('pin-store.ts', () => {
 
     it('returns display: null for a stale reference (slug missing from index)', () => {
       const favourites: FavoriteEntry[] = [
-        { type: 'news', slug: 'foo', pinned_at: '2026-05-18' },
-        { type: 'news', slug: 'gone', pinned_at: '2026-05-17' },
+        { type: 'tip', slug: 'foo', pinned_at: '2026-05-18' },
+        { type: 'tip', slug: 'gone', pinned_at: '2026-05-17' },
       ];
       const indices = new Map<FavoriteEntry['type'], PinIndexFile>([
-        ['news', NEWS_INDEX],
+        ['tip', TIP_FIXTURE],
       ]);
 
       const result = joinFavoritesWithIndex(favourites, indices);
@@ -231,11 +231,11 @@ describe('pin-store.ts', () => {
 
     it('preserves the favourites order', () => {
       const favourites: FavoriteEntry[] = [
-        { type: 'news', slug: 'bar', pinned_at: '2026-05-15' },
-        { type: 'news', slug: 'foo', pinned_at: '2026-05-18' },
+        { type: 'tip', slug: 'bar', pinned_at: '2026-05-15' },
+        { type: 'tip', slug: 'foo', pinned_at: '2026-05-18' },
       ];
       const indices = new Map<FavoriteEntry['type'], PinIndexFile>([
-        ['news', NEWS_INDEX],
+        ['tip', TIP_FIXTURE],
       ]);
 
       const result = joinFavoritesWithIndex(favourites, indices);
@@ -244,13 +244,12 @@ describe('pin-store.ts', () => {
   });
 
   describe('groupFavoritesByType', () => {
-    it('returns all 6 keys in F-P11 + use-case order even when some are empty', () => {
+    it('returns all 5 keys in F-P11 + use-case order even when some are empty', () => {
       const grouped = groupFavoritesByType([]);
       expect(Object.keys(grouped)).toEqual([
         'skill',
         'tip',
         'use-case',
-        'news',
         'journey-step',
         'glossary',
       ]);
@@ -268,25 +267,25 @@ describe('pin-store.ts', () => {
       };
       const grouped = groupFavoritesByType([
         {
-          type: 'news',
+          type: 'tip',
           slug: 'older',
           pinned_at: '2026-01-01',
           display: fooItem,
         },
         {
-          type: 'news',
+          type: 'tip',
           slug: 'newest',
           pinned_at: '2026-05-18',
           display: fooItem,
         },
         {
-          type: 'news',
+          type: 'tip',
           slug: 'middle',
           pinned_at: '2026-03-15',
           display: fooItem,
         },
       ]);
-      expect(grouped.news.map((p) => p.slug)).toEqual([
+      expect(grouped.tip.map((p) => p.slug)).toEqual([
         'newest',
         'middle',
         'older',
@@ -308,14 +307,13 @@ describe('pin-store.ts', () => {
       expect(grouped.skill).toHaveLength(1);
       expect(grouped.tip).toHaveLength(1);
       expect(grouped.glossary).toHaveLength(1);
-      expect(grouped.news).toHaveLength(0);
       expect(grouped['journey-step']).toHaveLength(0);
       expect(grouped['use-case']).toHaveLength(0);
     });
   });
 
   describe('fetchAllPinIndices', () => {
-    it('calls fetch 6 times in parallel and returns a Map of size 6', async () => {
+    it('calls fetch 5 times in parallel and returns a Map of size 5', async () => {
       const fetchMock = vi.fn().mockImplementation((url: string) => {
         // Map each URL to a minimal valid index for its type.
         const match = url.match(/_data\/([a-z-]+)-index\.json$/);
@@ -329,8 +327,8 @@ describe('pin-store.ts', () => {
 
       const map = await fetchAllPinIndices();
 
-      expect(fetchMock).toHaveBeenCalledTimes(6);
-      expect(map.size).toBe(6);
+      expect(fetchMock).toHaveBeenCalledTimes(5);
+      expect(map.size).toBe(5);
       for (const type of PIN_TYPE_ORDER) {
         const file = map.get(type);
         expect(file).toBeDefined();
@@ -346,7 +344,7 @@ describe('pin-store.ts', () => {
       // type render as stale "no longer available" rows instead.
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const fetchMock = vi.fn().mockImplementation((url: string) => {
-        if (url.includes('news-index')) {
+        if (url.includes('tip-index')) {
           return Promise.resolve(new Response('not found', { status: 404 }));
         }
         const match = url.match(/_data\/([a-z-]+)-index\.json$/);
@@ -359,12 +357,12 @@ describe('pin-store.ts', () => {
       vi.stubGlobal('fetch', fetchMock);
 
       const map = await fetchAllPinIndices();
-      expect(map.size).toBe(5); // all six minus the 404-ing news index
-      expect(map.has('news')).toBe(false);
+      expect(map.size).toBe(4); // all five minus the 404-ing tip index
+      expect(map.has('tip')).toBe(false);
       expect(map.has('skill')).toBe(true);
       expect(map.has('use-case')).toBe(true);
       expect(warnSpy).toHaveBeenCalledTimes(1);
-      expect(warnSpy.mock.calls[0]?.[0]).toContain('news-index.json');
+      expect(warnSpy.mock.calls[0]?.[0]).toContain('tip-index.json');
       warnSpy.mockRestore();
     });
 
@@ -378,13 +376,13 @@ describe('pin-store.ts', () => {
         await new Promise((resolve) => setTimeout(resolve, 1));
         inFlight -= 1;
         const match = url.match(/_data\/([a-z-]+)-index\.json$/);
-        const type = (match?.[1] ?? 'news') as FavoriteEntry['type'];
+        const type = (match?.[1] ?? 'tip') as FavoriteEntry['type'];
         return jsonResponse(200, emptyIndex(type));
       });
       vi.stubGlobal('fetch', fetchMock);
 
       await fetchAllPinIndices();
-      expect(maxInFlight).toBe(6);
+      expect(maxInFlight).toBe(5);
     });
   });
 });

@@ -6,6 +6,45 @@ Per CLAUDE.md doc-hygiene: each entry ≤20 lines, structured as Decision (bulle
 
 ---
 
+## 2026-06-08 (afternoon) — Repo cleanup: News pillar fully removed + planning-doc archive
+
+**Trigger:** After the morning's news-cron pause, opened a "what could we remove?" conversation. Top finding: the sidebar already routed "News ↗" externally (`the-agent-daily.org`), so the internal `/news` rendering was silently orphaned. Two-PR cleanup proposed and approved.
+
+**Decision — PR A (decommission internal news rendering + submission orphans):**
+- Deleted site UI: `NewsPanel.astro`, `NewsList.astro`, `news.ts`, `news-sections.ts`, `submission.ts`, all 61 `news/published/*.md` + `news/incoming/` + empty `news/` dir, `public/_data/news-index.json`. Removed `news` Zod collection from `content.config.ts`; `HomeStats.astro` swapped `news` count → `usecases` (preserves 2×2 layout).
+- Dropped `'news'` from `PinType` union across `gist.ts`, `pin-store.ts`, `PinButton.astro`, `my-pins.astro`, `build-pin-index.ts`. Legacy `type='news'` gist entries will fail isPinType narrowing and render as stale "no longer available" rows.
+- Hub plugin: deleted `hub-news.ts` + command + dist + tests fixture + `snapshot/news/`. Stripped `news` from `hub.ts` menu, `hub-search.ts` aggregator, lib `Pillar` type, `loadAll`, `frontmatter.ts` `NewsFrontmatter` + checker, `url-builder.ts` known sections (also dropped `reference` + `contribute` while there). Build-snapshot script no longer mirrors news.
+- Test updates: deleted `tests/agentnews-aesthetic.test.ts` (depended on `news-sections.ts`), `tests/remark-glossary-news-skip.test.ts`, `tests/submission.test.ts`; trimmed news cases from `pin-store.test.ts` / `gist.test.ts` / `build-pin-index.test.ts` / plugin `e2e-entries.test.ts` / plugin `url-builder.test.ts` / plugin `snapshot.test.ts` / plugin `content.test.ts` / plugin `frontmatter.test.ts`. Plugin tests went 130 → 122; site tests 320 → 246.
+- Stale JSDoc fixed in `MarketingShell.astro` (removed `/news`, `/reference`, `/contribute`, `/submit-skill` from the wrapped-routes list) and `Card.astro` (removed `NewsPanel/NewsList` from consumers).
+
+**Decision — PR B (planning-doc archive):**
+- Created `docs/archive/{design,refined-requests,reference,uat}/`.
+- `git mv` moved: `docs/design/*` (9 files, 1.5MB), `docs/refined-requests/*` (9 files, 584KB), `docs/reference/codebase-scan-*.md` + `investigation-*.md` (~250KB), four root-level `UAT-*.md` artefacts (May 25–27), `docs/reference/uat/` glossary screenshots, the lone refined-request + codebase-scan UAT docs.
+- In-tree refs updated to new archive paths: SCOPE.md (5 refs), CLAUDE.md (3 refs + full repo-layout tree rewrite), `docs/tools/skill-validator.md` (4 refs), `glossary/yaml.md` (1 ref). DECISIONS historical entries left untouched (append-only rule).
+
+**Why:** the docs-drift email storm prompted "if we're not using this, why are we maintaining it?" The news pillar's silent orphan state (sidebar bypassed it, cron stopped writing it, but rendering/tests/snapshot mirrored it daily) was the textbook cost: every test run validated dead code paths, every build mirrored 252KB into the plugin snapshot, every PR risked a cascade of news-aware breakage. Planning docs gave similar tax: 7.7MB of `docs/` dominated by shipped-and-frozen specs that git already preserves. Archive (not delete) keeps history one `git mv` away while halving working-tree weight.
+
+**Refs:** site + plugin both build clean; 246 + 122 tests green. Tree: `docs/archive/{design,refined-requests,reference,uat}/`. AUTO blocks regenerated (news=0). Tier-2 candidates (full `pipeline/` workspace, hub plugin install adoption, `/my-pins/` adoption) deferred pending real-world usage signal.
+
+---
+
+## 2026-06-08 (morning) — News pipeline paused + docs-drift permanent fix
+
+**Trigger:** Recurring GitHub Actions email `[556LowCodeNoCode/NbgAiHub] docs-drift workflow run — All jobs have failed`. Run `27135240867` exit log: `DRIFT: SCOPE.md AUTO block would be regenerated / DRIFT: CLAUDE.md AUTO block would be regenerated / counts: glossary=45 tips=28 skills=6 usecases=12 journeys=2 news=61`. Root cause: `rss-triage.yml` was adding/pruning `news/published/*.md` daily but committing without re-running `scripts/sync-doc-counts.mjs`, so the AUTO block (claiming `news=59`) and disk reality (`news=61`) drifted on every cron run. User decision: pause the whole news pipeline rather than keep nursing it, since we aren't actively using it.
+
+**Decision:**
+- Removed `schedule:` block from `.github/workflows/rss-triage.yml`; `workflow_dispatch:` retained so a manual operator can still kick off a run on demand. Cron rationale and 22:00-UTC slot preserved as a YAML comment for the future re-activator.
+- `config/rss-sources.json` trimmed to two Reddit entries (`r/ClaudeAI`, `r/ClaudeCode`), both `enabled: false`. HN / Wired / Verge entries deleted entirely. Reddit kept (per user) so re-activation is two `enabled: true` flips, not a config rebuild.
+- Permanent docs-drift fix: both commit steps in `rss-triage.yml` (auto-promote-to-main + editorial-PR) now run `node scripts/sync-doc-counts.mjs` before `git add` and stage `SCOPE.md` / `CLAUDE.md` alongside the news files. If anyone ever restores the cron, drift can't reintroduce itself.
+- Regenerated AUTO blocks now: news 59 → 61. `--check` passes clean.
+- Pipeline code (`pipeline/src/` triage, dedup, reddit-filter, retention) and the 61 existing `news/published/*.md` items untouched — site still renders the archive at `/news/`.
+
+**Why:** keeping the news pipeline running while we don't use the output was costing us a noisy CI failure every day. Pausing the cron stops the noise; keeping the workflow + code + Reddit config in tree means resuming is a small, well-typed change instead of an archeology dig. The sync-step inside the commit recipes makes "drift" a closed problem regardless of when re-activation lands.
+
+**Refs:** `.github/workflows/rss-triage.yml` (schedule block removed, sync-doc-counts step added × 2), `config/rss-sources.json` (HN/Wired/Verge dropped, Reddit disabled), `SCOPE.md` (Last updated rewritten, News pillar + RSS pipeline + open-question rows marked paused), `CLAUDE.md` (repo-layout tree lines for `rss-sources.json` + `rss-triage.yml`), `scripts/sync-doc-counts.mjs` AUTO blocks. Failing CI run: `27135240867`.
+
+---
+
 ## 2026-06-02 (tips cascade fix + first workflow tip) — Section-head margins pinned; new `team-or-gsd` lede
 
 **Trigger:** Published /tips/ sat the sticky preview pane ~58px below the first row even though the same code aligned gap=0 locally. Puppeteer comparison of local vs prod DOM showed Starlight's prose cascade (`content-prose.css .sl-markdown-content h2/p/ul { margin-block: ... }`) was injecting different margins on the cluster heading + lede + list in the two environments depending on Vite's CSS load order. Same root cause as `docs/reference/starlight-cascade-gotcha.md`. Separately, the user asked for a first-position workflow tip introducing the two heavy-hitter skills (`/team` vs `gsd-*`).

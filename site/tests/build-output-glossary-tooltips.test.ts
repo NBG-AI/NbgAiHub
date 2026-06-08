@@ -207,24 +207,3 @@ describe('Slug uniqueness within step', () => {
     expect(uniqueSlugs.size, 'All slugs in f1 are unique').toBe(slugs.length);
   });
 });
-
-describe('News exclusion (resolved OQ1)', () => {
-  it('no news pages contain glossary buttons', () => {
-    const newsDir = join(distDir, 'news');
-
-    // If news directory exists, check all HTML files within it
-    if (existsSync(newsDir)) {
-      const htmlFiles = readdirSync(newsDir).filter((f) => f.endsWith('.html'));
-
-      for (const filename of htmlFiles) {
-        const html = readFileSync(join(newsDir, filename), 'utf-8');
-        const hasButtons = html.includes('data-glossary-slug=');
-
-        expect(hasButtons, `news/${filename} does NOT have glossary buttons`).toBe(false);
-      }
-    } else {
-      // No news directory → test passes vacuously
-      expect(true, 'No news directory exists (test passes)').toBe(true);
-    }
-  });
-});

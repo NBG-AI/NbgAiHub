@@ -64,7 +64,7 @@ export interface RemarkGlossaryLinkOptions {
   glossaryDir: string;
   /**
    * Path-substring tests. If `file.path` includes ANY of these, the plugin
-   * returns early without mutating the AST. Default: ['/news/published/'].
+   * returns early without mutating the AST.
    */
   excludePaths?: string[];
 }
@@ -107,8 +107,7 @@ const remarkGlossaryLink: Plugin<[RemarkGlossaryLinkOptions], Root, Root> = func
   const index = buildGlossaryIndex(absDir);
   indexMemo.set(absDir, index);
 
-  const excludePaths =
-    options.excludePaths === undefined ? ['/news/published/'] : options.excludePaths;
+  const excludePaths = options.excludePaths ?? [];
 
   // Empty-glossary guard: keep the plugin a no-op rather than failing.
   if (index.size === 0) {

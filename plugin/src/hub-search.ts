@@ -21,7 +21,6 @@ run(() => {
     ...filterByAudience(all.glossary, state.audience).map((e) => ({ ...e, pillar: "glossary" })),
     ...filterByAudience(all.tips, state.audience).map((e) => ({ ...e, pillar: "tip" })),
     ...filterByAudience(all.skills, state.audience).map((e) => ({ ...e, pillar: "skill" })),
-    ...filterByAudience(all.news, state.audience).map((e) => ({ ...e, pillar: "news" })),
     ...filterByAudience(all.journeys, state.audience).map((e) => ({ ...e, pillar: "journey" })),
   ];
 

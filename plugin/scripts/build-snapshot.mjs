@@ -18,7 +18,6 @@ const pillars = [
   { src: "tips", dst: "tips" },
   { src: "skills", dst: "skills" },
   { src: "journeys", dst: "journeys" },
-  { src: "news/published", dst: "news/published" },
 ];
 
 function cleanSnapshot() {

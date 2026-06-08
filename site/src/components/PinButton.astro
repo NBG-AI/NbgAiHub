@@ -20,7 +20,7 @@
 // All pin/unpin logic still goes through gist.ts. The button optimistically
 // updates the UI before the network call resolves and reverts on failure.
 
-export type PinType = 'news' | 'skill' | 'tip' | 'use-case' | 'glossary' | 'journey-step';
+export type PinType = 'skill' | 'tip' | 'use-case' | 'glossary' | 'journey-step';
 
 interface Props {
   type: PinType;
@@ -147,7 +147,7 @@ const { type, slug, iconOnly = true } = Astro.props;
     type FavoritesDocument,
   } from '../lib/gist.ts';
 
-  type PinType = 'news' | 'skill' | 'tip' | 'use-case' | 'glossary' | 'journey-step';
+  type PinType = 'skill' | 'tip' | 'use-case' | 'glossary' | 'journey-step';
 
   type PageCache = {
     gistId: string;

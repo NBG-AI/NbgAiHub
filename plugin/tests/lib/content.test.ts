@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import {
   loadAll,
   loadGlossary,
-  loadNews,
   loadSkills,
   loadTips,
   loadJourneys,
@@ -22,7 +21,6 @@ describe("loadAll", () => {
     expect(all.tips).toHaveLength(1);
     expect(all.skills).toHaveLength(1);
     expect(all.journeys).toHaveLength(1);
-    expect(all.news).toHaveLength(1);
   });
 
   it("each entry carries sourcePath, pillar, data, content, slug", () => {
@@ -33,11 +31,6 @@ describe("loadAll", () => {
     expect(g?.slug).toBe("mcp");
     expect(g?.data.title).toBe("MCP");
     expect(g?.content).toContain("MCP stands for");
-  });
-
-  it("news slug strips the YYYY-MM-DD prefix", () => {
-    const news = loadNews(FIXTURE);
-    expect(news[0]?.slug).toBe("example-news");
   });
 
   it("skills loader validates the 17-key shape", () => {

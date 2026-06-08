@@ -5,7 +5,6 @@ import { readdirSync } from "node:fs";
 import {
   parseMarkdownFile,
   isBaseFrontmatter,
-  isNewsFrontmatter,
   isSkillFrontmatter,
 } from "../../src/lib/frontmatter.js";
 import { FrontmatterInvalidError } from "../../src/lib/errors.js";
@@ -87,35 +86,6 @@ describe("isBaseFrontmatter", () => {
         } as Record<string, unknown>,
         "tip",
       ),
-    ).toThrow(FrontmatterInvalidError);
-  });
-});
-
-describe("isNewsFrontmatter", () => {
-  it("accepts the fixture news item", () => {
-    const parsed = parseMarkdownFile(
-      join(FIXTURE, "news", "published", "2026-05-15-example-news.md"),
-    );
-    expect(isNewsFrontmatter(parsed.data, parsed.sourcePath)).toBe(true);
-  });
-
-  it("rejects when editor_confidence is invalid", () => {
-    expect(() =>
-      isNewsFrontmatter({
-        type: "news",
-        title: "x",
-        audience: "both",
-        topics: [],
-        internal: false,
-        authored: "2026-05-15",
-        last_reviewed: "2026-05-19",
-        external_link: null,
-        deeper_link: null,
-        ai_summary: "x",
-        editor_confidence: "uncertain",
-        source: "feed",
-        fingerprint: "fp",
-      } as Record<string, unknown>),
     ).toThrow(FrontmatterInvalidError);
   });
 });

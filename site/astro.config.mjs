@@ -37,25 +37,15 @@ export default defineConfig({
     '/news/': 'https://the-agent-daily.org/',
   },
 
-  // §S.14.5 — Glossary auto-linking. See docs/refined-requests/glossary-tooltips.md
-  // and docs/design/project-design.md §S.14.3 for the plugin contract.
-  // The plugin walks the markdown AST at build time, matches glossary
-  // slugs + aliases case-insensitively with word-boundary awareness,
-  // skips fenced code / inline code / headings / existing links /
-  // Starlight asides / the term's own glossary page, and wraps the first
-  // match per file with a plain HTML `<button data-glossary-slug="…">`
-  // that GlossaryTerm.astro's runtime registry script hydrates into a
-  // popover. News under `news/published/` is excluded per OQ1 (resolved
-  // 2026-05-25 — news surface routes externally, see redirects above).
+  // Glossary auto-linking. The plugin walks the markdown AST at build time,
+  // matches glossary slugs + aliases case-insensitively with word-boundary
+  // awareness, skips fenced code / inline code / headings / existing links /
+  // Starlight asides / the term's own glossary page, and wraps the first match
+  // per file with a plain HTML `<button data-glossary-slug="…">` that
+  // GlossaryTerm.astro's runtime registry script hydrates into a popover.
   markdown: {
     remarkPlugins: [
-      [
-        remarkGlossaryLink,
-        {
-          glossaryDir: '../glossary',
-          excludePaths: ['/news/published/'],
-        },
-      ],
+      [remarkGlossaryLink, { glossaryDir: '../glossary' }],
     ],
     // Shiki defaults to `github-dark` which made every fenced code block on
     // light-themed pages render as a near-black slab with hard-to-read

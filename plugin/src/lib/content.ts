@@ -1,8 +1,7 @@
 import { listPillarFiles, type Pillar } from "./snapshot.js";
-import { parseMarkdownFile, isBaseFrontmatter, isNewsFrontmatter, isSkillFrontmatter } from "./frontmatter.js";
+import { parseMarkdownFile, isBaseFrontmatter, isSkillFrontmatter } from "./frontmatter.js";
 import type {
   BaseFrontmatter,
-  NewsFrontmatter,
   SkillFrontmatter,
   ParsedMarkdown,
 } from "./frontmatter.js";
@@ -20,7 +19,7 @@ function slugFromPath(p: string): string {
   return base.replace(/\.md$/, "").replace(/^\d{4}-\d{2}-\d{2}-/, "");
 }
 
-function loadBase(snapshotPath: string, pillar: Exclude<Pillar, "news" | "skills">): PillarEntry[] {
+function loadBase(snapshotPath: string, pillar: Exclude<Pillar, "skills">): PillarEntry[] {
   const files = listPillarFiles(snapshotPath, pillar);
   const entries: PillarEntry[] = [];
   for (const f of files) {
@@ -50,23 +49,6 @@ export function loadJourneys(snapshotPath: string): PillarEntry[] {
   return loadBase(snapshotPath, "journeys");
 }
 
-export function loadNews(snapshotPath: string): PillarEntry<NewsFrontmatter>[] {
-  const files = listPillarFiles(snapshotPath, "news");
-  const out: PillarEntry<NewsFrontmatter>[] = [];
-  for (const f of files) {
-    const parsed = parseMarkdownFile(f);
-    isNewsFrontmatter(parsed.data, parsed.sourcePath);
-    out.push({
-      sourcePath: f,
-      pillar: "news",
-      data: parsed.data as unknown as NewsFrontmatter,
-      content: parsed.content,
-      slug: slugFromPath(f),
-    });
-  }
-  return out;
-}
-
 export function loadSkills(snapshotPath: string): PillarEntry<SkillFrontmatter>[] {
   const files = listPillarFiles(snapshotPath, "skills");
   const out: PillarEntry<SkillFrontmatter>[] = [];
@@ -88,7 +70,6 @@ export interface AllContent {
   tips: PillarEntry[];
   glossary: PillarEntry[];
   journeys: PillarEntry[];
-  news: PillarEntry<NewsFrontmatter>[];
   skills: PillarEntry<SkillFrontmatter>[];
 }
 
@@ -97,7 +78,6 @@ export function loadAll(snapshotPath: string): AllContent {
     tips: loadTips(snapshotPath),
     glossary: loadGlossary(snapshotPath),
     journeys: loadJourneys(snapshotPath),
-    news: loadNews(snapshotPath),
     skills: loadSkills(snapshotPath),
   };
 }

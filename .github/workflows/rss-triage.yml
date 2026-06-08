@@ -1,14 +1,12 @@
 name: rss-triage
 
-# Triggers (AC1): daily cron + manual dispatch.
-# GH Actions cron is UTC-only and does not follow DST. The schedule below
-# targets midnight Athens (wintertime UTC+2). DECISIONS 2026-05-21: shifted
-# from 05:00 UTC so the previous day's Reddit posts have had a full evening
-# to accumulate score / comments and clear the engagement floor in
-# reddit-filter.ts (score>=50, comments>=10).
+# PAUSED 2026-06-08 — daily cron removed. Pipeline is no longer in active use
+# but the workflow + pipeline code stay in the repo for future re-activation.
+# Manual `workflow_dispatch` is preserved so an operator can still kick off a
+# run on demand. To re-enable the daily run, restore the `schedule:` block
+# below (was `- cron: "0 22 * * *"` — daily 22:00 UTC = 00:00 Athens winter /
+# 01:00 Athens DST; rationale in DECISIONS 2026-05-21).
 on:
-  schedule:
-    - cron: "0 22 * * *"       # daily 22:00 UTC = 00:00 Athens (winter) / 01:00 Athens (DST)
   workflow_dispatch: {}
 
 # Workflow-scoped GITHUB_TOKEN permissions (AC18).
@@ -106,9 +104,15 @@ jobs:
           P="${{ steps.pipeline.outputs.pruned_count }}"
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Keep the AUTO doc-count blocks in SCOPE.md / CLAUDE.md in sync with
+          # the new news/published/ count BEFORE staging — otherwise the next
+          # docs-drift CI run on `main` fails (root cause of the recurring
+          # "docs-drift: All jobs have failed" emails, DECISIONS 2026-06-08).
+          node scripts/sync-doc-counts.mjs
           # `git add news/published` stages new files AND deletions of pruned
-          # items (7-day rolling window per DECISIONS 2026-05-19).
-          git add news/published
+          # items (7-day rolling window per DECISIONS 2026-05-19); the second
+          # `git add` carries the regenerated AUTO blocks alongside.
+          git add news/published SCOPE.md CLAUDE.md
           git commit -m "News triage ${DATE_UTC}: ${N} auto-promoted, ${P} pruned"
           git push origin main
 
@@ -129,7 +133,11 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add news/incoming news/published
+          # Sync AUTO doc-count blocks before staging so the PR carries the
+          # updated counts and docs-drift CI passes on the PR check (mirror of
+          # the auto-promote path above, DECISIONS 2026-06-08).
+          node scripts/sync-doc-counts.mjs
+          git add news/incoming news/published SCOPE.md CLAUDE.md
           git commit -m "News triage ${DATE_UTC} (${AUTO_N} auto + ${REVIEW_N} review)"
           git push origin "$BRANCH"
           gh pr create \

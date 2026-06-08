@@ -3,35 +3,14 @@
     "name": "r/ClaudeAI",
     "url": "https://www.reddit.com/r/ClaudeAI/.rss",
     "type": "rss",
-    "enabled": true,
+    "enabled": false,
     "auto_promote_eligible": true
   },
   {
     "name": "r/ClaudeCode",
     "url": "https://www.reddit.com/r/ClaudeCode/.rss",
     "type": "rss",
-    "enabled": true,
-    "auto_promote_eligible": true
-  },
-  {
-    "name": "Hacker News frontpage",
-    "url": "https://hnrss.org/frontpage",
-    "type": "rss",
-    "enabled": true,
-    "auto_promote_eligible": true
-  },
-  {
-    "name": "Wired AI",
-    "url": "https://www.wired.com/feed/tag/ai/latest/rss",
-    "type": "rss",
-    "enabled": true,
-    "auto_promote_eligible": true
-  },
-  {
-    "name": "The Verge",
-    "url": "https://www.theverge.com/rss/index.xml",
-    "type": "rss",
-    "enabled": true,
+    "enabled": false,
     "auto_promote_eligible": true
   }
 ]

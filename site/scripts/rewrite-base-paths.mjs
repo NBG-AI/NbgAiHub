@@ -37,8 +37,6 @@ const ROUTES = [
   'start-here',
   'my-pins',
   'about',
-  'submit-skill',
-  'contribute',
   '404',
 ];
 

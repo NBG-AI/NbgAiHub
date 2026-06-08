@@ -12,7 +12,6 @@ run(() => {
     glossary: filterByAudience(all.glossary, userAudience).length,
     tips: filterByAudience(all.tips, userAudience).length,
     skills: filterByAudience(all.skills, userAudience).length,
-    news: filterByAudience(all.news, userAudience).length,
     journeys: filterByAudience(all.journeys, userAudience).length,
   };
 
@@ -26,7 +25,6 @@ run(() => {
   lines.push(`  /hub-glossary <term>       — ${counts.glossary} glossary entries`);
   lines.push(`  /hub-tips [topic]          — ${counts.tips} tips`);
   lines.push(`  /hub-skills [topic]        — ${counts.skills} skills`);
-  lines.push(`  /hub-news [--week|--today] — ${counts.news} news items`);
   lines.push(`  /hub-onboard <journey>     — ${counts.journeys} journeys`);
   lines.push("");
   lines.push("Discovery:");

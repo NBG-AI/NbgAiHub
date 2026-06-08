@@ -3,7 +3,7 @@ import { resolve, join } from "node:path";
 import { homedir } from "node:os";
 import { SnapshotMissingError } from "./errors.js";
 
-export type Pillar = "glossary" | "tips" | "skills" | "news" | "journeys";
+export type Pillar = "glossary" | "tips" | "skills" | "journeys";
 
 function defaultBundledPath(): string {
   const fromEnv = process.env["CLAUDE_PLUGIN_ROOT"];
@@ -63,7 +63,6 @@ export function readSnapshotMeta(snapshotPath: string): SnapshotMeta {
 }
 
 function pillarDir(snapshotPath: string, pillar: Pillar): string {
-  if (pillar === "news") return join(snapshotPath, "news", "published");
   return join(snapshotPath, pillar);
 }
 

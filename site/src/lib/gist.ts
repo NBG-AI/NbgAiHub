@@ -13,7 +13,7 @@
 import { apiFetch } from './api-fetch.js';
 
 export type FavoriteEntry = {
-  type: 'news' | 'skill' | 'tip' | 'glossary' | 'journey-step' | 'use-case';
+  type: 'skill' | 'tip' | 'glossary' | 'journey-step' | 'use-case';
   slug: string;
   pinned_at: string; // YYYY-MM-DD
 };

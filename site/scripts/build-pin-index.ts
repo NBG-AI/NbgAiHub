@@ -1,9 +1,8 @@
 // site/scripts/build-pin-index.ts
 //
-// Build-time generator that walks the five content folders and emits one
+// Build-time generator that walks the content folders and emits one
 // JSON pin-index per content type into `site/public/_data/`. The output
-// files are consumed at runtime by `/my-pins/` (the Claude Code skill
-// surface) — see SCOPE.md and DECISIONS.md for the rationale.
+// files are consumed at runtime by `/my-pins/`.
 //
 // Run via `tsx scripts/build-pin-index.ts` (chained from `npm run build`).
 // Exported `buildPinIndex(repoRoot, outDir)` is used by the unit test.
@@ -20,7 +19,6 @@ import matter from "gray-matter";
 
 /** Logical content type literal embedded in each emitted JSON file. */
 export type PinType =
-  | "news"
   | "skill"
   | "tip"
   | "use-case"
@@ -49,8 +47,6 @@ interface SourceSpec {
   readonly sourceDir: string;
   /** Output filename (placed inside `outDir`). */
   readonly outFile: string;
-  /** True for the news collection — strip leading `YYYY-MM-DD-` from slug. */
-  readonly stripDatePrefix: boolean;
 }
 
 /**
@@ -59,46 +55,12 @@ interface SourceSpec {
  * meaning but consistent ordering eases debugging.
  */
 const SOURCES: readonly SourceSpec[] = [
-  {
-    type: "news",
-    sourceDir: "news/published",
-    outFile: "news-index.json",
-    stripDatePrefix: true,
-  },
-  {
-    type: "skill",
-    sourceDir: "skills",
-    outFile: "skill-index.json",
-    stripDatePrefix: false,
-  },
-  {
-    type: "tip",
-    sourceDir: "tips",
-    outFile: "tip-index.json",
-    stripDatePrefix: false,
-  },
-  {
-    type: "use-case",
-    sourceDir: "usecases",
-    outFile: "use-case-index.json",
-    stripDatePrefix: false,
-  },
-  {
-    type: "glossary",
-    sourceDir: "glossary",
-    outFile: "glossary-index.json",
-    stripDatePrefix: false,
-  },
-  {
-    type: "journey-step",
-    sourceDir: "journeys",
-    outFile: "journey-step-index.json",
-    stripDatePrefix: false,
-  },
+  { type: "skill",        sourceDir: "skills",   outFile: "skill-index.json" },
+  { type: "tip",          sourceDir: "tips",     outFile: "tip-index.json" },
+  { type: "use-case",     sourceDir: "usecases", outFile: "use-case-index.json" },
+  { type: "glossary",     sourceDir: "glossary", outFile: "glossary-index.json" },
+  { type: "journey-step", sourceDir: "journeys", outFile: "journey-step-index.json" },
 ];
-
-/** Matches `YYYY-MM-DD-` at the start of a news filename. */
-const NEWS_DATE_PREFIX = /^\d{4}-\d{2}-\d{2}-/;
 
 /**
  * Convert one markdown file on disk into a PinIndexItem.
@@ -109,7 +71,6 @@ const NEWS_DATE_PREFIX = /^\d{4}-\d{2}-\d{2}-/;
 async function readPinFile(
   absPath: string,
   filename: string,
-  stripDatePrefix: boolean,
 ): Promise<PinIndexItem> {
   const raw = await readFile(absPath, "utf8");
   const parsed = matter(raw);
@@ -146,8 +107,7 @@ async function readPinFile(
     topicsStr.push(t);
   }
 
-  const base = filename.replace(/\.md$/, "");
-  const slug = stripDatePrefix ? base.replace(NEWS_DATE_PREFIX, "") : base;
+  const slug = filename.replace(/\.md$/, "");
 
   return {
     slug,
@@ -163,7 +123,6 @@ async function readPinFile(
  */
 async function collectItems(
   absSourceDir: string,
-  stripDatePrefix: boolean,
 ): Promise<PinIndexItem[]> {
   if (!existsSync(absSourceDir)) {
     return [];
@@ -174,12 +133,9 @@ async function collectItems(
     .map((e) => e.name)
     .sort(); // deterministic order
 
-  const items: PinIndexItem[] = [];
-  for (const name of mdFiles) {
-    const abs = join(absSourceDir, name);
-    items.push(await readPinFile(abs, name, stripDatePrefix));
-  }
-  return items;
+  return Promise.all(
+    mdFiles.map((name) => readPinFile(join(absSourceDir, name), name)),
+  );
 }
 
 /**
@@ -197,17 +153,17 @@ export async function buildPinIndex(
 
   await mkdir(absOutDir, { recursive: true });
 
-  for (const spec of SOURCES) {
-    const absSource = join(absRepoRoot, spec.sourceDir);
-    const items = await collectItems(absSource, spec.stripDatePrefix);
-    const payload: PinIndexFile = {
-      schema_version: 1,
-      type: spec.type,
-      items,
-    };
-    const absOutFile = join(absOutDir, spec.outFile);
-    await writeFile(absOutFile, JSON.stringify(payload, null, 2) + "\n", "utf8");
-  }
+  await Promise.all(
+    SOURCES.map(async (spec) => {
+      const items = await collectItems(join(absRepoRoot, spec.sourceDir));
+      const payload: PinIndexFile = { schema_version: 1, type: spec.type, items };
+      await writeFile(
+        join(absOutDir, spec.outFile),
+        JSON.stringify(payload, null, 2) + "\n",
+        "utf8",
+      );
+    }),
+  );
 }
 
 /**

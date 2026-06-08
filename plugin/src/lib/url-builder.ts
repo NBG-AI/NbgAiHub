@@ -6,13 +6,10 @@ const SECTION_ALIASES: Record<string, string> = {
 };
 
 const KNOWN_SECTIONS = new Set<string>([
-  "news",
   "skills",
   "tips",
   "glossary",
   "journeys",
-  "reference",
-  "contribute",
   "start-here",
   "start-here/day-1",
   "start-here/week-1",

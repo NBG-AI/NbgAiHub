@@ -20,14 +20,6 @@ export interface BaseFrontmatter {
   ai_summary: string;
 }
 
-export interface NewsFrontmatter extends BaseFrontmatter {
-  type: "news";
-  editor_confidence: "high" | "medium" | "low";
-  source: string;
-  fingerprint: string;
-  hero_image?: string;
-}
-
 export interface SkillFrontmatter extends BaseFrontmatter {
   type: "skill";
   install_command: string;
@@ -117,25 +109,6 @@ export function isBaseFrontmatter(
 ): true {
   const problems: string[] = [];
   checkBase(data, type, problems);
-  if (problems.length > 0) throw new FrontmatterInvalidError(sourcePath, problems);
-  return true;
-}
-
-export function isNewsFrontmatter(
-  data: Record<string, unknown>,
-  sourcePath = "<unknown>",
-): true {
-  const problems: string[] = [];
-  checkBase(data, "news", problems);
-  const ec = data["editor_confidence"];
-  if (ec !== "high" && ec !== "medium" && ec !== "low") {
-    problems.push(`editor_confidence must be high|medium|low, got ${JSON.stringify(ec)}`);
-  }
-  if (!isString(data["source"]) || data["source"].length === 0) problems.push("source must be non-empty string");
-  if (!isString(data["fingerprint"]) || data["fingerprint"].length === 0) problems.push("fingerprint must be non-empty string");
-  if ("hero_image" in data && data["hero_image"] !== undefined && !isString(data["hero_image"])) {
-    problems.push("hero_image must be string when present");
-  }
   if (problems.length > 0) throw new FrontmatterInvalidError(sourcePath, problems);
   return true;
 }

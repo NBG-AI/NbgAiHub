@@ -46,16 +46,16 @@ describe("e2e — compiled entry scripts", () => {
     }
   });
 
-  it("hub: prints menu with all five pillars", () => {
+  it("hub: prints menu with the four remaining pillars", () => {
     const r = runEntry("hub");
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("NbgAiHub");
     expect(r.stdout).toContain("/hub-glossary");
     expect(r.stdout).toContain("/hub-tips");
     expect(r.stdout).toContain("/hub-skills");
-    expect(r.stdout).toContain("/hub-news");
     expect(r.stdout).toContain("/hub-onboard");
     expect(r.stdout).toContain("/hub-open");
+    expect(r.stdout).not.toContain("/hub-news");
   });
 
   it("hub-glossary: returns a real glossary term", () => {
@@ -111,12 +111,6 @@ describe("e2e — compiled entry scripts", () => {
     const r = runEntry("hub-onboard", ["year-1"]);
     expect(r.status).toBe(1);
     expect(r.stderr).toContain("E_JOURNEY_MISSING");
-  });
-
-  it("hub-news: prints zero or more items without crashing", () => {
-    const r = runEntry("hub-news");
-    expect(r.status).toBe(0);
-    expect(r.stdout).toContain("News — window:");
   });
 
   it("hub-tips: graceful empty-pillar message when no tips authored", () => {

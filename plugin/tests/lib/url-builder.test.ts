@@ -10,11 +10,7 @@ describe("buildHubUrl", () => {
   });
 
   it("strips trailing slash from baseUrl before joining", () => {
-    expect(buildHubUrl({ baseUrl: `${BASE}/`, section: "news" })).toBe(`${BASE}/news/`);
-  });
-
-  it("section 'news' → /news/", () => {
-    expect(buildHubUrl({ baseUrl: BASE, section: "news" })).toBe(`${BASE}/news/`);
+    expect(buildHubUrl({ baseUrl: `${BASE}/`, section: "tips" })).toBe(`${BASE}/tips/`);
   });
 
   it("section 'glossary' (no subsection) → /glossary/", () => {
@@ -35,7 +31,7 @@ describe("buildHubUrl", () => {
     expect(buildHubUrl({ baseUrl: BASE, section: "week-1" })).toBe(`${BASE}/start-here/week-1/`);
   });
 
-  it.each(["skills", "tips", "journeys", "reference", "contribute"])(
+  it.each(["skills", "tips", "journeys"])(
     "section '%s' → /<section>/",
     (section) => {
       expect(buildHubUrl({ baseUrl: BASE, section })).toBe(`${BASE}/${section}/`);

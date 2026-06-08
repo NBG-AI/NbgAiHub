@@ -50,24 +50,12 @@ describe("buildPinIndex — happy path", () => {
     repoRoot = makeTempRepo();
     outDir = join(repoRoot, "out");
 
-    // 3 news items (one with date prefix that should be stripped),
-    // 2 glossary terms, 1 tip — total 6 files, 3 content types populated.
-    mkdirSync(join(repoRoot, "news", "published"), { recursive: true });
+    // 2 glossary terms, 1 tip — total 3 files, 2 content types populated.
+    // News source removed 2026-06-08 alongside the news pillar decommission.
     mkdirSync(join(repoRoot, "skills"), { recursive: true });
     mkdirSync(join(repoRoot, "tips"), { recursive: true });
     mkdirSync(join(repoRoot, "glossary"), { recursive: true });
     mkdirSync(join(repoRoot, "journeys"), { recursive: true });
-
-    writeMd(join(repoRoot, "news", "published", "2026-05-18-foo.md"), {
-      title: "Foo headline",
-      audience: "both",
-      topics: ["industry-news"],
-    });
-    writeMd(join(repoRoot, "news", "published", "2026-05-19-bar.md"), {
-      title: "Bar headline",
-      audience: "beginner",
-      topics: ["tips"],
-    });
 
     writeMd(join(repoRoot, "glossary", "alpha.md"), {
       title: "Alpha",
@@ -96,7 +84,6 @@ describe("buildPinIndex — happy path", () => {
   });
 
   const expected: ReadonlyArray<{ file: string; type: string; count: number }> = [
-    { file: "news-index.json", type: "news", count: 2 },
     { file: "skill-index.json", type: "skill", count: 0 },
     { file: "tip-index.json", type: "tip", count: 1 },
     { file: "use-case-index.json", type: "use-case", count: 0 },
@@ -119,15 +106,7 @@ describe("buildPinIndex — happy path", () => {
     });
   }
 
-  it("strips the YYYY-MM-DD- prefix from news slugs only", () => {
-    const news = JSON.parse(
-      readFileSync(join(outDir, "news-index.json"), "utf8"),
-    ) as { items: ReadonlyArray<{ slug: string }> };
-    const slugs = news.items.map((i) => i.slug).sort();
-    expect(slugs).toEqual(["bar", "foo"]);
-  });
-
-  it("preserves the bare filename as slug for non-news content", () => {
+  it("preserves the bare filename as slug for all content", () => {
     const glossary = JSON.parse(
       readFileSync(join(outDir, "glossary-index.json"), "utf8"),
     ) as { items: ReadonlyArray<{ slug: string }> };

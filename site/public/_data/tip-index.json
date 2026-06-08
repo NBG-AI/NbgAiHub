@@ -15,8 +15,7 @@
       "title": "Real bank data at runtime: Azure OpenAI only",
       "audience": "advanced",
       "topics": [
-        "compliance",
-        "data-residency"
+        "safety"
       ]
     },
     {
@@ -24,8 +23,7 @@
       "title": "What a real CLAUDE.md looks like (worked example)",
       "audience": "beginner",
       "topics": [
-        "context",
-        "fundamentals"
+        "context"
       ]
     },
     {
@@ -33,8 +31,7 @@
       "title": "/compact and /clear — context-window discipline",
       "audience": "both",
       "topics": [
-        "context",
-        "basics"
+        "context"
       ]
     },
     {
@@ -42,8 +39,7 @@
       "title": "Correct with 'No, what I meant was…'",
       "audience": "beginner",
       "topics": [
-        "prompting",
-        "corrections"
+        "prompting"
       ]
     },
     {
@@ -51,9 +47,7 @@
       "title": "`--dangerously-skip-permissions` — what it actually does",
       "audience": "beginner",
       "topics": [
-        "control",
-        "permissions",
-        "fundamentals"
+        "control"
       ]
     },
     {
@@ -61,8 +55,7 @@
       "title": "Esc to stop Claude mid-action (the control key)",
       "audience": "beginner",
       "topics": [
-        "control",
-        "basics"
+        "control"
       ]
     },
     {
@@ -80,8 +73,7 @@
       "audience": "beginner",
       "topics": [
         "context",
-        "compliance",
-        "fundamentals"
+        "safety"
       ]
     },
     {
@@ -89,9 +81,7 @@
       "title": "Bad vs. good openers",
       "audience": "beginner",
       "topics": [
-        "prompting",
-        "fundamentals",
-        "examples"
+        "prompting"
       ]
     },
     {
@@ -99,8 +89,7 @@
       "title": "Brief Claude like a colleague (the 5-line template)",
       "audience": "beginner",
       "topics": [
-        "prompting",
-        "fundamentals"
+        "prompting"
       ]
     },
     {
@@ -108,8 +97,7 @@
       "title": "Describe the business value, not the steps",
       "audience": "beginner",
       "topics": [
-        "prompting",
-        "fundamentals"
+        "prompting"
       ]
     },
     {
@@ -117,8 +105,7 @@
       "title": "Iterate, don't restart",
       "audience": "beginner",
       "topics": [
-        "prompting",
-        "fundamentals"
+        "prompting"
       ]
     },
     {
@@ -126,8 +113,7 @@
       "title": "One thing per prompt",
       "audience": "beginner",
       "topics": [
-        "prompting",
-        "fundamentals"
+        "prompting"
       ]
     },
     {
@@ -135,8 +121,7 @@
       "title": "Pin the constraints, not the method",
       "audience": "both",
       "topics": [
-        "prompting",
-        "fundamentals"
+        "prompting"
       ]
     },
     {
@@ -144,8 +129,7 @@
       "title": "Show, don't describe",
       "audience": "both",
       "topics": [
-        "prompting",
-        "fundamentals"
+        "prompting"
       ]
     },
     {
@@ -153,8 +137,7 @@
       "title": "\"think harder\" and `/effort` — turn up the reasoning when it matters",
       "audience": "both",
       "topics": [
-        "prompting",
-        "fundamentals"
+        "prompting"
       ]
     },
     {
@@ -162,8 +145,15 @@
       "title": "Prompt in Greek (or any language) — Claude understands",
       "audience": "beginner",
       "topics": [
-        "prompting",
-        "fundamentals"
+        "prompting"
+      ]
+    },
+    {
+      "slug": "workflow-1-team-or-gsd",
+      "title": "Two skills worth knowing — `/team` for one sitting, `gsd-*` for the long haul",
+      "audience": "both",
+      "topics": [
+        "workflow"
       ]
     },
     {
@@ -171,8 +161,7 @@
       "title": "`@file` and `!command` — two prompt shortcuts every newcomer misses",
       "audience": "beginner",
       "topics": [
-        "workflow",
-        "commands"
+        "workflow"
       ]
     },
     {
@@ -180,8 +169,7 @@
       "title": "When Claude does something wrong, add a line to CLAUDE.md",
       "audience": "beginner",
       "topics": [
-        "workflow",
-        "fundamentals"
+        "workflow"
       ]
     },
     {
@@ -189,8 +177,7 @@
       "title": "Install `gh` (and other CLIs) — Claude knows how to use them",
       "audience": "both",
       "topics": [
-        "workflow",
-        "integrations"
+        "workflow"
       ]
     },
     {
@@ -198,8 +185,7 @@
       "title": "Hooks for the non-negotiables — CLAUDE.md only asks nicely",
       "audience": "advanced",
       "topics": [
-        "workflow",
-        "advanced"
+        "workflow"
       ]
     },
     {
@@ -216,8 +202,7 @@
       "title": "Plan first, then execute — the workflow that pays for itself",
       "audience": "both",
       "topics": [
-        "workflow",
-        "fundamentals"
+        "workflow"
       ]
     },
     {
@@ -225,8 +210,7 @@
       "title": "Resume yesterday's session instead of starting from scratch",
       "audience": "beginner",
       "topics": [
-        "workflow",
-        "commands"
+        "workflow"
       ]
     },
     {
@@ -234,8 +218,7 @@
       "title": "Custom slash commands — turn repeated workflows into one keystroke",
       "audience": "both",
       "topics": [
-        "workflow",
-        "commands"
+        "workflow"
       ]
     },
     {
@@ -243,8 +226,7 @@
       "title": "Subagents — delegate the file-reading so your main session stays clean",
       "audience": "advanced",
       "topics": [
-        "workflow",
-        "advanced"
+        "workflow"
       ]
     }
   ]

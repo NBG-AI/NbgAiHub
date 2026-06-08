@@ -37,11 +37,9 @@ const Tag = as;
       container-name: nbg-section;
       width: 100%;
     }
-    /* Per UAT 2026-05-19 — the original epic/spacious tokens (96px / 64px
-     * padding-block) plus nested Stack gaps were stacking to ~180px of empty
-     * space between every card on list pages. Tokens halved so list pages
-     * (glossary / news / skills / tips) compress without losing the
-     * editorial-air feel on the home hero. */
+    /* Per UAT 2026-05-19 — epic/spacious tokens halved so list pages
+     * (glossary / skills / tips) compress without losing the editorial-air
+     * feel on the home hero. */
     .nbg-section[data-spacing='snug']     { padding-block: var(--nbg-sp-4); }
     .nbg-section[data-spacing='default']  { padding-block: var(--nbg-sp-6); }
     .nbg-section[data-spacing='spacious'] { padding-block: var(--nbg-sp-10); }

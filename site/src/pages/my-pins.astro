@@ -1055,20 +1055,18 @@ const PIN_TYPE_LABELS = {
     fetchAllPinIndices,
     joinFavoritesWithIndex,
     groupFavoritesByType,
+    PIN_TYPE_ORDER,
     type HydratedPin,
   } from '../lib/pin-store.ts';
+  import type { FavoriteEntry } from '../lib/gist.ts';
 
-  type PinType = 'skill' | 'tip' | 'use-case' | 'news' | 'journey-step' | 'glossary';
+  type PinType = FavoriteEntry['type'];
 
-  /** Map (type, slug) -> on-site URL for the title link. Best-effort.
-   *  Resolved relative to the deployed base path (/NbgAiHub/ on Pages,
-   *  / locally) so the link works regardless of host. */
+  /** Map (type, slug) -> on-site URL for the title link. Resolved relative
+   *  to the deployed base path (/NbgAiHub/ on Pages, / locally). */
   function urlForPin(type: PinType, slug: string): string {
     const base = (import.meta.env.BASE_URL ?? '/').replace(/\/+$/, '');
     switch (type) {
-      case 'news':
-        // News is hard-redirected to AgentNews per SCOPE.md; route to /news/.
-        return `${base}/news/`;
       case 'skill':
         // No per-skill detail page; route to the listing.
         return `${base}/skills/`;
@@ -1170,7 +1168,6 @@ const PIN_TYPE_LABELS = {
       skill: 'skill',
       tip: 'tip',
       'use-case': 'use case',
-      news: 'news item',
       'journey-step': 'journey step',
       glossary: 'glossary term',
     };
@@ -1178,12 +1175,11 @@ const PIN_TYPE_LABELS = {
       skill: 'skills',
       tip: 'tips',
       'use-case': 'use cases',
-      news: 'news items',
       'journey-step': 'journey steps',
       glossary: 'glossary terms',
     };
     const breakdown: string[] = [];
-    (['skill', 'tip', 'use-case', 'news', 'journey-step', 'glossary'] as const).forEach((t) => {
+    PIN_TYPE_ORDER.forEach((t) => {
       const n = grouped[t].length;
       if (n > 0) breakdown.push(`${n} ${n === 1 ? TYPE_SINGULAR[t] : TYPE_PLURAL[t]}`);
     });
@@ -1377,7 +1373,7 @@ const PIN_TYPE_LABELS = {
     };
 
     box.appendChild(makeChip('all', 'All', totalCount, true));
-    (['skill', 'tip', 'use-case', 'news', 'journey-step', 'glossary'] as const).forEach((t) => {
+    PIN_TYPE_ORDER.forEach((t) => {
       const count = grouped[t].length;
       if (count > 0) box.appendChild(makeChip(t, labelForType(t), count, false));
     });
@@ -1488,8 +1484,7 @@ const PIN_TYPE_LABELS = {
       }
     };
 
-    // Display order: skill → tip → use-case → news → journey → glossary.
-    (['skill', 'tip', 'use-case', 'news', 'journey-step', 'glossary'] as const).forEach((type) => {
+    PIN_TYPE_ORDER.forEach((type) => {
       for (const pin of grouped[type]) {
         grid.appendChild(buildPinCard(pin, onUnpin));
       }

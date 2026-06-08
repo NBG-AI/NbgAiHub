@@ -30,7 +30,7 @@ Where you'll see it in this repo:
 
 - **`.github/workflows/*.yml`** — every GitHub Actions workflow is YAML.
 - **Frontmatter blocks** in every `.md` under `glossary/`, `tips/`, `skills/`, `journeys/`, `news/published/`.
-- **`docs/refined-requests/`** and a few other doc fragments where structured fields are easier than prose.
+- **`docs/archive/refined-requests/`** and a few other doc fragments where structured fields are easier than prose.
 
 Not YAML, despite the similar feel:
 

@@ -111,7 +111,7 @@ Uses the default `GITHUB_TOKEN`; never writes to the repo. Read-only by design.
 
 ## References
 
-- F-P-VAL-1 (functional contract): `docs/design/project-functions.md` → "Personalization & contributions" block.
-- F-P18 + F-P19 (refined-request entries): `docs/refined-requests/personalization-and-contributions.md`.
-- Design anchor: `docs/design/project-design.md §P.4.14`, `§P.4.15`, `§P.4.16`, `§P.7.3`.
-- Plan step: `docs/design/plan-003-personalization-and-contributions.md` Step 9 (validator) + Step 15 (workflow YAML).
+- F-P-VAL-1 (functional contract): `docs/archive/design/project-functions.md` → "Personalization & contributions" block.
+- F-P18 + F-P19 (refined-request entries): `docs/archive/refined-requests/personalization-and-contributions.md`.
+- Design anchor: `docs/archive/design/project-design.md §P.4.14`, `§P.4.15`, `§P.4.16`, `§P.7.3`.
+- Plan step: `docs/archive/design/plan-003-personalization-and-contributions.md` Step 9 (validator) + Step 15 (workflow YAML).

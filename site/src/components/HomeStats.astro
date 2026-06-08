@@ -2,48 +2,29 @@
 /**
  * HomeStats.astro — Build-time content counts strip for the homepage.
  *
- * Reads the four content collections (skills, tips, glossary, news) at SSG
- * time and renders an editorial counts panel with display-sized, tabular
- * figures. Sits in the homepage hero end-slot.
+ * Reads four content collections (skills, tips, glossary, usecases) at SSG
+ * time and renders a 2×2 editorial counts panel in the homepage hero
+ * end-slot. CSS Grid with full-width separator <div>s spans both columns.
  *
- * Layout (2026-05-19 final): CSS Grid `grid-template-columns: 1fr 1fr`
- * with separator <div role="separator"> elements interspersed in the DOM.
- * Each separator spans both columns (`grid-column: 1 / -1`) drawing a
- * single continuous hairline above its row. Row-major flow is guaranteed
- * by CSS Grid's default auto-placement; there is no flex-wrap subpixel
- * weirdness and no row containers to introduce indirection.
- *
- * DOM order:
- *   separator
- *   skills cell | tips cell
- *   separator
- *   glossary cell | news cell
- *
- * Renders visually as a 2×2 grid with one full-width hairline above each
- * row. Earlier attempts (per-cell `border-top` with `column-gap: 0`, or
- * `::before` pseudo overlap, or flex row wrappers) all hit different
- * rendering bugs across attempts. This is the bulletproof shape.
- *
- * Related: project-design.md §S.13.10.1 + plan-004-ui-redesign.md P4.E.
- * Portability: ZERO Starlight imports — uses primitives + design tokens only.
+ * Portability: zero Starlight imports — uses primitives + design tokens only.
  */
 import { getCollection } from 'astro:content';
 import Eyebrow from './primitives/Eyebrow.astro';
 
-const [skills, tips, glossary, news] = await Promise.all([
+const [skills, tips, glossary, usecases] = await Promise.all([
   getCollection('skills'),
   getCollection('tips'),
   getCollection('glossary'),
-  getCollection('news'),
+  getCollection('usecases'),
 ]);
 
 type Stat = { label: string; value: number };
 
 const stats: ReadonlyArray<Stat> = [
-  { label: 'skills',   value: skills.length   },
-  { label: 'tips',     value: tips.length     },
-  { label: 'glossary', value: glossary.length },
-  { label: 'news',     value: news.length     },
+  { label: 'skills',    value: skills.length    },
+  { label: 'tips',      value: tips.length      },
+  { label: 'glossary',  value: glossary.length  },
+  { label: 'use cases', value: usecases.length  },
 ];
 ---
 <div class="home-stats" data-tabular>

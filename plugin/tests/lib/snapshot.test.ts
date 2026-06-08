@@ -88,10 +88,4 @@ describe("listPillarFiles", () => {
       rmSync(tmp, { recursive: true, force: true });
     }
   });
-
-  it("maps 'news' pillar to news/published/ subdir", () => {
-    const files = listPillarFiles(FIXTURE_SNAPSHOT, "news");
-    expect(files.length).toBeGreaterThanOrEqual(1);
-    expect(files[0]?.endsWith("/news/published/2026-05-15-example-news.md")).toBe(true);
-  });
 });

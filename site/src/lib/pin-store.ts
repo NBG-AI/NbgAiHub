@@ -12,7 +12,7 @@
 //   - Join FavoriteEntry[] with the indices, preserving the favourites order
 //     and surfacing stale references (slug no longer in the catalogue) as
 //     `display: null` rather than dropping them.
-//   - Group by type into the F-P11 display order: skill, tip, news,
+//   - Group by type into the F-P11 display order: skill, tip, use-case,
 //     journey-step, glossary.
 //
 // No localStorage access, no module-level mutable state. Pure functions plus
@@ -41,7 +41,7 @@ export type HydratedPin = FavoriteEntry & {
 };
 
 /** Grouped output, keys ordered per F-P11 + use-case (skill, tip, use-case,
- *  news, journey-step, glossary). */
+ *  journey-step, glossary). */
 export type GroupedPins = Record<FavoriteEntry['type'], HydratedPin[]>;
 
 /** /_data/<type>-index.json returned 404. */
@@ -66,7 +66,6 @@ export const PIN_TYPE_ORDER: ReadonlyArray<FavoriteEntry['type']> = [
   'skill',
   'tip',
   'use-case',
-  'news',
   'journey-step',
   'glossary',
 ] as const;
@@ -82,7 +81,6 @@ function isPinType(value: unknown): value is FavoriteEntry['type'] {
     value === 'skill' ||
     value === 'tip' ||
     value === 'use-case' ||
-    value === 'news' ||
     value === 'journey-step' ||
     value === 'glossary'
   );
@@ -257,19 +255,15 @@ export function joinFavoritesWithIndex(
 }
 
 /**
- * Group a hydrated pin list by type in F-P11 order (skill, tip, news,
- * journey-step, glossary). All 5 type keys are always present, with empty
- * arrays when that type has no pins.
- *
- * Within each group, pins are sorted by `pinned_at` descending — newest first.
+ * Group a hydrated pin list by type in display order. All keys are always
+ * present, with empty arrays when that type has no pins. Within each group,
+ * pins are sorted by `pinned_at` descending — newest first.
  */
 export function groupFavoritesByType(hydrated: HydratedPin[]): GroupedPins {
-  // Initialise all 6 keys in F-P11+use-case order so iteration is deterministic.
   const grouped: GroupedPins = {
     skill: [],
     tip: [],
     'use-case': [],
-    news: [],
     'journey-step': [],
     glossary: [],
   };

@@ -24,11 +24,8 @@ A curated Claude Code knowledge hub for bank colleagues, framed around *"what I 
 ├── SECRETS.md                 ← operator setup checklist
 ├── Issues - Pending Items.md  ← per global rules
 ├── config/
-│   ├── rss-sources.json       ← data-driven feed list (currently 5: 2 Reddit + HN + Wired + Verge)
+│   ├── rss-sources.json       ← Reddit-only feed list (r/ClaudeAI + r/ClaudeCode, both `enabled: false`); pipeline paused 2026-06-08
 │   └── maintainers.json       ← team_aliases allowlist consumed by the skill-validator tool
-├── news/
-│   ├── incoming/              ← Action writes triaged items here, PR opens for review
-│   └── published/             ← editor moves approved items here (permanent archive)
 ├── glossary/                  ← terms catalog (count in AUTO block below); auto-linked across content via the remark-glossary-link plugin (see §S.14). Authoring: docs/reference/authoring-glossary-terms.md.
 ├── skills/                    ← entries cataloguing 556LowCodeNoCode/Skills marketplace (extended 17-key schema lives in site/src/content.config.ts)
 ├── tips/                      ← entries (prompting, control keys, context, compliance)
@@ -43,21 +40,19 @@ A curated Claude Code knowledge hub for bank colleagues, framed around *"what I 
 │   ├── package.json           ← Node 22, ESM, astro ^6, @astrojs/starlight ^0.39, vitest 4.x
 │   ├── astro.config.mjs       ← sidebar 11 entries (My Pins + Submit a Skill added), SocialIcons override, dev port 4321
 │   ├── vitest.config.ts       ← Vitest 4.x node-env, tests/**/*.test.ts pattern
-│   ├── src/content.config.ts  ← 5 content collections; skills schema extended with 7 new fields
-│   ├── src/components/        ← 12 .astro components — restyled 10 originals + new MarketingShell + new HomeStats
+│   ├── src/content.config.ts  ← 4 content collections (skills, tips, glossary, journeys, usecases — news removed 2026-06-08); skills schema extended with 7 new fields
+│   ├── src/components/        ← 10 .astro components (NewsPanel + NewsList removed 2026-06-08)
 │   ├── src/components/primitives/  ← 16 portable primitives — Container, Section, Stack, Cluster, Grid, Split, Card, Button, Badge, Chip, Kbd, Eyebrow, Lede, Display, MotionReveal, StepIndicator (AC36 portability gate: zero @astrojs/starlight imports)
 │   ├── src/styles/tokens/     ← design system — primitives.css (135 tokens), semantic.css (38 × 2 themes), aliases.css (16 --sl-color-* × 2 themes), layers.css (8-layer cascade), legacy.css (absorbed custom.css), index.css (aggregator)
-│   ├── src/styles/            ← content-prose.css + content-chrome.css (Starlight chrome theme override) + motion.css (view-transitions + reduced-motion)
+│   ├── src/styles/            ← content-prose.css + content-chrome.css (Starlight chrome theme override) + motion.css (view-transitions + reduced-motion) + agentnews-layout.css (homepage .hero/.section/.wrap — see Starlight cascade gotcha)
 │   ├── src/scripts/           ← motion.ts (IntersectionObserver reveal utility — 50 LOC) + glossary-filter.ts
-│   ├── src/lib/               ← 8 TS modules: news, slug, auth, api-fetch, gist, submission, skill-types, pin-store
-│   ├── src/pages/             ← /news, /skills, /tips, /glossary, /reference,
-│   │                            /contribute, /start-here/day-1, /start-here/week-1,
-│   │                            /my-pins, /submit-skill (the personalization pages)
+│   ├── src/lib/               ← 6 TS modules: slug, auth, api-fetch, gist, skill-types, pin-store, glossary-link-string (news.ts + news-sections.ts + submission.ts removed 2026-06-08)
+│   ├── src/pages/             ← /skills, /tips, /glossary, /start-here/day-1, /start-here/foundations, /my-pins, /about, /use-cases/* (legacy /news, /reference, /contribute, /submit-skill removed)
 │   ├── src/content/docs/      ← index.mdx (homepage, template:splash)
-│   ├── scripts/               ← build-pin-index.ts (pre-build step emitting public/_data/<type>-index.json)
-│   ├── public/_data/          ← build-emitted JSON indices (5 files, one per content type)
-│   ├── src/plugins/           ← remark-glossary-link.ts — build-time auto-linker for glossary terms (§S.14.3). Single-layer unified Plugin, plain HTML output, news-skip via excludePaths
-│   └── tests/                 ← 19 test files, 320 tests (11 baseline + 8 added 2026-05-25 for glossary-tooltips: schema, component-portability, audit-no-mutation, plugin word-boundary, first-occurrence, skip-rules, news-skip, build-output snapshot)
+│   ├── scripts/               ← build-pin-index.ts (pre-build step emitting public/_data/<type>-index.json — emits 5 indices, no news)
+│   ├── public/_data/          ← build-emitted JSON indices (5 files: skill, tip, use-case, glossary, journey-step)
+│   ├── src/plugins/           ← remark-glossary-link.ts — build-time auto-linker for glossary terms (§S.14.3). Single-layer unified Plugin, plain HTML output, news-skip via excludePaths (now defensive dead code — kept harmless)
+│   └── tests/                 ← 16 test files, 246 tests (post-cleanup: agentnews-aesthetic, remark-glossary-news-skip, submission test files removed 2026-06-08)
 ├── plugin/                   ← Claude Code plugin workspace — eleven /hub-* commands
 │   ├── package.json           ← Node 22, ESM, vitest 4.x, esbuild ^0.25 (deps: gray-matter, js-yaml, open)
 │   ├── tsconfig.json          ← strict TS (mirror of pipeline/)
@@ -68,20 +63,23 @@ A curated Claude Code knowledge hub for bank colleagues, framed around *"what I 
 │   ├── commands/              ← 11 markdown command shells, filesystem-discovered by Claude Code
 │   ├── src/                   ← 11 entry scripts (hub.ts, hub-search.ts, …) + lib/ (13 shared modules)
 │   ├── snapshot/              ← bundled content snapshot (built by scripts/build-snapshot.mjs)
-│   ├── scripts/build-snapshot.mjs ← mirrors repo's glossary/tips/skills/news/journeys into snapshot/
-│   ├── dist/                  ← esbuild output (gitignored except .gitkeep)
-│   └── tests/                 ← 13 test files, 130 tests (12 lib + manifest + e2e entry-script smoke)
+│   ├── scripts/build-snapshot.mjs ← mirrors repo's glossary/tips/skills/journeys into snapshot/ (news pillar dropped 2026-06-08)
+│   ├── dist/                  ← esbuild output (gitignored except .gitkeep) — 10 entry scripts (hub-news removed 2026-06-08)
+│   └── tests/                 ← 13 test files, 122 tests (post-cleanup)
 ├── .claude-plugin/            ← repo-root marketplace manifest for /plugin marketplace add 556LowCodeNoCode/NbgAiHub
 │   └── marketplace.json       ← lists nbg-ai-hub with source: "./plugin"
 ├── .github/workflows/
-│   ├── rss-triage.yml         ← daily cron 05:00 UTC = 08:00 Athens (DST) + workflow_dispatch
+│   ├── rss-triage.yml         ← PAUSED 2026-06-08 — cron removed; `workflow_dispatch:` only. Commit steps run `sync-doc-counts.mjs` before staging (permanent docs-drift fix)
 │   └── validate-skill-submission.yml ← PR-on-skills/**/*.md → CI validator → GH Actions annotations
 └── docs/
-    ├── design/                ← project-design.md (§1-S.12 + §P.1-P.13 personalization + §H.1-H.13 hub plugin), plan-001/002/003 (RSS / site / hub plugin)
-    ├── reference/             ← code-review, dep-validation, integration-verification, test-build,
-    │                            codebase-scans, investigations, gist-contract.md (incl. hub-plugin set)
-    ├── refined-requests/      ← refined specs (rss-pipeline, astro-starlight-site, personalization-and-contributions, hub-plugin)
-    └── tools/                 ← per-tool docs per global CLAUDE.md convention (skill-validator.md)
+    ├── reference/             ← live reference docs: gist-contract, integration-verification-*, starlight-cascade-gotcha, authoring-tips/glossary/use-cases (codebase-scans + investigations moved to archive 2026-06-08)
+    ├── research/              ← agentnews-source experimental research bundle
+    ├── tools/                 ← per-tool docs per global CLAUDE.md convention (skill-validator.md)
+    └── archive/               ← shipped/paused work parked for git-search instead of working-tree weight
+        ├── design/            ← project-design.md + plan-001..006 (RSS / site / hub plugin / personalization / UI redesign / agentnews / glossary tooltips)
+        ├── refined-requests/  ← refined specs from shipped phases (rss-pipeline, astro-starlight-site, hub-plugin, personalization, ui-redesign, glossary-tooltips, agentnews-aesthetic-match, beginner-foundations, uat-analysis)
+        ├── reference/         ← codebase-scan-* and investigation-* snapshots from shipped phases
+        └── uat/               ← root-level UAT-*.md artefacts (2026-05-25..27) + glossary screenshots
 ```
 
 ## Content counts (canonical — auto-synced)
@@ -94,7 +92,7 @@ A curated Claude Code knowledge hub for bank colleagues, framed around *"what I 
 | Skills | 6 |
 | Use Cases | 12 |
 | Journeys | 2 |
-| News (published) | 59 |
+| News (published) | 0 |
 <!-- /AUTO:counts -->
 
 The repo-layout tree above is *informational* — counts cited there may go briefly stale between content additions. The AUTO block here is the source of truth, regenerated by `node scripts/sync-doc-counts.mjs` and CI-enforced by `.github/workflows/docs-drift.yml`.
@@ -114,7 +112,7 @@ The repo-layout tree above is *informational* — counts cited there may go brie
 These four files (`SCOPE.md`, `DECISIONS.md`, `Issues - Pending Items.md`, `CLAUDE.md`) load into every Claude session. Bloat hurts performance — Claude Code warns past ~40k chars per file. Treat each entry like a commit message, not a journal.
 
 - **SCOPE.md** — *snapshot of current truth, not history.* Each session: **rewrite** the `**Last updated:**` line; never append "Prior 2026-MM-DD (…)" blocks. Past sessions live in DECISIONS.md. Target the whole file ≤20k chars.
-- **DECISIONS.md** — *append-only, but tight.* Each entry: dated header + 1-line trigger + bulleted decisions (one line each) + 1-line why + 1-line references (commits / docs / Issues). **No** file-by-file diff narratives, **no** verification screenshots transcribed as prose, **no** "Open items" (those go in Issues). If an entry would naturally be longer, link out to `docs/design/` or `docs/reference/`. Target ≤20 lines per entry.
+- **DECISIONS.md** — *append-only, but tight.* Each entry: dated header + 1-line trigger + bulleted decisions (one line each) + 1-line why + 1-line references (commits / docs / Issues). **No** file-by-file diff narratives, **no** verification screenshots transcribed as prose, **no** "Open items" (those go in Issues). If an entry would naturally be longer, link out to `docs/archive/design/` or `docs/reference/`. Target ≤20 lines per entry.
 - **Issues - Pending Items.md** — *terse triage list, not analysis docs.* Each item: 1-line problem + 1-line cause + 1-line forward fix (3-4 lines max). Long-form post-mortems go to `docs/reference/`. Completed items collapse to a one-line archive section at the bottom.
 - **CLAUDE.md** — *wiring + standing rules only.* If any section grows past ~5 lines, extract to a doc and link.
 
@@ -139,7 +137,7 @@ Per global CLAUDE.md `docs/tools/<name>.md` convention — reusable TypeScript c
 
 ## Design system
 
-Per docs/design/project-design.md §S.13 — the UI redesign that landed 2026-05-19. Three-tier token system (~245 declarations), 16 portable primitives under `site/src/components/primitives/`, single `MarketingShell.astro` wrapping splash-template pages, deep theme override for content detail pages via `--sl-color-*` aliases. Aesthetic anchor: Linear / Vercel / Stripe. See plan-004-ui-redesign.md for the phased breakdown and §S.13 for the full token + component contract.
+Per docs/archive/design/project-design.md §S.13 — the UI redesign that landed 2026-05-19. Three-tier token system (~245 declarations), 16 portable primitives under `site/src/components/primitives/`, single `MarketingShell.astro` wrapping splash-template pages, deep theme override for content detail pages via `--sl-color-*` aliases. Aesthetic anchor: Linear / Vercel / Stripe. See plan-004-ui-redesign.md for the phased breakdown and §S.13 for the full token + component contract.
 
 ## Starlight cascade gotcha — read before styling any prose page
 
@@ -147,4 +145,4 @@ Starlight (and `agentnews-layout.css`) ship CSS **unlayered** — their rules be
 
 ## Glossary auto-link + tooltips
 
-Per docs/design/project-design.md §S.14 — landed 2026-05-25. Build-time remark plugin (`site/src/plugins/remark-glossary-link.ts`) walks every markdown AST and wraps the first occurrence of each glossary term (or alias) with a `<button data-glossary-slug="…">` HTML node. A single `<GlossaryTerm />` primitive injected by `MarketingShell.astro` inlines the JSON manifest + a small client-side wiring script that hydrates each button into an HTML `popover` (hover, focus, click, ESC; anchored at the trigger's bottom-right with viewport-edge clamping). 17th primitive (joins the 16 existing). Schema extension: required `tldr` (≤160, plain text) + optional `aliases` (default `[]`). Three pages explicitly wire the plugin into `createMarkdownProcessor()` because Astro's content-collection `render()` path bypasses the project `markdown.remarkPlugins`: `site/src/pages/start-here/foundations.astro`, `start-here/day-1.astro`, `glossary.astro`. **To author a new term, follow `docs/reference/authoring-glossary-terms.md`.**
+Per docs/archive/design/project-design.md §S.14 — landed 2026-05-25. Build-time remark plugin (`site/src/plugins/remark-glossary-link.ts`) walks every markdown AST and wraps the first occurrence of each glossary term (or alias) with a `<button data-glossary-slug="…">` HTML node. A single `<GlossaryTerm />` primitive injected by `MarketingShell.astro` inlines the JSON manifest + a small client-side wiring script that hydrates each button into an HTML `popover` (hover, focus, click, ESC; anchored at the trigger's bottom-right with viewport-edge clamping). 17th primitive (joins the 16 existing). Schema extension: required `tldr` (≤160, plain text) + optional `aliases` (default `[]`). Three pages explicitly wire the plugin into `createMarkdownProcessor()` because Astro's content-collection `render()` path bypasses the project `markdown.remarkPlugins`: `site/src/pages/start-here/foundations.astro`, `start-here/day-1.astro`, `glossary.astro`. **To author a new term, follow `docs/reference/authoring-glossary-terms.md`.**
