@@ -2,50 +2,57 @@
 
 A curated **Claude Code knowledge hub for bank colleagues**, framed around *"what I wish I knew a year ago."*
 
-Five content pillars: **skills catalog, tips & tricks, curated news, onboarding journeys, glossary**. All content lives as plain markdown in one private GitHub repo — single source of truth.
+**Live site:** <https://556lowcodenocode.github.io/NbgAiHub/>
+
+> Forks publish at `https://<your-org>.github.io/NbgAiHub/` — the GitHub Pages workflow reads the org name from the deploy context, so a fork just needs Pages enabled (Settings → Pages → Source: *GitHub Actions*).
 
 ---
 
-## Three operational pieces, all built
+## What's actually in use
 
-- **Website** (Astro Starlight) — beginner/advanced filter, full-text search, sign-in via personal access token paste so users can pin items and submit skills. Now wrapped in a polished design system (Linear / Vercel / Stripe aesthetic) built on portable primitives and a three-tier token system, with content pages themed through deep CSS overrides.
+- **Website** (Astro Starlight, deployed to GitHub Pages) — the primary surface. Sidebar pillars: **Foundations, Day 1, Use Cases, Tips, Skills, Glossary, My Pins**. Linear/Vercel/Stripe-influenced design system on top of portable primitives and a three-tier token system.
 
-- **RSS news pipeline** — daily GitHub Action: fetches feeds → Azure OpenAI triage → high-confidence professional-source items auto-publish straight to `main`, lower-confidence ones go through editor review → rolling 7-day window keeps the stream fresh.
+- **News tab → external redirect.** The hub's *News ↗* nav link points at <https://the-agent-daily.org/>. The full RSS triage pipeline (daily Action, Azure OpenAI scoring, auto-publish, 7-day window) is still in the repo under `pipeline/` + `.github/workflows/rss-triage.yml` and remains operational, but the **on-site `/news/` listing is no longer the consumption surface** — readers are sent to AgentNews instead.
 
-- **Claude Code plugin (`/hub-*`)** — installable with one command. Brings the hub *inside* Claude Code: eleven commands covering search, pillar browse, glossary lookup, onboarding journeys, skill install, audience filter, content refresh, and browser deep-linking. No need to leave the terminal.
+- **Per-user pins** — paste a `gist`-scope GitHub token, pin any skill / tip / glossary entry, and the favourites land in your own unlisted gist (`nbgaihub-favorites.json`). The `/my-pins/` page renders them. Zero server infrastructure.
 
----
+- **Claude Code plugin (`/hub-*`)** — installable with `/plugin marketplace add 556LowCodeNoCode/NbgAiHub`. Eleven commands bring the hub *inside* Claude Code: search, pillar browse, glossary lookup, onboarding journeys, skill install, content refresh, browser deep-linking.
 
-## Mini-workflows in place
-
-- **Anyone adds a skill** — fill in the `/submit-skill/` form on the site → it builds the markdown and redirects to GitHub's "create file" page (clipboard fallback for oversize payloads) → on PR creation, a **CI validator** checks 17 frontmatter rules and annotates the PR with errors → reviewer merges.
-
-- **Anyone favourites a skill / tip / news / glossary entry** — paste a `gist`-scoped GitHub token → click the pin button → favourites are stored in **the user's own unlisted gist** → the `/my-pins/` page lists them. Zero server infrastructure. Same gist readable by the Claude plugin later.
-
-- **News updates automatically** — daily cron triages RSS feeds, auto-publishes high-confidence items straight to the published folder, and prunes anything older than seven days in the same commit. The site picks it up on next build.
-
-- **Newcomer follows Day 1** — lands on the site → walks the six-step Day 1 journey (install → first session → control keys → CLAUDE.md → skills marketplace → next steps) → installs the plugin → continues inside Claude Code via `/hub-onboard day-1`.
-
-- **Plugin user pulls fresh content** — `/hub-refresh` does a shallow `git pull` of the latest snapshot into a per-user cache → next `/hub-*` command reflects new content.
+- **CI validator for skill PRs** — `pipeline/src/validators/skill.ts` enforces the 17-rule frontmatter contract on `skills/**/*.md` PRs and annotates failures inline.
 
 ---
 
 ## Content base
 
-Seeded across all five pillars — a Day-1 onboarding journey, a working tips library, a skills catalog pointing at the team's existing marketplace, a glossary covering Claude Code / Git / workflow vocabulary, and a flowing daily news stream. Counts stay honest via a docs-drift CI check.
+| Pillar | Files |
+|---|---|
+| Glossary | 45 |
+| Tips | 28 |
+| Skills | 6 |
+| Use Cases | 12 |
+| Journeys | 2 |
+| News (archive, unsurfaced on site) | 59 |
+
+Counts are kept honest by `node scripts/sync-doc-counts.mjs` + a docs-drift CI check.
 
 ---
 
-## Quality & governance
+## What's not used right now
 
-CI validator enforcing the 17-rule skill contract, automated docs-drift check, append-only decision log, mutable scope file — so the content stays clean and the *"why"* of past choices stays traceable as the hub grows.
-
----
-
-## What's still open
-
-Production hosting for the website (currently local; Vercel / Netlify / Cloudflare / GitHub Pro on the shortlist), Week-1 and role-specific journeys, the anchor newcomer whose join date sets the MVP demo deadline, and whether to also list the plugin in the central team skills marketplace.
+- **On-site news listing.** The `/news/` route still builds from `news/published/*.md`, but no nav link points at it — News redirects out. The pipeline keeps publishing so the archive stays warm if we ever flip the redirect back.
+- **Skill submission web form.** Removed 2026-05-25. Contributions flow through the normal repo PR path (the CI validator above is still wired).
 
 ---
 
-**Net effect:** three surfaces (web, automated news, in-terminal Claude plugin) over one curated, PR-gated repo. Newcomers can install the plugin in one line and start exploring — no browser required.
+## Repo shape (short version)
+
+```
+site/        Astro Starlight web UI (the live site)
+pipeline/    RSS triage + skill validator (TypeScript, Node 22)
+plugin/      Claude Code plugin (/hub-* commands)
+glossary/ tips/ skills/ use cases/ journeys/ news/published/   Markdown content
+.claude-plugin/marketplace.json   Plugin marketplace manifest
+.github/workflows/                Daily news cron + skill-PR validator + Pages deploy
+```
+
+Full layout, working rules, and design-system contract live in [`CLAUDE.md`](CLAUDE.md) and [`SCOPE.md`](SCOPE.md). Decision history is append-only in [`DECISIONS.md`](DECISIONS.md).
