@@ -590,7 +590,8 @@ function resourceKindTone(kind: Resource['kind']): string {
     }
     @media (max-width: 960px) {
       .foundation-toc {
-        position: static;
+        position: static !important;
+        top: auto !important;
         border: 1px solid var(--nbg-hairline);
         border-radius: var(--nbg-r-md, 8px);
         padding: 1rem;
