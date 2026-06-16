@@ -6,6 +6,22 @@ Per CLAUDE.md doc-hygiene: each entry ≤20 lines, structured as Decision (bulle
 
 ---
 
+## 2026-06-16 — Copy-to-clipboard buttons on use-case prompts and terminal blocks
+
+**Trigger:** User flagged the missing copy affordance on use-case prompts — "so the user can easily copy and paste to claude" — then asked for the same on terminal `<pre>` blocks, and explicitly asked for the chrome to be delicate (icon only, no border, no background).
+
+- Every `blockquote` inside `.usecase-section__body` now gets a delicate copy button anchored top-right; same treatment for every `<pre>` (terminal-styled) inside a step.
+- Visual: 15px outline icon, transparent background, no border, opacity 0.45 at rest, 1.0 on hover/focus. Teal for the blockquote (on tinted prompt surface); cream `#e0f2f4` for the pre (on dark terminal surface). Pre icon sits left of the "TERMINAL" pseudo-label so the existing chrome is preserved.
+- Behaviour: click copies the host's `textContent` (cloned, button removed first), icon flips to a check for ~1.4s, `aria-label` updates for screen readers. `navigator.clipboard.writeText` primary path, `document.execCommand` fallback for non-secure contexts.
+- Compliance-style blockquotes in the intro section are intentionally NOT touched — the script scopes itself to `.usecase-section__body`.
+- All site tests still pass (246/246). Visual verification done in headless Chrome at /use-cases/mortgage-calculator/ for light + dark themes.
+
+**Why:** The use-case pages teach by example — every prompt is meant to be pasted into Claude and every terminal block is meant to be run. Selecting + copying long multi-paragraph blockquotes (especially ones with embedded code fences) was friction the formula didn't survive. The delicate styling was a course-correction from a first pass that shipped a more prominent labelled button — the user wanted lower visual weight.
+
+**References:** `site/src/pages/use-cases/[slug].astro` (CSS for `.usecase-copy-btn` + inject script).
+
+---
+
 ## 2026-06-11 — Use-case pillar upgrade after full E2E execution audit
 
 **Trigger:** User executed all 12 use cases end-to-end in a test workspace, reviewed the findings, and approved the upgrade proposals — explicitly keeping `--dangerously-skip-permissions` teaching as-is.

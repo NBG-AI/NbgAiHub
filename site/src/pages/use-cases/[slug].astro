@@ -341,6 +341,91 @@ const unitLabel = BUSINESS_UNIT_LABELS[entry.data.business_unit] ?? entry.data.b
 </script>
 
 <script is:inline>
+  // Copy buttons — use-case prompt blockquotes AND terminal-styled pre
+  // blocks are the things readers paste or run. Inject a delicate
+  // icon-only button into each one inside `.usecase-section__body`.
+  // Click copies textContent (preserves embedded code; strips markdown
+  // `>` markers and HTML tags). Icon flips to a check briefly on success.
+  (function () {
+    var COPY_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    var CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
+
+    function extractText(host) {
+      var clone = host.cloneNode(true);
+      var btn = clone.querySelector('.usecase-copy-btn');
+      if (btn) btn.remove();
+      return clone.textContent.replace(/ /g, ' ').replace(/\s+\n/g, '\n').trim();
+    }
+
+    function flashCopied(btn, kind) {
+      var what = kind === 'pre' ? 'Command' : 'Prompt';
+      btn.setAttribute('data-copied', 'true');
+      btn.innerHTML = CHECK_SVG;
+      btn.setAttribute('aria-label', what + ' copied to clipboard');
+      window.setTimeout(function () {
+        btn.removeAttribute('data-copied');
+        btn.innerHTML = COPY_SVG;
+        btn.setAttribute('aria-label', 'Copy ' + what.toLowerCase() + ' to clipboard');
+      }, 1400);
+    }
+
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+      }
+      return new Promise(function (resolve, reject) {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }
+
+    function attach(host, kind) {
+      if (host.querySelector('.usecase-copy-btn')) return;
+      var what = kind === 'pre' ? 'command' : 'prompt';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'usecase-copy-btn';
+      btn.setAttribute('aria-label', 'Copy ' + what + ' to clipboard');
+      btn.innerHTML = COPY_SVG;
+      btn.addEventListener('click', function () {
+        var text = extractText(host);
+        if (!text) return;
+        copyText(text).then(
+          function () { flashCopied(btn, kind); },
+          function () { btn.setAttribute('aria-label', 'Copy failed — select the text manually'); }
+        );
+      });
+      host.appendChild(btn);
+    }
+
+    function inject() {
+      document
+        .querySelectorAll('.usecase-section__body blockquote')
+        .forEach(function (bq) { attach(bq, 'blockquote'); });
+      document
+        .querySelectorAll('.usecase-section__body pre')
+        .forEach(function (pre) { attach(pre, 'pre'); });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', inject);
+    } else {
+      inject();
+    }
+  })();
+</script>
+
+<script is:inline>
   (function () {
     var overviewLinks = Array.from(document.querySelectorAll('.journey-overview [data-step-id]'));
     var tocLinks = Array.from(document.querySelectorAll('.usecase-toc [data-toc-target]'));
@@ -957,12 +1042,77 @@ const unitLabel = BUSINESS_UNIT_LABELS[entry.data.business_unit] ?? entry.data.b
       border-radius: var(--nbg-r-sm, 4px) !important;
     }
     .usecase-section__body :global(blockquote) {
+      position: relative !important;
       margin: 1.25rem 0 !important;
-      padding: 0.85rem 1.1rem !important;
+      /* padding-right reserves space for the absolutely-positioned copy
+         icon. Tight — the button is now icon-only with no chrome. */
+      padding: 0.85rem 2.5rem 0.85rem 1.1rem !important;
       border-left: 3px solid var(--nbg-accent, #007a8a) !important;
       background: color-mix(in srgb, var(--nbg-accent, #007a8a) 6%, var(--nbg-surface, #ffffff)) !important;
       color: var(--nbg-ink-2, #1a3148) !important;
       border-radius: 0 var(--nbg-r-sm, 4px) var(--nbg-r-sm, 4px) 0 !important;
+    }
+
+    /* ─── Copy-prompt button (delicate, icon-only) ────────────────
+       Injected by the script at the bottom of this file into every
+       prompt blockquote AND every terminal pre inside a step. No
+       chrome at rest — just a dim icon. Brightens on hover; flips
+       to a check briefly after a successful copy. The pre variant
+       is recoloured for the dark terminal surface. */
+    .usecase-section__body :global(.usecase-copy-btn) {
+      position: absolute !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      margin: 0 !important;
+      padding: 0.4rem !important;
+      background: transparent !important;
+      border: 0 !important;
+      border-radius: var(--nbg-r-sm, 4px) !important;
+      cursor: pointer !important;
+      opacity: 0.45 !important;
+      transition: opacity 140ms ease !important;
+    }
+    .usecase-section__body :global(.usecase-copy-btn:hover),
+    .usecase-section__body :global(.usecase-copy-btn:focus-visible) {
+      opacity: 1 !important;
+      background: transparent !important;
+      outline: none !important;
+    }
+    .usecase-section__body :global(.usecase-copy-btn[data-copied='true']) {
+      opacity: 1 !important;
+    }
+    .usecase-section__body :global(.usecase-copy-btn svg) {
+      width: 15px !important;
+      height: 15px !important;
+      flex-shrink: 0 !important;
+      display: block !important;
+    }
+
+    /* Blockquote variant — teal icon on tinted prompt surface. */
+    .usecase-section__body :global(blockquote .usecase-copy-btn) {
+      top: 0.45rem !important;
+      right: 0.45rem !important;
+      color: var(--nbg-accent, #007a8a) !important;
+    }
+
+    /* Pre/terminal variant — cream icon, sits just left of the
+       "TERMINAL" pseudo-label so the chrome still reads. */
+    .usecase-section__body :global(pre .usecase-copy-btn) {
+      top: 0.4rem !important;
+      right: 5rem !important;
+      color: #e0f2f4 !important;
+    }
+    @media (max-width: 480px) {
+      /* Below 480px, TERMINAL label can crowd; nudge the icon left. */
+      .usecase-section__body :global(pre .usecase-copy-btn) {
+        right: 4.75rem !important;
+      }
+    }
+    @media (max-width: 600px) {
+      .usecase-section__body :global(blockquote) {
+        padding: 0.85rem 2.25rem 0.85rem 1rem !important;
+      }
     }
     .usecase-section__body :global(blockquote p) { margin: 0 0 0.5rem 0 !important; }
     .usecase-section__body :global(blockquote p:last-child) { margin-bottom: 0 !important; }
