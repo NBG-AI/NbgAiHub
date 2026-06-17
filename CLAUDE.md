@@ -88,7 +88,7 @@ A curated Claude Code knowledge hub for bank colleagues, framed around *"what I 
 <!-- AUTO:counts -->
 | Pillar | Files |
 |---|---|
-| Glossary | 45 |
+| Glossary | 47 |
 | Tips | 30 |
 | Skills | 6 |
 | Use Cases | 15 |

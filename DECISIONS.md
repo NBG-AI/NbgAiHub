@@ -6,6 +6,21 @@ Per CLAUDE.md doc-hygiene: each entry ≤20 lines, structured as Decision (bulle
 
 ---
 
+## 2026-06-17 (afternoon) — Day-1 Sandbox heads-up callout + VM / Sandbox glossary terms
+
+**Trigger:** User is redesigning the Sandbox landing page (mock attached — "Sandbox Connect" with What/Why/When cards) but it isn't shipping until end of week. Until then the external "Sandbox ↗" link still points at the current less-explained page, so we need a heads-up on Day 1.
+
+- New callout section `<section class="day-sandbox-preview">` on `/start-here/day-1/`, placed between the hero step-preview and the journey intro. Accent-bordered card with eyebrow ("HEADS UP — LANDING THIS WEEK"), serif title, two body paragraphs, "Peek at the Sandbox ↗" CTA pointing at the current live page.
+- Body prose runs through `linkGlossaryTerms()` so "Sandbox", "VM", and "Claude Code" auto-link to tooltips. Helper escapes HTML, so no inline `<strong>` markup inside the string — relied on the eyebrow + button styling for emphasis instead.
+- Two new glossary terms — `glossary/vm.md` (aliases: `VMs`, `virtual machine`, `virtual machines`) and `glossary/sandbox.md` (aliases: `sandboxes`, `Sandbox Connect`). Sandbox carries the live URL as `external_link`. Glossary count 45 → 47; counts re-synced.
+- Callout is marked as temporary in code comments — remove once the new Sandbox page ships.
+
+**Why:** Colleagues who land on Day 1 this week will see the Sandbox link in the nav and click through to a page that doesn't yet explain itself. The callout sets expectations ("clearer walkthrough by end of week") and the glossary terms give them a one-hover tldr anywhere the words appear.
+
+**References:** `site/src/pages/start-here/day-1.astro`, `glossary/vm.md`, `glossary/sandbox.md`, screenshot at `Image #6` (Sandbox Connect mock) and `Image #7` (callout result).
+
+---
+
 ## 2026-06-17 — "Sandbox ↗" external link added to nav, hero pill grid, and footer
 
 **Trigger:** User pointed at PR #8 (from `chrishham:main`, marked CONFLICTING against the latest `main`) and asked for the change to be applied: a new "Sandbox ↗" entry pointing at <https://claude-code-sandbox.azurewebsites.net/>.

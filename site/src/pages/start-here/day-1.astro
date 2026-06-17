@@ -140,6 +140,28 @@ const heroSummary = entry.data.ai_summary;
     </div>
   </section>
 
+  {/* Temporary heads-up surface — the Sandbox setup walkthrough is
+      shipping later this week. Until then, the external "Sandbox ↗"
+      link still goes to the live but barely-explained current page.
+      This block tells colleagues that a clearer guide is coming and
+      they can peek now if they want. Remove once the new Sandbox
+      page (the one with the "What is it / Why / When" cards) ships. */}
+  <section class="day-sandbox-preview" aria-label="Sandbox setup coming this week">
+    <div class="wrap">
+      <aside class="day-sandbox-preview__card">
+        <span class="day-sandbox-preview__eyebrow">Heads up — landing this week</span>
+        <h2 class="day-sandbox-preview__title">A simpler way to try Claude Code is coming: the <em>Sandbox</em></h2>
+        <p class="day-sandbox-preview__body" set:html={linkGlossaryTerms('The Sandbox is a personal cloud Linux VM with Claude Code already installed — a way to try it (or work with bank data) without putting anything on your laptop. We are shipping a step-by-step setup guide for it by end of the week.')} />
+        <p class="day-sandbox-preview__body">
+          Want to peek now? The current Sandbox page is live, but it may not be obvious what to do with it yet. The clearer walkthrough will live here in a few days.
+        </p>
+        <p class="day-sandbox-preview__actions">
+          <a class="day-sandbox-preview__cta" href="https://claude-code-sandbox.azurewebsites.net/" target="_blank" rel="noopener">Peek at the Sandbox ↗</a>
+        </p>
+      </aside>
+    </div>
+  </section>
+
   {introHtml.length > 0 && (
     <section class="day-intro-section" id="intro">
       <div class="wrap">
@@ -361,6 +383,86 @@ const heroSummary = entry.data.ai_summary;
 
 <style>
   @layer nbg.components {
+    /* ─── Sandbox preview callout (temporary) ──────────────────────
+       Sits between the hero step preview and the journey intro. Same
+       accent-bordered card vocabulary as the use-case Step 1 OS picker
+       so it reads as "important context, not a step". Remove the block
+       (and the markup above) once the new Sandbox page ships. */
+    .day-sandbox-preview {
+      padding-block: 1.25rem !important;
+    }
+    .day-sandbox-preview__card {
+      display: block !important;
+      margin: 0 !important;
+      padding: 1.5rem 1.75rem !important;
+      border: 1px solid color-mix(in srgb, var(--nbg-accent, #007a8a) 35%, var(--nbg-hairline, #ebeff5)) !important;
+      border-left: 4px solid var(--nbg-accent, #007a8a) !important;
+      border-radius: var(--nbg-r-md, 8px) !important;
+      background: color-mix(in srgb, var(--nbg-accent, #007a8a) 5%, var(--nbg-surface, #ffffff)) !important;
+    }
+    .day-sandbox-preview__eyebrow {
+      display: block;
+      font-family: var(--nbg-ff-mono, ui-monospace, monospace);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--nbg-accent-ink, #00525c);
+      margin-bottom: 0.55rem;
+    }
+    .day-sandbox-preview .day-sandbox-preview__title {
+      font-family: var(--nbg-ff-serif, Newsreader, Georgia, serif) !important;
+      font-weight: 500 !important;
+      font-size: 1.5rem !important;
+      line-height: 1.2 !important;
+      letter-spacing: -0.01em !important;
+      color: var(--nbg-ink, #0b1e2e) !important;
+      margin: 0 0 0.85rem 0 !important;
+    }
+    .day-sandbox-preview__title :global(em) {
+      font-style: italic;
+      color: var(--nbg-accent, #007a8a);
+    }
+    .day-sandbox-preview__body {
+      margin: 0 0 0.65rem 0 !important;
+      color: var(--nbg-ink-2, #1a3148) !important;
+      font-size: 1rem !important;
+      line-height: 1.6 !important;
+    }
+    .day-sandbox-preview__body :global(strong) {
+      color: var(--nbg-ink, #0b1e2e) !important;
+      font-weight: 600 !important;
+    }
+    .day-sandbox-preview__actions {
+      margin: 1rem 0 0 0 !important;
+    }
+    .day-sandbox-preview__cta {
+      display: inline-flex !important;
+      align-items: center !important;
+      padding: 0.6rem 1.2rem !important;
+      background: var(--nbg-accent, #007a8a) !important;
+      /* !important per starlight-cascade-gotcha — Starlight's unlayered
+         `a { color }` rule beats us in production builds otherwise. */
+      color: var(--nbg-color-fg-on-accent, #ffffff) !important;
+      border: 1px solid var(--nbg-accent, #007a8a) !important;
+      border-radius: 8px !important;
+      text-decoration: none !important;
+      font-weight: 600 !important;
+      font-size: 0.9375rem !important;
+      transition: filter 120ms ease !important;
+    }
+    .day-sandbox-preview__cta:hover {
+      filter: brightness(1.06);
+    }
+    @media (max-width: 600px) {
+      .day-sandbox-preview__card {
+        padding: 1.25rem 1.25rem !important;
+      }
+      .day-sandbox-preview .day-sandbox-preview__title {
+        font-size: 1.25rem !important;
+      }
+    }
+
     /* ─── Intro under hero ─────────────────────────────────────── */
     /* Custom class (not `.section`) — avoids agentnews-layout's
        `.section { padding-block: ... }` unlayered rule overriding us. */
